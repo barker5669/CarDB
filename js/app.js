@@ -125,14 +125,32 @@ function seededShuffle(arr, s) {
   return a;
 }
 function buildBoard() {
+  // Rarity weights: how many of each per era board (total = 12)
+  const QUOTA = { legendary: 1, epic: 2, rare: 5, common: 4 };
   const board = {};
   ERAS.forEach((era, ei) => {
-    const ec   = CAR_DB.filter(c => c.era === era);
-    const sh   = seededShuffle(ec, BOARD_SEED + ei * 7919);
-    const mine = sh.filter((_, i) => i % 2 !== 0);
-    const pad  = [];
-    while (pad.length < 12) pad.push(...(mine.length ? mine : [sh[0]]));
-    board[era] = pad.slice(0, 12);
+    const seed = BOARD_SEED + ei * 7919;
+    const byRarity = { legendary: [], epic: [], rare: [], common: [] };
+    CAR_DB.filter(c => c.era === era).forEach(c => {
+      if (byRarity[c.rarity]) byRarity[c.rarity].push(c);
+    });
+    const picks = [];
+    Object.entries(QUOTA).forEach(([rarity, quota]) => {
+      const pool = seededShuffle(byRarity[rarity], seed + rarity.length * 31);
+      // Take up to quota; if not enough, take all available
+      for (let i = 0; i < quota && i < pool.length; i++) picks.push(pool[i]);
+    });
+    // If a rarity bucket had fewer than quota, fill remaining from rare/common
+    const needed = 12 - picks.length;
+    if (needed > 0) {
+      const usedNames = new Set(picks.map(c => c.name));
+      const filler = seededShuffle(
+        CAR_DB.filter(c => c.era === era && !usedNames.has(c.name)),
+        seed + 99991
+      ).slice(0, needed);
+      picks.push(...filler);
+    }
+    board[era] = seededShuffle(picks, seed + 12345); // shuffle final order
   });
   return board;
 }
@@ -357,29 +375,38 @@ function eventSpottedMap() {
 // Build filter chips for event tab
 function buildEvFilters() {
   const rarities = [['All','All'],['common','Common'],['rare','Rare'],['epic','Epic'],['legendary','Legendary']];
+
+  // Era chips
   document.getElementById('ev-era-row').innerHTML =
     ['All',...ERAS].map(e =>
       `<button class="fchip${EV_F.era===e?' active':''}" onclick="evSetEra('${e}')">${e}</button>`
     ).join('');
+
+  // Rarity chips
   document.getElementById('ev-rarity-row').innerHTML =
     rarities.map(([v,l]) =>
       `<button class="fchip fc-${v}${EV_F.rarity===v?' active':''}" onclick="evSetRarity('${v}')">${l}</button>`
     ).join('');
-  // Make row
-  const evMakes = ['All', ...new Set(CAR_DB.map(c=>c.make))].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
+
+  // Make — dropdown
+  const makes = ['All', ...new Set(CAR_DB.map(c=>c.make))].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
   document.getElementById('ev-make-row').innerHTML =
-    evMakes.map(m =>
-      `<button class="fchip${EV_F.make===m?' active':''}" onclick="evSetMake('${m.replace(/'/g,"\'")}')">${m}</button>`
-    ).join('');
-  // Country row
-  const evCountries = ['All', ...new Set(CAR_DB.map(c=>c.country))].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
+    `<select class="filter-select" onchange="evSetMake(this.value)">
+      ${makes.map(m=>`<option value="${m}"${EV_F.make===m?' selected':''}>${m}</option>`).join('')}
+    </select>`;
+
+  // Country — dropdown
+  const countries = ['All', ...new Set(CAR_DB.map(c=>c.country))].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
   document.getElementById('ev-country-row').innerHTML =
-    evCountries.map(c =>
-      `<button class="fchip${EV_F.country===c?' active':''}" onclick="evSetCountry('${c.replace(/'/g,"\'")}')">${c}</button>`
-    ).join('');
+    `<select class="filter-select" onchange="evSetCountry(this.value)">
+      ${countries.map(c=>`<option value="${c}"${EV_F.country===c?' selected':''}>${c}</option>`).join('')}
+    </select>`;
+
   document.getElementById('ev-tog-seen').classList.toggle('active', EV_F.showSeen);
   document.getElementById('ev-tog-unseen').classList.toggle('active', EV_F.showUnseen);
 }
+
+
 function evSetEra(v)     { EV_F.era=v;     buildEvFilters(); renderEventList(); }
 function evSetRarity(v)  { EV_F.rarity=v;  buildEvFilters(); renderEventList(); }
 function evSetMake(v)    { EV_F.make=v;    buildEvFilters(); renderEventList(); }
@@ -606,35 +633,43 @@ function renderPicker() {
 
 function buildGarageFilters() {
   const rarities = [['All','All'],['common','Common'],['rare','Rare'],['epic','Epic'],['legendary','Legendary']];
+
   document.getElementById('g-era-row').innerHTML =
     ['All',...ERAS].map(e =>
       `<button class="fchip${G_F.era===e?' active':''}" onclick="gSetEra('${e}')">${e}</button>`
     ).join('');
+
   document.getElementById('g-rarity-row').innerHTML =
     rarities.map(([v,l]) =>
       `<button class="fchip fc-${v}${G_F.rarity===v?' active':''}" onclick="gSetRarity('${v}')">${l}</button>`
     ).join('');
-  // Make
-  const gMakes = ['All', ...new Set(CAR_DB.map(c=>c.make))].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
+
+  const makes = ['All', ...new Set(CAR_DB.map(c=>c.make))].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
   document.getElementById('g-make-row').innerHTML =
-    gMakes.map(m =>
-      `<button class="fchip${G_F.make===m?' active':''}" onclick="gSetMake('${m.replace(/'/g,"\'")}')">${m}</button>`
-    ).join('');
-  // Country
-  const gCountries = ['All', ...new Set(CAR_DB.map(c=>c.country))].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
+    `<select class="filter-select" onchange="gSetMake(this.value)">
+      ${makes.map(m=>`<option value="${m}"${G_F.make===m?' selected':''}>${m}</option>`).join('')}
+    </select>`;
+
+  const countries = ['All', ...new Set(CAR_DB.map(c=>c.country))].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
   document.getElementById('g-country-row').innerHTML =
-    gCountries.map(c =>
-      `<button class="fchip${G_F.country===c?' active':''}" onclick="gSetCountry('${c.replace(/'/g,"\'")}')">${c}</button>`
-    ).join('');
-  // Events
-  const evNames = [...new Set(Object.values(S.spotted).map(d => d.event).filter(Boolean))];
+    `<select class="filter-select" onchange="gSetCountry(this.value)">
+      ${countries.map(c=>`<option value="${c}"${G_F.country===c?' selected':''}>${c}</option>`).join('')}
+    </select>`;
+
+  // Event filter — dropdown
+  const allEvents = ['All', ...new Set(
+    Object.values(S.spotted).map(d=>d.event).filter(Boolean)
+  )].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
   document.getElementById('g-event-row').innerHTML =
-    ['All', ...evNames].map(e =>
-      `<button class="fchip${G_F.event===e?' active':''}" onclick="gSetEvent('${JSON.stringify(e).slice(1,-1)}')">${e}</button>`
-    ).join('');
+    `<select class="filter-select" onchange="gSetEvent(this.value)">
+      ${allEvents.map(e=>`<option value="${e}"${G_F.event===e?' selected':''}>${e}</option>`).join('')}
+    </select>`;
+
   document.getElementById('g-tog-seen').classList.toggle('active', G_F.showSeen);
   document.getElementById('g-tog-unseen').classList.toggle('active', G_F.showUnseen);
 }
+
+
 function gSetEra(v)     { G_F.era=v;     buildGarageFilters(); renderGarage(); }
 function gSetRarity(v)  { G_F.rarity=v;  buildGarageFilters(); renderGarage(); }
 function gSetMake(v)    { G_F.make=v;    buildGarageFilters(); renderGarage(); }
@@ -844,6 +879,8 @@ function openModal(car, key) {
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
   S.modalKey = S.modalCar = S.pendingSightingId = null;
+  renderList();    // ensure spotted/unspotted sections update immediately
+  renderEventList();
 }
 document.getElementById('modal-overlay').addEventListener('click', e => {
   if (e.target === document.getElementById('modal-overlay')) closeModal();
