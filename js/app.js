@@ -199,6 +199,15 @@ function startEvent() {
 function launch() {
   document.getElementById('s-setup').classList.remove('active');
   switchTab('bingo');
+  // Preload all eras in background (current era first)
+  if (S.board) {
+    preloadEraImages(S.board[S.era] || []).then(() => {
+      // Then preload remaining eras
+      ERAS.filter(e => e !== S.era).forEach(era => {
+        preloadEraImages(S.board[era] || []);
+      });
+    });
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -991,6 +1000,6 @@ function checkBingo() {
 // ══════════════════════════════════════════════
 (async () => {
   await initSetup();
-  // Preload images for default era in background
-  setTimeout(() => { if (S.board) preloadEraImages(S.board[S.era] || []); }, 500);
+  // Preload images immediately on launch
+  if (S.board) preloadEraImages(S.board[S.era] || []);
 })();
