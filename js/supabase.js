@@ -1,8 +1,8 @@
 // ══════════════════════════════════════════════════════════════════════
 // SUPABASE CONFIG — replace these with your actual project values
 // ══════════════════════════════════════════════════════════════════════
-const SUPABASE_URL  = 'YOUR_SUPABASE_URL';
-const SUPABASE_ANON = 'YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL  = 'https://itjdpmxqsxodrqmwfoyf.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_iiFm7jpE-pweUlSCFYdtyw_ImNM1L-I';
 
 // ══════════════════════════════════════════════════════════════════════
 // CLIENT — lazy-initialised, works whether Supabase is configured or not
