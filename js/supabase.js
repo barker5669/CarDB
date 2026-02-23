@@ -116,7 +116,7 @@ async function sbSeedCarsIfEmpty() {
       name: c.name, make: c.make, model: c.model,
       era: c.era, country: c.country, rarity: c.rarity,
       years: c.years, produced: c.produced, surviving: c.surviving,
-      value: c.value, desc: c.desc, hagerty: c.hagerty || null,
+      value: c.value, "desc": c.desc, hagerty: c.hagerty || null,
       wiki: WIKI_PAGES[c.name] || null, flag: c.flag
     }));
     const { error } = await sb().from('cars').insert(chunk);
