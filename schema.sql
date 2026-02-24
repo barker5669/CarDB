@@ -37,7 +37,7 @@ create table if not exists cars (
   produced   text,
   surviving  text,
   value      text,
-  desc       text,
+  "desc"     text,
   hagerty    text,
   wiki       text,
   flag       text
