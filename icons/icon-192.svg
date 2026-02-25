@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" fill="#0d1f15" rx="40"/>
+  <!-- subtle grid pattern -->
+  <rect x="0" y="0" width="192" height="96" fill="#112018" rx="40"/>
+  <rect x="0" y="96" width="192" height="96" fill="#0d1f15"/>
+  <!-- Gold border -->
+  <rect x="6" y="6" width="180" height="180" fill="none" stroke="#c9a84c" stroke-width="4" rx="36"/>
+  <!-- Car emoji via text -->
+  <text x="96" y="115" font-size="80" text-anchor="middle" font-family="Apple Color Emoji,Segoe UI Emoji,sans-serif">🏎️</text>
+  <!-- Bottom label -->
+  <rect x="28" y="142" width="136" height="28" fill="#c9a84c" rx="8"/>
+  <text x="96" y="161" font-size="15" font-weight="900" text-anchor="middle" fill="#0d1f15" font-family="Georgia,serif" letter-spacing="2">BINGO</text>
+</svg>

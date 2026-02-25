@@ -593,7 +593,7 @@ function closePicker() {
   document.getElementById('picker-overlay').classList.remove('open');
   document.getElementById('picker-search').value = '';
 }
-document.getElementById('picker-overlay').addEventListener('click', e => {
+document.getElementById('picker-overlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('picker-overlay')) closePicker();
 });
 function buildPickerEraChips() {
@@ -777,7 +777,7 @@ function closeModal() {
   S.modalKey = S.modalCar = S.pendingSightingId = null;
   renderList(); renderEventList();
 }
-document.getElementById('modal-overlay').addEventListener('click', e => {
+document.getElementById('modal-overlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('modal-overlay')) closeModal();
 });
 
@@ -882,7 +882,7 @@ function openLightbox(src, info) {
   document.getElementById('lightbox').classList.add('open');
 }
 function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
-document.getElementById('lightbox').addEventListener('click', e => { if(e.target===document.getElementById('lightbox'))closeLightbox(); });
+document.getElementById('lightbox')?.addEventListener('click', e => { if(e.target===document.getElementById('lightbox'))closeLightbox(); });
 
 let snackTimer;
 function showSnack(msg) {
@@ -924,7 +924,23 @@ async function loadFromSupabase(eventName) {
 // ══════════════════════════════════════════════
 // BOOT
 // ══════════════════════════════════════════════
-(async () => { await initSetup(); })();
+(async () => {
+  // Wire up PIN keypad
+  document.querySelectorAll('.pin-key[data-digit]').forEach(btn => {
+    btn.addEventListener('click', () => pinPress(parseInt(btn.dataset.digit)));
+  });
+  const delBtn = document.getElementById('pin-del-btn');
+  if (delBtn) delBtn.addEventListener('click', pinBackspace);
+
+  // Auto-bypass PIN if session is recent (within 24 hours)
+  const lastUnlock = parseInt(localStorage.getItem('ccb-session') || '0');
+  if (Date.now() - lastUnlock < 24 * 60 * 60 * 1000) {
+    document.getElementById('s-pin-gate')?.classList.remove('active');
+    document.getElementById('s-setup')?.classList.add('active');
+  }
+
+  await initSetup();
+})();
 
 // ══════════════════════════════════════════════
 // EVENT MENU — switch / new event
@@ -935,7 +951,7 @@ function openEventMenu() {
 function closeEventMenu() {
   document.getElementById('event-menu-overlay').classList.remove('open');
 }
-document.getElementById('event-menu-overlay').addEventListener('click', e => {
+document.getElementById('event-menu-overlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('event-menu-overlay')) closeEventMenu();
 });
 function goToNewEvent() {
@@ -989,7 +1005,7 @@ function closeGarageAdd() {
   document.getElementById('garage-add-overlay').classList.remove('open');
   document.getElementById('garage-add-search').value = '';
 }
-document.getElementById('garage-add-overlay').addEventListener('click', e => {
+document.getElementById('garage-add-overlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('garage-add-overlay')) closeGarageAdd();
 });
 
@@ -1133,4 +1149,143 @@ async function detectLocation() {
     },
     { timeout: 10000, maximumAge: 60000 }
   );
+}
+
+// ══════════════════════════════════════════════
+// PIN GATE
+// ══════════════════════════════════════════════
+const PIN_KEY     = 'ccb-pin-v1';
+const DEFAULT_PIN = '2407';
+let pinBuffer = '';
+
+function getPin() {
+  return localStorage.getItem(PIN_KEY) || DEFAULT_PIN;
+}
+
+function pinPress(digit) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += digit;
+  updatePinDots();
+  if (pinBuffer.length === 4) {
+    setTimeout(() => checkPin(), 120);
+  }
+}
+
+function pinBackspace() {
+  pinBuffer = pinBuffer.slice(0, -1);
+  updatePinDots();
+  document.getElementById('pin-error').textContent = '';
+}
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('pd' + i);
+    if (dot) dot.classList.toggle('filled', i < pinBuffer.length);
+  }
+}
+
+function checkPin() {
+  if (pinBuffer === getPin()) {
+    localStorage.setItem('ccb-session', Date.now().toString());
+    document.getElementById('s-pin-gate').classList.remove('active');
+    document.getElementById('s-setup').classList.add('active');
+    pinBuffer = '';
+    updatePinDots();
+  } else {
+    const errEl = document.getElementById('pin-error');
+    errEl.textContent = 'Incorrect PIN — please try again';
+    errEl.style.animation = 'none';
+    void errEl.offsetWidth;
+    errEl.style.animation = 'shake 0.3s';
+    pinBuffer = '';
+    updatePinDots();
+  }
+}
+
+// ══════════════════════════════════════════════
+// SETTINGS SCREEN
+// ══════════════════════════════════════════════
+function openSettings() {
+  document.getElementById('s-setup').classList.remove('active');
+  document.getElementById('s-settings').classList.add('active');
+}
+
+function closeSettings() {
+  document.getElementById('s-settings').classList.remove('active');
+  document.getElementById('s-setup').classList.add('active');
+}
+
+function openSetupGarage() {
+  // Navigate to Garage tab — works even with no active event
+  ['s-setup','s-settings'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  });
+  ['s-bingo','s-event','s-garage'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  });
+  document.getElementById('s-garage').classList.add('active');
+  // Sync all nav buttons
+  ['bingo','event','garage'].forEach(t => {
+    ['','2','3'].forEach(n => {
+      const btn = document.getElementById('nav'+n+'-'+t);
+      if (btn) btn.classList.toggle('active', t === 'garage');
+    });
+  });
+  renderGarage();
+}
+
+function showChangePinInfo() {
+  const newPin = prompt('Enter a new 4-digit PIN:');
+  if (newPin === null) return;
+  if (!/^\d{4}$/.test(newPin)) {
+    alert('PIN must be exactly 4 digits.');
+    return;
+  }
+  localStorage.setItem(PIN_KEY, newPin);
+  showSnack('✓ PIN updated');
+}
+
+function showInstallInfo() {
+  showSnack('Tap Share ⬆ then "Add to Home Screen"');
+}
+
+function showAbout() {
+  alert('Car Bingo v14\n\nSpot classic cars at shows and on the road.\nBuilt with love for the classic car enthusiast.\n\nTap a car card to log a sighting, add photos, and build your lifetime garage collection.');
+}
+
+function exportData() {
+  try {
+    const data = {
+      exported: new Date().toISOString(),
+      events: loadStore().events || {},
+      spotted: S.spotted,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `carbingo-export-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showSnack('📤 Data exported');
+  } catch(e) {
+    showSnack('Export failed — try again');
+  }
+}
+
+function confirmClearData() {
+  const confirmed = confirm('This will delete ALL events, sightings and photos. This cannot be undone.\n\nAre you sure?');
+  if (!confirmed) return;
+  const confirmed2 = confirm('Last chance — really delete everything?');
+  if (!confirmed2) return;
+  localStorage.clear();
+  S.spotted = {};
+  S.event = '';
+  S.board = null;
+  showSnack('🗑️ All data cleared');
+  closeSettings();
 }

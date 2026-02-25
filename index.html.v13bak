@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Car Bingo">
+<title>Car Bingo</title>
+<style>
+:root {
+  --safe-t: env(safe-area-inset-top, 44px);
+  --safe-b: env(safe-area-inset-bottom, 34px);
+  --bg:     #0f0e0c;
+  --bg2:    #1a1812;
+  --card:   #242018;
+  --card2:  #2e2920;
+  --border: #3d3528;
+  --cream:  #f2e8d5;
+  --cream2: #c8b898;
+  --muted:  #7a6e5e;
+  --rust:   #c04a18;
+  --rust2:  #e05c25;
+  --gold:   #c9913a;
+  --goldl:  #e8b84b;
+  --green:  #2d7a45;
+  --green2: #38a058;
+  --common: #4a7c59; --rare: #2a5880; --epic: #6b3fa0; --legend: #b8942a;
+  --common-bg: rgba(74,124,89,0.18); --rare-bg: rgba(42,88,128,0.18);
+  --epic-bg: rgba(107,63,160,0.18);  --legend-bg: rgba(184,148,42,0.22);
+  --nav-h: calc(56px + var(--safe-b));
+  --hdr-h: calc(56px + var(--safe-t));
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{height:100%;overflow:hidden}
+body{
+  font-family:-apple-system,'SF Pro Display','Helvetica Neue',sans-serif;
+  background:var(--bg); color:var(--cream);
+  height:100%; overflow:hidden; display:flex; flex-direction:column;
+}
+
+/* ── SCREENS ── */
+.screen{display:none;flex-direction:column;height:100%;overflow:hidden}
+.screen.active{display:flex}
+
+/* ════════════════════════════
+   SETUP  (fix 1: keyboard scroll)
+════════════════════════════ */
+#s-setup{
+  background:radial-gradient(ellipse at 50% -10%,#2a1a08 0%,var(--bg) 60%);
+  padding-top:calc(var(--safe-t) + 16px);
+  padding-left:20px; padding-right:20px;
+  padding-bottom:calc(var(--safe-b) + 20px);
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  /* key fix: justify-start not center, so content stays reachable when keyboard opens */
+  justify-content:flex-start;
+  gap:20px;
+}
+.setup-brand{text-align:center;padding:12px 0 4px}
+.setup-brand .icon{font-size:3.5rem;margin-bottom:10px}
+.setup-brand h1{font-size:2.6rem;font-weight:900;letter-spacing:-1.5px;line-height:1}
+.setup-brand .sub{font-size:0.85rem;font-weight:700;letter-spacing:4px;color:var(--gold);margin-top:6px;text-transform:uppercase}
+.setup-card{background:var(--card);border-radius:18px;padding:22px;border:1.5px solid var(--border)}
+.setup-card h2{font-size:0.78rem;font-weight:700;letter-spacing:3px;color:var(--gold);text-transform:uppercase;margin-bottom:18px}
+.setup-field{margin-bottom:14px}
+.setup-field label{display:block;font-size:1rem;font-weight:600;color:var(--cream2);margin-bottom:6px}
+.setup-field input,.setup-field select{
+  width:100%;background:var(--card2);border:1.5px solid var(--border);
+  color:var(--cream);font-size:1.1rem;font-weight:500;
+  padding:14px 16px;border-radius:12px;outline:none;-webkit-appearance:none;
+}
+.setup-field input:focus,.setup-field select:focus{border-color:var(--gold)}
+.setup-field input::placeholder{color:var(--muted)}
+.setup-field select option{background:var(--card2);color:var(--cream)}
+.start-btn{
+  width:100%;background:var(--rust);border:none;color:var(--cream);
+  font-size:1.2rem;font-weight:800;padding:18px;border-radius:14px;
+  cursor:pointer;-webkit-appearance:none;margin-top:4px;letter-spacing:0.5px;
+}
+.start-btn:active{opacity:0.82;transform:scale(0.98)}
+.past-events{display:none}
+.past-events h3{font-size:0.78rem;font-weight:700;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+.past-btn{
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;background:var(--card);border:1.5px solid var(--border);
+  color:var(--cream);font-size:1.05rem;font-weight:600;
+  padding:14px 16px;border-radius:12px;cursor:pointer;margin-bottom:8px;
+  text-align:left;-webkit-appearance:none;
+}
+.past-btn::after{content:'›';font-size:1.4rem;color:var(--muted)}
+.past-btn:active{background:var(--card2)}
+
+/* ════════════════════════════
+   BOTTOM NAV (fix 3)
+════════════════════════════ */
+.bottom-nav{
+  height:var(--nav-h);
+  background:var(--bg2);
+  border-top:1px solid var(--border);
+  display:flex;
+  align-items:flex-start;
+  padding-top:8px;
+  flex-shrink:0;
+  z-index:50;
+}
+.nav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  gap:3px;background:none;border:none;cursor:pointer;
+  padding:6px 4px 0;color:var(--muted);-webkit-appearance:none;
+}
+.nav-btn.active{color:var(--rust2)}
+.nav-btn .nav-icon{font-size:1.55rem;line-height:1}
+.nav-btn .nav-label{font-size:0.7rem;font-weight:700;letter-spacing:0.5px}
+.nav-btn:active{opacity:0.7}
+
+/* ════════════════════════════
+   APP HEADER
+════════════════════════════ */
+.app-hdr{
+  height:var(--hdr-h);
+  padding-top:var(--safe-t);
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-end;
+  padding-bottom:10px;padding-left:18px;padding-right:16px;
+  flex-shrink:0;gap:10px;
+}
+.app-hdr-text{flex:1;min-width:0}
+.app-hdr h1{font-size:1.6rem;font-weight:800;letter-spacing:-0.5px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app-hdr .ev-sub{font-size:0.82rem;font-weight:500;color:var(--gold);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ════════════════════════════
+   BINGO TAB — era pills + list
+════════════════════════════ */
+.reroll-btn{
+  background:var(--card);border:1.5px solid var(--border);border-radius:20px;
+  color:var(--cream);font-size:0.9rem;font-weight:800;padding:8px 14px;
+  cursor:pointer;-webkit-appearance:none;white-space:nowrap;
+  display:flex;align-items:center;gap:5px;min-height:42px;flex-shrink:0;
+  letter-spacing:0.3px;
+}
+.reroll-btn:active{opacity:0.78;transform:scale(0.96)}
+.reroll-btn.exhausted{color:var(--muted);border-color:var(--muted);opacity:0.5}
+
+.era-scroller{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:8px 14px;overflow-x:auto;flex-shrink:0;display:flex;gap:8px;
+}
+.era-scroller::-webkit-scrollbar{display:none}
+.era-tab{
+  flex-shrink:0;font-size:0.95rem;font-weight:700;padding:9px 16px;
+  border-radius:20px;border:1.5px solid var(--border);background:var(--card);
+  color:var(--muted);cursor:pointer;white-space:nowrap;min-height:42px;
+  display:flex;align-items:center;gap:6px;-webkit-appearance:none;
+}
+.era-tab.active{background:var(--rust);border-color:var(--rust);color:var(--cream)}
+.era-tab:active{opacity:0.78}
+.era-count{
+  font-size:0.72rem;font-weight:700;background:rgba(255,255,255,0.18);
+  border-radius:8px;padding:1px 7px;
+}
+
+.score-strip{
+  background:var(--bg);padding:7px 18px;display:flex;
+  justify-content:space-between;align-items:center;flex-shrink:0;
+  border-bottom:1px solid var(--border);
+}
+.score-txt{font-size:0.88rem;font-weight:700;color:var(--gold)}
+.rarity-dots{display:flex;gap:8px}
+.rdot{display:flex;align-items:center;gap:4px;font-size:0.75rem;color:var(--muted);font-weight:600}
+.rdot span{width:8px;height:8px;border-radius:50%;display:block;flex-shrink:0}
+
+/* Car list */
+.car-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 14px 12px}
+.car-list::-webkit-scrollbar{display:none}
+.list-section-hdr{font-size:0.75rem;font-weight:700;letter-spacing:3px;color:var(--muted);text-transform:uppercase;padding:4px 2px 8px;margin-top:4px}
+
+.car-card{
+  background:var(--card);border-radius:14px;border:1.5px solid var(--border);
+  margin-bottom:10px;overflow:hidden;cursor:pointer;
+  display:flex;align-items:stretch;min-height:100px;position:relative;
+  transition:transform 0.1s;
+}
+.car-card:active{transform:scale(0.98)}
+.car-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:14px 0 0 14px}
+.car-card.common::before{background:var(--common)}.car-card.rare::before{background:var(--rare)}
+.car-card.epic::before{background:var(--epic)}.car-card.legendary::before{background:var(--legend)}
+.car-card.spotted.common{background:var(--common-bg);border-color:var(--common)}
+.car-card.spotted.rare{background:var(--rare-bg);border-color:var(--rare)}
+.car-card.spotted.epic{background:var(--epic-bg);border-color:var(--epic)}
+.car-card.spotted.legendary{background:var(--legend-bg);border-color:var(--legend)}
+
+.car-img-wrap{width:110px;flex-shrink:0;margin-left:4px;position:relative;overflow:hidden}
+.car-img-wrap img{width:100%;height:100%;object-fit:cover;display:block}
+.car-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2.8rem;background:var(--card2)}
+.img-count{
+  position:absolute;top:6px;right:6px;background:var(--gold);color:var(--bg);
+  font-size:0.85rem;font-weight:900;padding:2px 8px;border-radius:8px;display:none;
+}
+.car-card.spotted .img-count{display:block}
+.car-info{flex:1;padding:12px 10px 12px 12px;display:flex;flex-direction:column;justify-content:space-between;min-width:0}
+.car-name{font-size:1.05rem;font-weight:800;color:var(--cream);line-height:1.25;margin-bottom:3px}
+.car-years{font-size:0.82rem;font-weight:600;color:var(--gold);margin-bottom:5px}
+.rarity-badge{display:inline-block;font-size:0.68rem;font-weight:700;letter-spacing:1.5px;padding:3px 9px;border-radius:7px}
+.rarity-badge.common{background:rgba(74,124,89,0.3);color:#7cc494}
+.rarity-badge.rare{background:rgba(42,88,128,0.3);color:#6ab4e8}
+.rarity-badge.epic{background:rgba(107,63,160,0.3);color:#b07ae8}
+.rarity-badge.legendary{background:rgba(184,148,42,0.3);color:#e8c454}
+.car-arrow{display:flex;align-items:center;padding-right:12px;font-size:1.3rem;color:var(--muted);flex-shrink:0}
+.car-card.spotted .car-arrow{color:var(--goldl)}
+
+/* ════════════════════════════
+   EVENT TAB
+════════════════════════════ */
+#s-event{background:var(--bg)}
+.event-hdr{
+  height:var(--hdr-h);padding-top:var(--safe-t);background:var(--bg2);
+  border-bottom:1px solid var(--border);display:flex;align-items:flex-end;
+  padding-bottom:10px;padding-left:18px;padding-right:16px;flex-shrink:0;gap:10px;
+}
+.event-hdr-text{flex:1;min-width:0}
+.event-hdr h1{font-size:1.5rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.event-hdr-sub{font-size:0.8rem;color:var(--gold);font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.add-car-btn{
+  background:var(--rust);border:none;color:var(--cream);font-size:0.88rem;font-weight:800;
+  padding:10px 14px;border-radius:12px;cursor:pointer;-webkit-appearance:none;
+  white-space:nowrap;flex-shrink:0;min-height:44px;display:flex;align-items:center;gap:5px;
+}
+.add-car-btn:active{opacity:0.82;transform:scale(0.97)}
+
+/* filter bar shared by event + garage */
+.filter-bar{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:8px 14px;flex-shrink:0;display:flex;flex-direction:column;gap:6px;
+}
+.filter-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.filter-row::-webkit-scrollbar{display:none}
+.fchip{
+  flex-shrink:0;font-size:0.82rem;font-weight:700;padding:7px 14px;
+  border-radius:18px;border:1.5px solid var(--border);background:var(--card);
+  color:var(--muted);cursor:pointer;white-space:nowrap;min-height:38px;
+  display:flex;align-items:center;-webkit-appearance:none;
+}
+.fchip.active{background:var(--rust);border-color:var(--rust);color:var(--cream)}
+.fchip.fc-common.active{background:var(--common);border-color:var(--common)}
+.fchip.fc-rare.active{background:var(--rare);border-color:var(--rare)}
+.fchip.fc-epic.active{background:var(--epic);border-color:var(--epic)}
+.fchip.fc-legendary.active{background:var(--legend);border-color:var(--legend)}
+.fchip:active{opacity:0.78}
+
+/* ── PILL SELECT — styled dropdown for make/country/event ── */
+.pill-select-wrap{
+  position:relative;display:inline-flex;align-items:center;
+  flex-shrink:0;min-width:120px;max-width:180px;
+  background:var(--card);border:1.5px solid var(--border);
+  border-radius:18px;height:38px;cursor:pointer;
+  overflow:hidden;
+}
+.pill-select-wrap.ps-active{
+  background:rgba(192,74,24,0.18);border-color:var(--rust2);
+}
+.pill-select{
+  position:absolute;inset:0;width:100%;opacity:0;cursor:pointer;
+  font-size:1rem;z-index:2;-webkit-appearance:none;
+}
+.ps-label{
+  flex:1;padding:0 6px 0 14px;font-size:0.8rem;font-weight:700;
+  color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  pointer-events:none;line-height:1.2;
+}
+.pill-select-wrap.ps-active .ps-label{color:var(--rust2);}
+.ps-arrow{
+  flex-shrink:0;padding-right:10px;font-size:0.7rem;color:var(--muted);
+  pointer-events:none;
+}
+.pill-select-wrap.ps-active .ps-arrow{color:var(--rust2);}
+.pill-select-wrap:active{opacity:0.82;}
+
+.toggle-row{display:flex;gap:6px}
+.tchip{
+  flex:1;font-size:0.82rem;font-weight:700;padding:7px 10px;text-align:center;
+  border-radius:12px;border:1.5px solid var(--border);background:var(--card);
+  color:var(--muted);cursor:pointer;-webkit-appearance:none;min-height:38px;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+}
+.tchip.active{border-color:var(--goldl);color:var(--goldl);background:rgba(232,184,75,0.1)}
+.tchip:active{opacity:0.78}
+
+/* event summary */
+.ev-summary{
+  padding:7px 18px;background:var(--bg);border-bottom:1px solid var(--border);
+  flex-shrink:0;display:flex;justify-content:space-between;align-items:center;
+}
+.ev-summary-txt{font-size:0.85rem;font-weight:700;color:var(--gold)}
+
+.ev-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 14px 12px}
+.ev-list::-webkit-scrollbar{display:none}
+.ev-section-hdr{font-size:0.75rem;font-weight:700;letter-spacing:3px;color:var(--muted);text-transform:uppercase;padding:4px 2px 8px;margin-top:4px}
+
+/* spotted card — vibrant */
+.ev-seen-card{
+  background:var(--card);border-radius:14px;border:1.5px solid var(--border);
+  margin-bottom:10px;overflow:hidden;cursor:pointer;
+  display:flex;align-items:stretch;min-height:96px;position:relative;transition:transform 0.1s;
+}
+.ev-seen-card:active{transform:scale(0.98)}
+.ev-seen-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:14px 0 0 14px}
+.ev-seen-card.common::before{background:var(--common)}.ev-seen-card.rare::before{background:var(--rare)}
+.ev-seen-card.epic::before{background:var(--epic)}.ev-seen-card.legendary::before{background:var(--legend)}
+.ev-seen-card.common{background:var(--common-bg);border-color:var(--common)}
+.ev-seen-card.rare{background:var(--rare-bg);border-color:var(--rare)}
+.ev-seen-card.epic{background:var(--epic-bg);border-color:var(--epic)}
+.ev-seen-card.legendary{background:var(--legend-bg);border-color:var(--legend)}
+.ev-seen-thumb{width:100px;flex-shrink:0;margin-left:4px;position:relative;overflow:hidden}
+.ev-seen-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.ev-thumb-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2.5rem;background:rgba(0,0,0,0.15)}
+.ev-seen-count{position:absolute;top:5px;right:5px;background:var(--gold);color:var(--bg);font-size:0.8rem;font-weight:900;padding:2px 7px;border-radius:7px}
+.ev-seen-body{flex:1;padding:11px 10px 11px 12px;display:flex;flex-direction:column;justify-content:space-between;min-width:0}
+.ev-seen-name{font-size:1.05rem;font-weight:800;line-height:1.25;margin-bottom:3px}
+.ev-seen-years{font-size:0.8rem;color:var(--gold);font-weight:600;margin-bottom:4px}
+.ev-seen-meta{font-size:0.78rem;color:var(--cream2);font-weight:600}
+.ev-seen-arrow{display:flex;align-items:center;padding-right:12px;font-size:1.3rem;color:var(--goldl);flex-shrink:0}
+
+/* unseen card — obviously dimmed, dashed */
+.ev-unseen-card{
+  border-radius:14px;border:1.5px dashed rgba(61,53,40,0.8);
+  margin-bottom:8px;cursor:pointer;
+  display:flex;align-items:center;min-height:68px;
+  padding:10px 14px 10px 16px;gap:12px;opacity:0.42;
+  transition:opacity 0.15s,transform 0.1s;
+}
+.ev-unseen-card:active{opacity:0.65;transform:scale(0.98)}
+.ev-unseen-flag{font-size:1.8rem;flex-shrink:0}
+.ev-unseen-info{flex:1;min-width:0}
+.ev-unseen-name{font-size:0.98rem;font-weight:700;color:var(--cream2);line-height:1.3}
+.ev-unseen-sub{font-size:0.78rem;color:var(--muted);font-weight:600;margin-top:1px}
+.ev-unseen-add{
+  width:42px;height:42px;border-radius:50%;border:none;background:rgba(45,122,69,0.45);
+  color:#a0ffb8;font-size:1.4rem;font-weight:900;display:flex;align-items:center;
+  justify-content:center;cursor:pointer;-webkit-appearance:none;flex-shrink:0;
+}
+.ev-unseen-add:active{transform:scale(0.9)}
+
+/* empty state */
+.ev-empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.ev-empty .icon{font-size:3.5rem;margin-bottom:14px}
+.ev-empty p{font-size:1rem;font-weight:700;line-height:1.7}
+.ev-empty-btn{
+  display:inline-block;margin-top:16px;background:var(--rust);border:none;
+  color:var(--cream);font-size:1rem;font-weight:800;padding:14px 28px;
+  border-radius:12px;cursor:pointer;-webkit-appearance:none;
+}
+
+/* ── PICKER SHEET ── */
+.picker-overlay{display:none;position:fixed;inset:0;z-index:250;background:rgba(0,0,0,0.78);align-items:flex-end}
+.picker-overlay.open{display:flex}
+.picker-sheet{
+  background:var(--bg2);border-radius:24px 24px 0 0;width:100%;
+  height:88vh;display:flex;flex-direction:column;
+  animation:slide-up 0.28s cubic-bezier(0.32,0.72,0,1);
+}
+.picker-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 0;flex-shrink:0}
+.picker-hdr{padding:14px 18px 8px;flex-shrink:0;display:flex;align-items:center;gap:10px}
+.picker-hdr h2{flex:1;font-size:1.2rem;font-weight:800}
+.picker-cancel{background:none;border:none;color:var(--muted);font-size:0.9rem;font-weight:700;cursor:pointer;padding:8px;min-height:44px;-webkit-appearance:none}
+.picker-search-wrap{padding:0 14px 8px;flex-shrink:0}
+.picker-search{width:100%;background:var(--card);border:1.5px solid var(--border);color:var(--cream);font-size:1rem;padding:11px 14px;border-radius:12px;outline:none;-webkit-appearance:none}
+.picker-search:focus{border-color:var(--gold)}
+.picker-search::placeholder{color:var(--muted)}
+.picker-era-row{padding:0 14px 8px;flex-shrink:0;display:flex;gap:6px;overflow-x:auto}
+.picker-era-row::-webkit-scrollbar{display:none}
+.picker-era-chip{flex-shrink:0;font-size:0.8rem;font-weight:700;padding:7px 13px;border-radius:16px;border:1.5px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;white-space:nowrap;min-height:36px;display:flex;align-items:center;-webkit-appearance:none}
+.picker-era-chip.active{background:var(--rust);border-color:var(--rust);color:var(--cream)}
+.picker-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 14px 20px}
+.picker-list::-webkit-scrollbar{display:none}
+.picker-row{
+  display:flex;align-items:center;gap:12px;padding:11px 12px;
+  border-radius:12px;margin-bottom:6px;cursor:pointer;
+  background:var(--card);border:1.5px solid var(--border);transition:transform 0.1s;
+}
+.picker-row:active{transform:scale(0.98);background:var(--card2)}
+.picker-row.added{opacity:0.4;pointer-events:none}
+.picker-flag{font-size:1.7rem;flex-shrink:0;width:34px;text-align:center}
+.picker-info{flex:1;min-width:0}
+.picker-name{font-size:0.95rem;font-weight:800;line-height:1.25}
+.picker-sub{font-size:0.76rem;color:var(--muted);font-weight:600;margin-top:2px}
+.picker-add-btn{
+  width:38px;height:38px;border-radius:50%;border:none;background:var(--green);
+  color:white;font-size:1.3rem;font-weight:900;display:flex;align-items:center;
+  justify-content:center;cursor:pointer;flex-shrink:0;-webkit-appearance:none;
+}
+.picker-add-btn:active{transform:scale(0.9)}
+.picker-done{width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0;margin-right:4px}
+
+/* ════════════════════════════
+   GARAGE TAB
+════════════════════════════ */
+#s-garage{background:var(--bg)}
+.garage-hdr{
+  height:var(--hdr-h);padding-top:var(--safe-t);background:var(--bg2);
+  border-bottom:1px solid var(--border);display:flex;align-items:flex-end;
+  padding-bottom:10px;padding-left:18px;padding-right:16px;flex-shrink:0;gap:10px;
+}
+.garage-hdr h2{font-size:1.5rem;font-weight:800;flex:1}
+.garage-total{font-size:0.82rem;font-weight:700;color:var(--gold);white-space:nowrap}
+.garage-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 14px 12px}
+.garage-body::-webkit-scrollbar{display:none}
+.garage-section-hdr{font-size:0.75rem;font-weight:700;letter-spacing:3px;color:var(--muted);text-transform:uppercase;padding:4px 2px 8px;margin-top:6px}
+
+/* garage car card — full-width list */
+.gcar{
+  background:var(--card);border-radius:14px;border:1.5px solid var(--border);
+  margin-bottom:10px;overflow:hidden;cursor:pointer;
+  display:flex;align-items:stretch;min-height:90px;position:relative;
+  transition:transform 0.1s;
+}
+.gcar:active{transform:scale(0.98)}
+.gcar::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:14px 0 0 14px}
+.gcar.common::before{background:var(--common)}.gcar.rare::before{background:var(--rare)}
+.gcar.epic::before{background:var(--epic)}.gcar.legendary::before{background:var(--legend)}
+.gcar.seen.common{background:var(--common-bg);border-color:var(--common)}
+.gcar.seen.rare{background:var(--rare-bg);border-color:var(--rare)}
+.gcar.seen.epic{background:var(--epic-bg);border-color:var(--epic)}
+.gcar.seen.legendary{background:var(--legend-bg);border-color:var(--legend)}
+/* unseen garage card — dim + dashed + label */
+.gcar.unseen{opacity:0.32;border-style:dashed}
+.gcar.unseen::after{content:'Not yet seen';position:absolute;top:6px;right:8px;font-size:0.6rem;font-weight:800;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
+
+.gcar-thumb{width:96px;flex-shrink:0;margin-left:4px;position:relative;overflow:hidden}
+.gcar-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.gcar-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2.3rem;background:var(--card2)}
+.gcar-badge{position:absolute;top:5px;right:5px;background:var(--gold);color:var(--bg);font-size:0.78rem;font-weight:900;padding:2px 7px;border-radius:7px}
+.gcar-info{flex:1;padding:11px 10px 11px 12px;display:flex;flex-direction:column;justify-content:space-between;min-width:0}
+.gcar-name{font-size:1rem;font-weight:800;line-height:1.25;margin-bottom:3px}
+.gcar-years{font-size:0.79rem;color:var(--gold);font-weight:600;margin-bottom:3px}
+.gcar-evs{font-size:0.76rem;color:var(--cream2);font-weight:600}
+.gcar-arrow{display:flex;align-items:center;padding-right:12px;font-size:1.3rem;color:var(--muted);flex-shrink:0}
+.gcar.seen .gcar-arrow{color:var(--goldl)}
+
+.garage-empty{text-align:center;padding:80px 20px;color:var(--muted)}
+.garage-empty .icon{font-size:4rem;margin-bottom:16px}
+.garage-empty p{font-size:1rem;font-weight:700;line-height:1.7}
+
+/* ════════════════════════════
+   CAR MODAL
+════════════════════════════ */
+.modal-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.75);align-items:flex-end}
+.modal-overlay.open{display:flex}
+.modal-sheet{
+  background:var(--bg2);border-radius:24px 24px 0 0;width:100%;max-height:94vh;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding-bottom:calc(var(--safe-b) + 16px);
+  animation:slide-up 0.28s cubic-bezier(0.32,0.72,0,1);
+}
+@keyframes slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 0}
+.modal-hero{width:100%;height:220px;position:relative;margin-top:12px;overflow:hidden;background:var(--card)}
+.modal-hero img{width:100%;height:100%;object-fit:cover;display:block}
+.modal-hero-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:5rem}
+.modal-x{
+  position:absolute;top:10px;right:10px;width:32px;height:32px;
+  background:rgba(0,0,0,0.55);border:none;border-radius:50%;
+  color:var(--cream);font-size:0.95rem;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;backdrop-filter:blur(6px);z-index:5;
+}
+.modal-body{padding:18px 18px 0}
+.modal-rarity{display:inline-block;font-size:0.75rem;font-weight:800;letter-spacing:2px;padding:4px 12px;border-radius:9px;margin-bottom:10px}
+.modal-rarity.common{background:rgba(74,124,89,0.25);color:#7cc494}
+.modal-rarity.rare{background:rgba(42,88,128,0.25);color:#6ab4e8}
+.modal-rarity.epic{background:rgba(107,63,160,0.25);color:#b07ae8}
+.modal-rarity.legendary{background:rgba(184,148,42,0.3);color:#e8c454}
+.modal-name{font-size:1.85rem;font-weight:900;letter-spacing:-0.5px;line-height:1.1;margin-bottom:3px}
+.modal-make{font-size:0.82rem;color:var(--muted);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.modal-years{font-size:0.95rem;font-weight:600;color:var(--gold);margin-bottom:14px}
+.hagerty-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  background:var(--card2);border:1.5px solid var(--border);border-radius:12px;
+  color:var(--cream2);font-size:0.9rem;font-weight:700;padding:12px 16px;
+  text-decoration:none;margin:10px 0 4px;
+}
+.hagerty-btn:active{opacity:0.78}
+.modal-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px}
+.modal-stat{background:var(--card);border-radius:11px;padding:10px 6px;text-align:center}
+.modal-stat-val{font-size:0.9rem;font-weight:800;color:var(--goldl);line-height:1.2}
+.modal-stat-lbl{font-size:0.62rem;font-weight:700;color:var(--muted);margin-top:3px;letter-spacing:1px;text-transform:uppercase}
+.modal-desc{font-size:1rem;line-height:1.7;color:var(--cream2);margin-bottom:20px}
+
+/* Counter */
+.counter-box{background:var(--card);border-radius:14px;padding:18px;margin-bottom:14px}
+.counter-lbl{font-size:0.75rem;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;text-align:center;margin-bottom:14px}
+.counter-row{display:flex;align-items:center;justify-content:center;gap:18px}
+.cnt-btn{width:68px;height:68px;border-radius:50%;border:none;font-size:2rem;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-appearance:none;flex-shrink:0;line-height:1}
+.cnt-btn:active{transform:scale(0.9)}
+.cnt-minus{background:#5c1f1f;color:#ff8080}.cnt-minus:disabled{background:var(--card2);color:var(--muted)}
+.cnt-plus{background:var(--green);color:#a0ffb8}
+.cnt-display{text-align:center;min-width:76px}
+.cnt-number{font-size:3.2rem;font-weight:900;color:var(--cream);line-height:1}
+.cnt-sub{font-size:0.75rem;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:3px}
+
+/* Spot btn */
+.spot-btn{
+  width:100%;background:var(--green);border:none;color:#fff;
+  font-size:1.2rem;font-weight:800;padding:20px;border-radius:14px;
+  cursor:pointer;-webkit-appearance:none;margin-bottom:12px;letter-spacing:0.5px;
+}
+.spot-btn:active{opacity:0.85;transform:scale(0.98)}
+
+/* Sightings */
+.sightings-hdr{font-size:0.75rem;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+.sighting-entry{background:var(--card);border-radius:12px;padding:14px;margin-bottom:9px}
+.sighting-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.sighting-meta{flex:1}
+.sighting-num{font-size:1rem;font-weight:800;color:var(--goldl)}
+.sighting-time{font-size:0.88rem;color:var(--muted);font-weight:500;margin-top:1px}
+.sighting-ev{font-size:0.88rem;color:var(--cream2);font-weight:600;margin-top:1px}
+.sighting-del{
+  background:rgba(180,40,40,0.25);border:1.5px solid rgba(180,40,40,0.4);
+  color:#ff8080;font-size:0.85rem;font-weight:700;padding:8px 12px;border-radius:9px;
+  cursor:pointer;-webkit-appearance:none;min-width:44px;min-height:44px;
+  display:flex;align-items:center;justify-content:center;
+}
+.sighting-del:active{opacity:0.7}
+.sighting-photos{display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap}
+.s-thumb{width:84px;height:84px;border-radius:9px;object-fit:cover;border:1.5px solid var(--border);cursor:pointer;display:block}
+.s-thumb:active{opacity:0.8;transform:scale(0.95)}
+.add-photo-btn{
+  width:100%;background:var(--card2);border:1.5px dashed var(--border);
+  color:var(--cream2);font-size:0.95rem;font-weight:700;padding:13px;
+  border-radius:11px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;gap:8px;-webkit-appearance:none;min-height:50px;
+}
+.add-photo-btn:active{border-color:var(--gold);color:var(--gold)}
+.modal-close-row{margin-top:10px}
+.modal-close-full{
+  width:100%;background:transparent;border:1.5px solid var(--border);
+  color:var(--muted);font-size:1rem;font-weight:700;padding:16px;
+  border-radius:12px;cursor:pointer;-webkit-appearance:none;
+}
+.modal-close-full:active{opacity:0.7}
+
+/* ════════════════════════════
+   LIGHTBOX
+════════════════════════════ */
+.lightbox{display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,0.96);align-items:center;justify-content:center;flex-direction:column}
+.lightbox.open{display:flex}
+.lightbox img{max-width:100%;max-height:82vh;object-fit:contain;border-radius:4px}
+.lightbox-close{position:absolute;top:calc(var(--safe-t) + 8px);right:18px;width:42px;height:42px;background:rgba(255,255,255,0.15);border:none;border-radius:50%;color:white;font-size:1.1rem;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(6px)}
+.lightbox-info{color:rgba(255,255,255,0.55);font-size:0.85rem;margin-top:14px;text-align:center;padding:0 20px}
+
+
+/* ════════════════════════════
+   TOASTS
+════════════════════════════ */
+.bingo-toast{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--goldl);color:var(--bg);font-size:2.4rem;font-weight:900;padding:30px 46px;z-index:500;text-align:center;border-radius:18px;box-shadow:0 16px 60px rgba(0,0,0,0.8);line-height:1.3}
+@keyframes bingo-pop{0%{transform:translate(-50%,-50%) scale(0.3);opacity:0}70%{transform:translate(-50%,-50%) scale(1.06);opacity:1}100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
+.bingo-toast.show{display:block;animation:bingo-pop 0.38s cubic-bezier(0.32,0.72,0,1)}
+.snackbar{display:none;position:fixed;bottom:calc(var(--nav-h) + 10px);left:50%;transform:translateX(-50%);background:var(--card2);border:1.5px solid var(--border);color:var(--cream);font-size:0.95rem;font-weight:700;padding:12px 22px;z-index:300;white-space:nowrap;border-radius:28px;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
+.snackbar.show{display:block}
+#camInput{display:none}
+
+/* ════════════════════════════
+   HEADER BACK / MENU BUTTON
+════════════════════════════ */
+.hdr-back-btn{
+  width:42px;height:42px;background:var(--card);border:1.5px solid var(--border);
+  border-radius:12px;color:var(--cream2);font-size:1.3rem;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;-webkit-appearance:none;flex-shrink:0;
+}
+.hdr-back-btn:active{opacity:0.7;transform:scale(0.94)}
+
+/* ════════════════════════════
+   ACTION SHEET (event menu)
+════════════════════════════ */
+.sheet-overlay{display:none;position:fixed;inset:0;z-index:260;background:rgba(0,0,0,0.72);align-items:flex-end}
+.sheet-overlay.open{display:flex}
+.action-sheet{
+  background:var(--bg2);border-radius:24px 24px 0 0;width:100%;
+  padding:0 16px calc(var(--safe-b) + 16px);
+  animation:slide-up 0.26s cubic-bezier(0.32,0.72,0,1);
+}
+.action-sheet-title{
+  text-align:center;padding:16px 0 10px;
+  font-size:0.78rem;font-weight:700;letter-spacing:3px;
+  color:var(--muted);text-transform:uppercase;
+}
+.action-btn{
+  display:flex;align-items:center;justify-content:center;
+  width:100%;background:var(--card);border:1.5px solid var(--border);
+  color:var(--cream);font-size:1.05rem;font-weight:700;
+  padding:16px;border-radius:14px;cursor:pointer;-webkit-appearance:none;
+  margin-bottom:10px;min-height:54px;
+}
+.action-btn:active{opacity:0.78;transform:scale(0.98)}
+.action-btn-cancel{color:var(--muted);background:transparent}
+
+/* ════════════════════════════
+   GARAGE ADD — location row
+════════════════════════════ */
+.garage-add-loc-wrap{padding:0 14px 8px;flex-shrink:0}
+.garage-add-loc-row{display:flex;gap:8px;align-items:center}
+.loc-detect-btn{
+  width:46px;height:46px;flex-shrink:0;border-radius:12px;
+  background:var(--card);border:1.5px solid var(--border);
+  color:var(--cream);font-size:1.3rem;cursor:pointer;-webkit-appearance:none;
+  display:flex;align-items:center;justify-content:center;
+}
+.loc-detect-btn:active{opacity:0.7;transform:scale(0.94)}
+.loc-detect-btn.detecting{animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.loc-status{
+  font-size:0.8rem;font-weight:600;color:var(--muted);
+  margin-top:5px;min-height:18px;padding:0 2px;
+}
+.loc-status.ok{color:var(--green2)}
+.loc-status.err{color:#ff8080}
+</style>
+</head>
+<body>
+
+<!-- ══ SETUP ══ -->
+<div class="screen active" id="s-setup">
+  <div class="setup-brand">
+    <div class="icon">🏎️</div>
+    <h1>Car Bingo</h1>
+    <div class="sub">Your Board</div>
+  </div>
+  <div class="setup-card">
+    <h2>Where are you today?</h2>
+    <div class="setup-field">
+      <label>Name of the Show</label>
+      <input type="text" id="ev-input" placeholder="e.g. Tatton Park Classic Show" autocomplete="off" />
+    </div>
+    <div class="setup-field">
+      <label>Location</label>
+      <input type="text" id="loc-input" placeholder="e.g. Cheshire" autocomplete="off" />
+    </div>
+    <div class="setup-field">
+      <label>Date</label>
+      <input type="date" id="date-input" />
+    </div>
+    <div id="board-config"></div>
+    <button class="start-btn" onclick="startEvent()" style="margin-top:16px">🏁 Generate Board</button>
+  </div>
+  <div class="past-events" id="past-events">
+    <h3>Previous Shows</h3>
+    <div id="past-list"></div>
+  </div>
+</div>
+
+<!-- ══ BINGO TAB ══ -->
+<div class="screen" id="s-bingo">
+  <div class="app-hdr">
+    <button class="hdr-back-btn" onclick="openEventMenu()" title="Switch event">☰</button>
+    <div class="app-hdr-text">
+      <h1>🏁 Bingo</h1>
+      <div class="ev-sub" id="bingo-ev-sub"></div>
+    </div>
+    <button class="reroll-btn" id="reroll-btn" onclick="rerollBoard()" title="Reroll board (3 left)">🎲 3</button>
+  </div>
+  <div class="era-scroller" id="era-scroller"></div>
+  <div class="score-strip">
+    <span class="score-txt" id="score-txt">0 spotted</span>
+    <div class="rarity-dots">
+      <div class="rdot"><span style="background:var(--common)"></span>Common</div>
+      <div class="rdot"><span style="background:var(--rare)"></span>Rare</div>
+      <div class="rdot"><span style="background:var(--epic)"></span>Epic</div>
+      <div class="rdot"><span style="background:var(--legend)"></span>Legendary</div>
+    </div>
+  </div>
+  <div class="car-list" id="car-list"></div>
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-bingo" onclick="switchTab('bingo')"><span class="nav-icon">🎯</span><span class="nav-label">Bingo</span></button>
+    <button class="nav-btn" id="nav-event" onclick="switchTab('event')"><span class="nav-icon">📋</span><span class="nav-label">Event</span></button>
+    <button class="nav-btn" id="nav-garage" onclick="switchTab('garage')"><span class="nav-icon">🏛️</span><span class="nav-label">Garage</span></button>
+  </nav>
+</div>
+
+<!-- ══ EVENT TAB ══ -->
+<div class="screen" id="s-event">
+  <div class="event-hdr">
+    <button class="hdr-back-btn" onclick="openEventMenu()" title="Switch event">☰</button>
+    <div class="event-hdr-text">
+      <h1 id="event-hdr-title">📋 Event</h1>
+      <div class="event-hdr-sub" id="event-hdr-sub"></div>
+    </div>
+    <button class="add-car-btn" onclick="openPicker()">＋ Add Car</button>
+  </div>
+  <!-- filters -->
+  <div class="filter-bar" id="ev-filter-bar">
+    <div class="filter-row" id="ev-era-row"></div>
+    <div class="filter-row" id="ev-rarity-row"></div>
+    <div class="filter-row" id="ev-make-row"></div>
+    <div class="filter-row" id="ev-country-row"></div>
+    <div class="toggle-row" id="ev-toggle-row">
+      <button class="tchip active" id="ev-tog-seen" onclick="evToggle('seen')">✓ Seen</button>
+      <button class="tchip active" id="ev-tog-unseen" onclick="evToggle('unseen')">◌ Not Seen</button>
+    </div>
+  </div>
+  <div class="ev-summary" id="ev-summary">
+    <span class="ev-summary-txt" id="ev-summary-txt">No cars yet</span>
+  </div>
+  <div class="ev-list" id="ev-list"></div>
+  <nav class="bottom-nav">
+    <button class="nav-btn" id="nav2-bingo" onclick="switchTab('bingo')"><span class="nav-icon">🎯</span><span class="nav-label">Bingo</span></button>
+    <button class="nav-btn active" id="nav2-event" onclick="switchTab('event')"><span class="nav-icon">📋</span><span class="nav-label">Event</span></button>
+    <button class="nav-btn" id="nav2-garage" onclick="switchTab('garage')"><span class="nav-icon">🏛️</span><span class="nav-label">Garage</span></button>
+  </nav>
+</div>
+
+<!-- ══ PICKER SHEET ══ -->
+<div class="picker-overlay" id="picker-overlay">
+  <div class="picker-sheet">
+    <div class="picker-handle"></div>
+    <div class="picker-hdr">
+      <h2>Add a Car</h2>
+      <button class="picker-cancel" onclick="closePicker()">Cancel</button>
+    </div>
+    <div class="picker-search-wrap">
+      <input class="picker-search" id="picker-search" type="search" placeholder="Search cars…" oninput="renderPicker()" autocomplete="off" />
+    </div>
+    <div class="picker-era-row" id="picker-era-row"></div>
+    <div class="picker-list" id="picker-list"></div>
+  </div>
+</div>
+
+<!-- ══ GARAGE TAB ══ -->
+<div class="screen" id="s-garage">
+  <div class="garage-hdr">
+    <h2>🏛️ Garage</h2>
+    <span class="garage-total" id="garage-total"></span>
+    <button class="add-car-btn" onclick="openGarageAdd()" style="margin-left:8px">＋ Add Car</button>
+  </div>
+  <!-- filters -->
+  <div class="filter-bar">
+    <div class="filter-row" id="g-era-row"></div>
+    <div class="filter-row" id="g-rarity-row"></div>
+    <div class="filter-row" id="g-make-row"></div>
+    <div class="filter-row" id="g-country-row"></div>
+    <div class="filter-row" id="g-event-row"></div>
+    <div class="toggle-row">
+      <button class="tchip active" id="g-tog-seen" onclick="gToggle('seen')">✓ Seen</button>
+      <button class="tchip active" id="g-tog-unseen" onclick="gToggle('unseen')">◌ Not Yet Seen</button>
+    </div>
+  </div>
+  <div class="garage-body" id="garage-body"></div>
+  <nav class="bottom-nav">
+    <button class="nav-btn" id="nav3-bingo" onclick="switchTab('bingo')"><span class="nav-icon">🎯</span><span class="nav-label">Bingo</span></button>
+    <button class="nav-btn" id="nav3-event" onclick="switchTab('event')"><span class="nav-icon">📋</span><span class="nav-label">Event</span></button>
+    <button class="nav-btn active" id="nav3-garage" onclick="switchTab('garage')"><span class="nav-icon">🏛️</span><span class="nav-label">Garage</span></button>
+  </nav>
+</div>
+
+<!-- ══ CAR MODAL ══ -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-sheet" id="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-hero" id="modal-hero">
+      <button class="modal-x" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-rarity" id="m-rarity"></div>
+      <div class="modal-name"  id="m-name"></div>
+      <div class="modal-make"  id="m-make"></div>
+      <div class="modal-years" id="m-years"></div>
+      <div class="modal-stats" id="m-stats"></div>
+      <div class="modal-desc"  id="m-desc"></div>
+      <a class="hagerty-btn" id="m-hagerty" href="#" target="_blank" rel="noopener">📈 View Hagerty Valuation</a>
+      <div class="counter-box">
+        <div class="counter-lbl">How many have you seen?</div>
+        <div class="counter-row">
+          <button class="cnt-btn cnt-minus" id="cnt-minus" onclick="changeCount(-1)">−</button>
+          <div class="cnt-display">
+            <div class="cnt-number" id="cnt-number">0</div>
+            <div class="cnt-sub">spotted</div>
+          </div>
+          <button class="cnt-btn cnt-plus" onclick="changeCount(1)">+</button>
+        </div>
+      </div>
+      <button class="spot-btn" id="spot-btn" onclick="addSighting()">✓  I Spotted It!</button>
+      <div id="sightings-wrap" style="display:none">
+        <div class="sightings-hdr">Each Time You Saw It</div>
+        <div id="sightings-list"></div>
+      </div>
+      <div class="modal-close-row">
+        <button class="modal-close-full" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LIGHTBOX ══ -->
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="">
+  <div class="lightbox-info" id="lightbox-info"></div>
+</div>
+
+
+<!-- ══ EVENT MENU SHEET ══ -->
+<div class="sheet-overlay" id="event-menu-overlay">
+  <div class="action-sheet" id="event-menu-sheet">
+    <div class="picker-handle"></div>
+    <div class="action-sheet-title">🏁 Event</div>
+    <button class="action-btn" onclick="goToNewEvent()">＋ New Event</button>
+    <button class="action-btn" onclick="goToSwitchEvent()">▶ Switch Event</button>
+    <button class="action-btn action-btn-cancel" onclick="closeEventMenu()">Cancel</button>
+  </div>
+</div>
+
+<!-- ══ GARAGE ADD SHEET ══ -->
+<div class="sheet-overlay" id="garage-add-overlay">
+  <div class="picker-sheet" id="garage-add-sheet">
+    <div class="picker-handle"></div>
+    <div class="picker-hdr">
+      <h2>＋ Add to Garage</h2>
+      <button class="picker-cancel" onclick="closeGarageAdd()">Cancel</button>
+    </div>
+    <div class="garage-add-loc-wrap" id="garage-add-loc-wrap">
+      <div class="garage-add-loc-row">
+        <input class="picker-search" id="garage-add-loc" type="text" placeholder="📍 Location (optional)" autocomplete="off" style="flex:1;margin-bottom:0" />
+        <button class="loc-detect-btn" id="loc-detect-btn" onclick="detectLocation()" title="Detect my location">📡</button>
+      </div>
+      <div class="loc-status" id="loc-status"></div>
+    </div>
+    <div class="picker-search-wrap">
+      <input class="picker-search" id="garage-add-search" type="search" placeholder="Search cars…" oninput="renderGarageAddPicker()" autocomplete="off" />
+    </div>
+    <div class="picker-era-row" id="garage-add-era-row"></div>
+    <div class="picker-list" id="garage-add-list"></div>
+  </div>
+</div>
+
+<div class="bingo-toast" id="bingo-toast">🏆<br>BINGO!</div>
+<div class="snackbar" id="snackbar"></div>
+<input type="file" id="camInput" accept="image/*" capture="environment" onchange="handlePhoto(event)">
+<script src="js/cars.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

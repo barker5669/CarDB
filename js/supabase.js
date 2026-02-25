@@ -4,6 +4,8 @@
 const SUPABASE_URL  = 'https://itjdpmxqsxodrqmwfoyf.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_iiFm7jpE-pweUlSCFYdtyw_ImNM1L-I';
 // ══════════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════════
 // CLIENT — lazy-initialised, works whether Supabase is configured or not
 // ══════════════════════════════════════════════════════════════════════
 let _sb = null;
