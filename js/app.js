@@ -9,21 +9,51 @@ function allCountries() { return [...new Set(CAR_DB.map(c=>c.country))].sort(); 
 const RARITY_LABELS = {common:'Common',rare:'Rare',epic:'Epic',legendary:'Legendary'};
 
 // ══════════════════════════════════════════════
-// IMAGE LOOKUP — static map, no API calls needed
+// IMAGE CACHE — Wikipedia REST API + localStorage
 // ══════════════════════════════════════════════
-const imgCache = {}; // kept for sighting photo storage compatibility
+const IMG_CACHE_KEY = 'ccb-imgcache-v2';
+const imgCache = {};
 
-function getCarImg(carName) {
-  return CAR_IMAGES[carName] || null;
+function loadImgCache() {
+  try { const r = localStorage.getItem(IMG_CACHE_KEY); return r ? JSON.parse(r) : {}; } catch(e) { return {}; }
 }
+function saveImgCache() {
+  try { localStorage.setItem(IMG_CACHE_KEY, JSON.stringify(imgCache)); } catch(e) {}
+}
+Object.assign(imgCache, loadImgCache());
 
-// Kept as async for call-site compatibility, but now instant
+// Uses Wikipedia REST summary API — returns a real thumbnail.source CDN URL.
+// Much more reliable than pageimages API; ~95% of articles have a thumbnail here.
 async function fetchWikiImg(carName) {
-  return getCarImg(carName);
+  if (imgCache[carName] !== undefined) return imgCache[carName];
+  const page = WIKI_PAGES[carName];
+  if (!page) { imgCache[carName] = null; return null; }
+  try {
+    const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(page)}`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (!r.ok) throw new Error(r.status);
+    const data = await r.json();
+    const src = data?.thumbnail?.source || null;
+    imgCache[carName] = src;
+    saveImgCache();
+    return src;
+  } catch(e) {
+    imgCache[carName] = null;
+    return null;
+  }
 }
 
-function preloadEraImages(cars) {
-  // Images are static URLs — no fetching needed, just render
+// Fetch images in batches of 6, update UI after each batch
+async function preloadEraImages(cars) {
+  const unique = [...new Set(cars.map(c => c.name))];
+  const uncached = unique.filter(n => imgCache[n] === undefined);
+  const BATCH = 6;
+  for (let i = 0; i < uncached.length; i += BATCH) {
+    await Promise.all(uncached.slice(i, i + BATCH).map(n => fetchWikiImg(n)));
+    renderList();
+    renderEventList();
+    if (i + BATCH < uncached.length) await new Promise(r => setTimeout(r, 150));
+  }
   renderList();
   renderEventList();
 }
@@ -478,7 +508,7 @@ function bingoCardHTML(car, era) {
   const sp   = currentSpotted();
   const data = sp[key];
   const count = data ? data.sightings.length : 0;
-  const imgSrc = getCarImg(car.name);
+  const imgSrc = imgCache[car.name];
   const sightingPhoto = data?.sightings?.find(sg => sg.photos?.length > 0)?.photos[0]?.dataUrl;
   const displaySrc = sightingPhoto || imgSrc;
   const imgHTML = displaySrc ? `<img src="${displaySrc}" alt="${car.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : '';
@@ -654,7 +684,7 @@ function evSeenCardHTML(car, key) {
   const data = sp[key];
   const count = data?.sightings?.length || 0;
   const sightingPhoto = data?.sightings?.find(sg => sg.photos?.length>0)?.photos[0]?.dataUrl;
-  const imgSrc = sightingPhoto || getCarImg(car.name);
+  const imgSrc = sightingPhoto || imgCache[car.name];
   const metaStr = data?.sightings?.[0]?.ts || '';
   return `<div class="ev-seen-card ${car.rarity}" data-name="${car.name.replace(/"/g,'&quot;')}" data-key="${key}">
     <div class="ev-seen-thumb">
@@ -808,7 +838,7 @@ function renderGarage() {
 function garageCarHTML(car, entry, isSeen) {
   const safeName = car.name.replace(/"/g,'&quot;');
   if (!isSeen) {
-    const imgSrc = getCarImg(car.name);
+    const imgSrc = imgCache[car.name];
     return `<div class="gcar unseen ${car.rarity}" data-name="${safeName}">
       <div class="gcar-thumb">${imgSrc?`<img src="${imgSrc}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="gcar-ph" style="${imgSrc?'display:none':''}">${car.flag}</div></div>
       <div class="gcar-info"><div class="gcar-name">${car.name}</div><div class="gcar-years">${car.years} · ${car.country}</div><div class="rarity-badge ${car.rarity}">${RARITY_LABELS[car.rarity]}</div></div>
@@ -816,7 +846,7 @@ function garageCarHTML(car, entry, isSeen) {
   }
   const merged = allSpotted();
   const sightingPhoto = Object.entries(merged).filter(([k])=>k===`fil-${car.era}-${car.name}`).flatMap(([,d])=>d.sightings||[]).find(sg=>sg.photos?.length>0)?.photos[0]?.dataUrl;
-  const imgSrc = sightingPhoto || getCarImg(car.name);
+  const imgSrc = sightingPhoto || imgCache[car.name];
   const key    = entry.firstKey;
   const evList = [...new Set(entry.seenAt.map(s=>s.event))].join(', ');
   const total  = entry.totalSightings;
@@ -835,7 +865,7 @@ function openModal(car, key) {
   const sp = currentSpotted();
   const data = sp[key];
   const sightingPhoto = data?.sightings?.find(sg=>sg.photos?.length>0)?.photos[0]?.dataUrl;
-  const wikiImg = getCarImg(car.name);
+  const wikiImg = imgCache[car.name];
   const heroSrc = sightingPhoto || wikiImg;
   const hero = document.getElementById('modal-hero');
   if (heroSrc) {
