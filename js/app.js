@@ -311,6 +311,9 @@ async function startEvent() {
 
 function launch() {
   document.getElementById('s-setup').classList.remove('active');
+  // Update headers
+  const bingoSub = document.getElementById('bingo-ev-sub');
+  if (bingoSub) bingoSub.textContent = S.event || '';
   switchTab('bingo');
   const currentEraCars = S.board && S.board[S.era] ? S.board[S.era] : [];
   preloadEraImages(currentEraCars);
@@ -322,6 +325,20 @@ function launch() {
 // TAB NAV
 // ══════════════════════════════════════════════
 function switchTab(tab) {
+  // Event tab requires an active event
+  if (tab === 'event' && !S.event) {
+    // Show event tab but render the no-event prompt
+    _activateTab('event');
+    renderEventList();
+    return;
+  }
+  _activateTab(tab);
+  if (tab === 'bingo')  { buildEraTabs(); renderList(); }
+  if (tab === 'event')  { buildEvFilters(); renderEventList(); }
+  if (tab === 'garage') renderGarage();
+}
+
+function _activateTab(tab) {
   S.tab = tab;
   ['bingo','event','garage'].forEach(t => {
     document.getElementById('s-'+t).classList.toggle('active', t === tab);
@@ -330,9 +347,6 @@ function switchTab(tab) {
       if (btn) btn.classList.toggle('active', t === tab);
     });
   });
-  if (tab === 'bingo')  { buildEraTabs(); renderList(); }
-  if (tab === 'event')  { buildEvFilters(); renderEventList(); }
-  if (tab === 'garage') renderGarage();
 }
 
 // ══════════════════════════════════════════════
@@ -471,19 +485,39 @@ function buildEvFilters() {
   document.getElementById('ev-tog-unseen').classList.toggle('active', EV_F.showUnseen);
 }
 
-function evSetEra(v)     { EV_F.era=v;     buildEvFilters(); renderEventList(); }
-function evSetRarity(v)  { EV_F.rarity=v;  buildEvFilters(); renderEventList(); }
-function evSetMake(v)    { EV_F.make=v;    buildEvFilters(); renderEventList(); }
-function evSetCountry(v) { EV_F.country=v; buildEvFilters(); renderEventList(); }
+function evSetEra(v)     { EV_F.era=v;     buildEvFilters(); renderEventList(); _updateEvFilterBadge(); }
+function evSetRarity(v)  { EV_F.rarity=v;  buildEvFilters(); renderEventList(); _updateEvFilterBadge(); }
+function evSetMake(v)    { EV_F.make=v;    buildEvFilters(); renderEventList(); _updateEvFilterBadge(); }
+function evSetCountry(v) { EV_F.country=v; buildEvFilters(); renderEventList(); _updateEvFilterBadge(); }
 function evToggle(which) {
   if (which==='seen') EV_F.showSeen = !EV_F.showSeen;
   else                EV_F.showUnseen = !EV_F.showUnseen;
-  buildEvFilters(); renderEventList();
+  buildEvFilters(); renderEventList(); _updateEvFilterBadge();
 }
 
 function renderEventList() {
-  document.getElementById('event-hdr-title').textContent = '📋 ' + (S.event || 'Event');
-  document.getElementById('event-hdr-sub').textContent   = [S.loc, S.date].filter(Boolean).join(' · ');
+  const listEl = document.getElementById('ev-list');
+
+  // Guard: no active event
+  if (!S.event) {
+    if (listEl) listEl.innerHTML = `
+      <div class="no-event-prompt">
+        <div class="nep-icon">🏁</div>
+        <h3>No show selected</h3>
+        <p>Head back to the home screen to start a new show, then your spotted cars will appear here.</p>
+        <button class="nep-btn" onclick="goToNewEvent()">Choose a Show</button>
+      </div>`;
+    const sumEl = document.getElementById('ev-summary');
+    if (sumEl) sumEl.style.display = 'none';
+    return;
+  }
+
+  // Show event subtitle
+  const evSub = document.getElementById('event-hdr-sub');
+  if (evSub) evSub.textContent = S.event;
+  const sumEl = document.getElementById('ev-summary');
+  if (sumEl) sumEl.style.display = '';
+
   const spottedMap = eventSpottedMap();
   const sp = currentSpotted();
 
@@ -919,6 +953,72 @@ async function loadFromSupabase(eventName) {
     if (!sightings.length) return null;
     return sightingsToSpotted(sightings);
   } catch(e) { return null; }
+}
+
+
+// ══════════════════════════════════════════════
+// FILTER PANEL TOGGLE (collapsible)
+// ══════════════════════════════════════════════
+function toggleEvFilters() {
+  const panel = document.getElementById('ev-filter-panel');
+  const btn   = document.getElementById('ev-filter-btn');
+  if (!panel) return;
+  panel.classList.toggle('open');
+  btn.classList.toggle('has-filters', panel.classList.contains('open') || _evFilterCount() > 0);
+}
+function toggleGarageFilters() {
+  const panel = document.getElementById('g-filter-panel');
+  const btn   = document.getElementById('g-filter-btn');
+  if (!panel) return;
+  panel.classList.toggle('open');
+  btn.classList.toggle('has-filters', panel.classList.contains('open') || _gFilterCount() > 0);
+}
+function _evFilterCount() {
+  let n = 0;
+  if (EV_F.era     !== 'All') n++;
+  if (EV_F.rarity  !== 'All') n++;
+  if (EV_F.make    !== 'All') n++;
+  if (EV_F.country !== 'All') n++;
+  if (!EV_F.showSeen || !EV_F.showUnseen) n++;
+  return n;
+}
+function _gFilterCount() {
+  let n = 0;
+  if (G_F.era     !== 'All') n++;
+  if (G_F.rarity  !== 'All') n++;
+  if (G_F.make    !== 'All') n++;
+  if (G_F.country !== 'All') n++;
+  if (G_F.event   !== 'All') n++;
+  if (!G_F.showSeen || !G_F.showUnseen) n++;
+  return n;
+}
+function _updateEvFilterBadge() {
+  const n = _evFilterCount();
+  const badge = document.getElementById('ev-filter-badge');
+  const clear = document.getElementById('ev-filter-clear');
+  const btn   = document.getElementById('ev-filter-btn');
+  if (badge) { badge.textContent = n; badge.style.display = n > 0 ? '' : 'none'; }
+  if (clear)   clear.style.display = n > 0 ? '' : 'none';
+  if (btn)     btn.classList.toggle('has-filters', n > 0);
+}
+function _updateGFilterBadge() {
+  const n = _gFilterCount();
+  const badge = document.getElementById('g-filter-badge');
+  const clear = document.getElementById('g-filter-clear');
+  const btn   = document.getElementById('g-filter-btn');
+  if (badge) { badge.textContent = n; badge.style.display = n > 0 ? '' : 'none'; }
+  if (clear)   clear.style.display = n > 0 ? '' : 'none';
+  if (btn)     btn.classList.toggle('has-filters', n > 0);
+}
+function clearEvFilters() {
+  EV_F.era = EV_F.rarity = EV_F.make = EV_F.country = 'All';
+  EV_F.showSeen = EV_F.showUnseen = true;
+  buildEvFilters(); renderEventList();
+}
+function clearGarageFilters() {
+  G_F.era = G_F.rarity = G_F.make = G_F.country = G_F.event = 'All';
+  G_F.showSeen = G_F.showUnseen = true;
+  buildGarageFilters(); renderGarage();
 }
 
 // ══════════════════════════════════════════════
