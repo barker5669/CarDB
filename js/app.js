@@ -1,4 +1,3 @@
-
 // ══════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════
@@ -235,6 +234,21 @@ async function initSetup() {
   document.getElementById('date-input').value = new Date().toISOString().slice(0,10);
   renderBoardConfig();
   const store = loadStore();
+  // Also try legacy storage keys so old shows aren't lost on upgrade
+  const LEGACY_KEYS = ['ccb-fil-v6','ccb-fil-v5','ccb-fil-v4'];
+  LEGACY_KEYS.forEach(k => {
+    try {
+      const raw = localStorage.getItem(k);
+      if (!raw) return;
+      const leg = JSON.parse(raw);
+      if (leg.events) {
+        store.events = store.events || {};
+        Object.entries(leg.events).forEach(([name, data]) => {
+          if (!store.events[name]) store.events[name] = data;
+        });
+      }
+    } catch(e) {}
+  });
   if (store.allSpotted) {
     S.spotted = store.allSpotted;
   } else if (store.events) {
@@ -255,8 +269,22 @@ async function initSetup() {
   const pastEl = document.getElementById('past-events');
   const listEl = document.getElementById('past-list');
   if (allEvents.length && pastEl && listEl) {
-    pastEl.style.display = 'block';
-    listEl.innerHTML = allEvents.map(e => `<button class="past-btn" onclick="resumeEvent('${e.replace(/'/g,"\\'")}')">▶ ${e}</button>`).join('');
+    pastEl.style.display = '';
+    listEl.innerHTML = allEvents.map(e => {
+      const evData = store.events && store.events[e];
+      const count = evData && evData.spotted ? Object.keys(evData.spotted).length : 
+                    (S.spotted[e] ? Object.keys(S.spotted[e]).length : 0);
+      const meta = [evData?.loc, evData?.date].filter(Boolean).join(' · ');
+      return `<button class="past-btn" onclick="resumeEvent('${e.replace(/'/g,"\\'")}')">
+        <span class="pb-icon">🏁</span>
+        <div class="pb-body">
+          <div class="pb-name">${e}</div>
+          ${meta ? `<div class="pb-meta">${meta}</div>` : ''}
+        </div>
+        ${count > 0 ? `<span style="background:var(--gold);color:var(--bg);font-size:0.68rem;font-weight:900;padding:2px 8px;border-radius:6px;flex-shrink:0">${count} spotted</span>` : ''}
+        <span class="pb-arrow">›</span>
+      </button>`;
+    }).join('');
   }
 }
 
@@ -310,7 +338,10 @@ async function startEvent() {
 }
 
 function launch() {
-  document.getElementById('s-setup').classList.remove('active');
+  // Activate main app shell
+  document.getElementById('s-pin')?.classList.remove('active');
+  document.getElementById('s-app')?.classList.add('active');
+  updateHomeCard();
   // Update headers
   const bingoSub = document.getElementById('bingo-ev-sub');
   if (bingoSub) bingoSub.textContent = S.event || '';
@@ -325,28 +356,86 @@ function launch() {
 // TAB NAV
 // ══════════════════════════════════════════════
 function switchTab(tab) {
-  // Event tab requires an active event
-  if (tab === 'event' && !S.event) {
-    // Show event tab but render the no-event prompt
-    _activateTab('event');
-    renderEventList();
-    return;
-  }
-  _activateTab(tab);
-  if (tab === 'bingo')  { buildEraTabs(); renderList(); }
-  if (tab === 'event')  { buildEvFilters(); renderEventList(); }
-  if (tab === 'garage') renderGarage();
+  S.tab = tab;
+  const tabs = ['home','bingo','event','garage','settings'];
+  tabs.forEach(t => {
+    const el = document.getElementById('s-' + t);
+    if (el) el.classList.toggle('active', t === tab);
+  });
+  buildNav(tab);
+  if (tab === 'bingo')    { updateBingoState(); }
+  if (tab === 'event')    { buildEvFilters(); renderEventList(); }
+  if (tab === 'garage')   { buildGarageFilters(); renderGarage(); }
+  if (tab === 'home')     { updateHomeCard(); }
+  if (tab === 'settings') { /* static */ }
 }
 
-function _activateTab(tab) {
-  S.tab = tab;
-  ['bingo','event','garage'].forEach(t => {
-    document.getElementById('s-'+t).classList.toggle('active', t === tab);
-    ['','2','3'].forEach(n => {
-      const btn = document.getElementById('nav'+n+'-'+t);
-      if (btn) btn.classList.toggle('active', t === tab);
-    });
+function buildNav(activeTab) {
+  // Nav shows: Home | Bingo | 📷 (FAB) | Spotted | Collection
+  // Settings is accessed via Home page (less frequently used)
+  const NAV_TABS = [
+    { id:'home',   lbl:'Home',       svg:'<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
+    { id:'bingo',  lbl:'Bingo',      svg:'<rect x="3" y="2" width="18" height="20" rx="3"/><path d="M8 7h2l2 5 2-5h2"/><path d="M8 14h8"/>' },
+    { id:'event',  lbl:'Spotted',    svg:'<path d="M8 21h8M12 17v4M7 4H4a1 1 0 0 0-1 1v3c0 3.31 2.69 6 6 6h6c3.31 0 6-2.69 6-6V5a1 1 0 0 0-1-1h-3"/><path d="M7 4h10v7a5 5 0 0 1-10 0V4z"/>' },
+    { id:'garage', lbl:'Collection', svg:'<path d="M2 3h9a2 2 0 0 1 2 2v13a1.5 1.5 0 0 0-1.5-1.5H2z"/><path d="M22 3h-9a2 2 0 0 0-2 2v13a1.5 1.5 0 0 1 1.5-1.5H22z"/>' },
+  ];
+  const camSvg = '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>';
+  
+  // Mark home as active if on settings (since settings is accessed from home)
+  const displayActive = activeTab === 'settings' ? 'home' : activeTab;
+
+  function tabBtn(t) {
+    return `<button class="nav-btn${displayActive===t.id?' active':''}" onclick="switchTab('${t.id}')"><div class="nb-wrap"><svg class="nav-svg" viewBox="0 0 24 24">${t.svg}</svg></div><span class="nav-lbl">${t.lbl}</span></button>`;
+  }
+  const camBtn = `<button class="nav-cam" onclick="triggerPhotoFirst()"><div class="nav-cam-disc"><svg viewBox="0 0 24 24">${camSvg}</svg></div><span class="nav-cam-lbl">Photo</span></button>`;
+
+  const html = tabBtn(NAV_TABS[0]) + tabBtn(NAV_TABS[1]) + camBtn + tabBtn(NAV_TABS[2]) + tabBtn(NAV_TABS[3]);
+
+  ['home','bingo','event','garage','settings'].forEach(id => {
+    const bar = document.getElementById('nav-' + id + '-bar');
+    if (bar) bar.innerHTML = html;
   });
+}
+
+function updateBingoState() {
+  const noEv = document.getElementById('bingo-no-event');
+  const live  = document.getElementById('bingo-live');
+  if (!S.event) {
+    if (noEv) noEv.style.display = 'flex';
+    if (live)  live.style.display = 'none';
+  } else {
+    if (noEv) noEv.style.display = 'none';
+    if (live)  { live.style.display = 'flex'; buildEraTabs(); renderList(); }
+  }
+}
+
+function updateHomeCard() {
+  const activeDiv  = document.getElementById('home-active-show');
+  const newLbl     = document.getElementById('home-new-lbl');
+  if (!activeDiv) return;
+  if (S.event) {
+    activeDiv.style.display = 'block';
+    const nameEl  = document.getElementById('home-show-name');
+    const metaEl  = document.getElementById('home-show-meta');
+    const badgeEl = document.getElementById('home-show-badge');
+    if (nameEl)  nameEl.textContent  = S.event;
+    if (metaEl)  metaEl.textContent  = (S.loc ? S.loc + ' · ' : '') + (S.date || '');
+    if (badgeEl) {
+      const count = Object.keys(currentSpotted()).length;
+      badgeEl.textContent = count + ' spotted';
+    }
+    if (newLbl) newLbl.textContent = 'Start a Different Show';
+  } else {
+    activeDiv.style.display = 'none';
+    if (newLbl) newLbl.textContent = 'Start a New Show';
+  }
+  // Show Supabase status note if not configured
+  const sbNote = document.getElementById('sb-status-note');
+  if (sbNote) sbNote.style.display = sbReady() ? 'none' : 'block';
+}
+
+function showGoLive() {
+  switchTab('bingo');
 }
 
 // ══════════════════════════════════════════════
@@ -1021,6 +1110,88 @@ function clearGarageFilters() {
   buildGarageFilters(); renderGarage();
 }
 
+
+// ══════════════════════════════════════════════
+// PHOTO-FIRST CAMERA FLOW
+// ══════════════════════════════════════════════
+let _pendingPhotoDataUrl = null;
+
+function triggerPhotoFirst() {
+  document.getElementById('camInputFirst').click();
+}
+
+function handlePhotoFirst(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    _pendingPhotoDataUrl = ev.target.result;
+    // Show attach sheet
+    const preview = document.getElementById('cam-preview-img');
+    if (preview) { preview.src = _pendingPhotoDataUrl; preview.classList.add('loaded'); }
+    const showName = document.getElementById('cam-attach-show-name');
+    if (showName) showName.textContent = S.event || 'No active show';
+    const evBtn = document.getElementById('cam-attach-event-btn');
+    if (evBtn) evBtn.disabled = !S.event;
+    if (evBtn) evBtn.style.opacity = S.event ? '' : '0.4';
+    document.getElementById('cam-attach-overlay').classList.add('open');
+  };
+  r.readAsDataURL(file);
+}
+
+function camAttachDiscard() {
+  _pendingPhotoDataUrl = null;
+  document.getElementById('cam-attach-overlay').classList.remove('open');
+  showSnack('Photo discarded');
+}
+
+function camAttachToEvent() {
+  if (!S.event || !_pendingPhotoDataUrl) { camAttachDiscard(); return; }
+  document.getElementById('cam-attach-overlay').classList.remove('open');
+  // Open picker with photo waiting
+  _photoWaiting = _pendingPhotoDataUrl;
+  _pendingPhotoDataUrl = null;
+  _photoTarget = 'event';
+  openPicker();
+  showSnack('Find the car to attach the photo to');
+}
+
+function camAttachToCollection() {
+  if (!_pendingPhotoDataUrl) { camAttachDiscard(); return; }
+  document.getElementById('cam-attach-overlay').classList.remove('open');
+  _photoWaiting = _pendingPhotoDataUrl;
+  _pendingPhotoDataUrl = null;
+  _photoTarget = 'collection';
+  openGarageAdd();
+  showSnack('Find the car to attach the photo to');
+}
+
+let _photoWaiting = null;
+let _photoTarget  = null; // 'event' | 'collection'
+
+// Called after user selects a car in picker/garage-add when _photoWaiting is set
+function attachWaitingPhoto(key) {
+  if (!_photoWaiting) return;
+  const sp = _photoTarget === 'collection'
+    ? (S.spotted[PERSONAL_EVENT] = S.spotted[PERSONAL_EVENT] || {})
+    : currentSpotted();
+  if (!sp[key]) {
+    // Create a sighting if none exists
+    const ts = new Date().toLocaleString('en-GB');
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+    sp[key] = { event: _photoTarget==='collection'?PERSONAL_EVENT:S.event, loc:S.loc, ts, sightings:[{ id, event:S.event||PERSONAL_EVENT, loc:S.loc, ts, photos:[] }] };
+  }
+  const sighting = sp[key].sightings[sp[key].sightings.length - 1];
+  if (!sighting.photos) sighting.photos = [];
+  sighting.photos.push({ dataUrl: _photoWaiting, ts: new Date().toLocaleString('en-GB') });
+  _photoWaiting = null;
+  _photoTarget  = null;
+  save();
+  renderList(); renderEventList(); renderGarage();
+  showSnack('📷 Photo attached!');
+}
+
 // ══════════════════════════════════════════════
 // BOOT
 // ══════════════════════════════════════════════
@@ -1035,8 +1206,9 @@ function clearGarageFilters() {
   // Auto-bypass PIN if session is recent (within 24 hours)
   const lastUnlock = parseInt(localStorage.getItem('ccb-session') || '0');
   if (Date.now() - lastUnlock < 24 * 60 * 60 * 1000) {
-    document.getElementById('s-pin-gate')?.classList.remove('active');
-    document.getElementById('s-setup')?.classList.add('active');
+    document.getElementById('s-pin')?.classList.remove('active');
+    document.getElementById('s-app')?.classList.add('active');
+    buildNav('home');
   }
 
   await initSetup();
@@ -1054,33 +1226,15 @@ function closeEventMenu() {
 document.getElementById('event-menu-overlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('event-menu-overlay')) closeEventMenu();
 });
-function goToNewEvent() {
-  closeEventMenu();
-  // Clear form for a fresh event
-  document.getElementById('ev-input').value = '';
-  document.getElementById('loc-input').value = '';
-  document.getElementById('date-input').value = new Date().toISOString().slice(0,10);
-  S.boardEras = [...ERAS];
-  S.boardCarCount = 12;
-  renderBoardConfig();
-  // Show setup screen
-  ['s-bingo','s-event','s-garage'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('active');
-  });
-  document.getElementById('s-setup').classList.add('active');
-}
-function goToSwitchEvent() {
-  closeEventMenu();
-  // Keep form filled with current event name so user can see where they are
-  document.getElementById('ev-input').value = S.event || '';
-  document.getElementById('loc-input').value = S.loc || '';
-  // Show setup screen
-  ['s-bingo','s-event','s-garage'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('active');
-  });
-  document.getElementById('s-setup').classList.add('active');
+function goToNewEvent() { closeEventMenu(); switchTab('home'); }
+function goToSwitchEvent() { 
+  closeEventMenu(); 
+  switchTab('home'); 
+  // Scroll to past events section
+  setTimeout(() => {
+    const pe = document.getElementById('past-events');
+    if (pe && pe.style.display !== 'none') pe.scrollIntoView({ behavior:'smooth', block:'start' });
+  }, 100);
 }
 
 // ══════════════════════════════════════════════
@@ -1287,8 +1441,9 @@ function updatePinDots() {
 function checkPin() {
   if (pinBuffer === getPin()) {
     localStorage.setItem('ccb-session', Date.now().toString());
-    document.getElementById('s-pin-gate').classList.remove('active');
-    document.getElementById('s-setup').classList.add('active');
+    document.getElementById('s-pin').classList.remove('active');
+    document.getElementById('s-app').classList.add('active');
+    buildNav('home');
     pinBuffer = '';
     updatePinDots();
   } else {
@@ -1305,36 +1460,11 @@ function checkPin() {
 // ══════════════════════════════════════════════
 // SETTINGS SCREEN
 // ══════════════════════════════════════════════
-function openSettings() {
-  document.getElementById('s-setup').classList.remove('active');
-  document.getElementById('s-settings').classList.add('active');
-}
+function openSettings() { switchTab('settings'); }
 
-function closeSettings() {
-  document.getElementById('s-settings').classList.remove('active');
-  document.getElementById('s-setup').classList.add('active');
-}
+function closeSettings() { switchTab('home'); }
 
-function openSetupGarage() {
-  // Navigate to Garage tab — works even with no active event
-  ['s-setup','s-settings'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('active');
-  });
-  ['s-bingo','s-event','s-garage'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('active');
-  });
-  document.getElementById('s-garage').classList.add('active');
-  // Sync all nav buttons
-  ['bingo','event','garage'].forEach(t => {
-    ['','2','3'].forEach(n => {
-      const btn = document.getElementById('nav'+n+'-'+t);
-      if (btn) btn.classList.toggle('active', t === 'garage');
-    });
-  });
-  renderGarage();
-}
+function openSetupGarage() { switchTab('garage'); }
 
 function showChangePinInfo() {
   const newPin = prompt('Enter a new 4-digit PIN:');
@@ -1387,5 +1517,5 @@ function confirmClearData() {
   S.event = '';
   S.board = null;
   showSnack('🗑️ All data cleared');
-  closeSettings();
+  switchTab('home');
 }
