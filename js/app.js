@@ -9,57 +9,21 @@ function allCountries() { return [...new Set(CAR_DB.map(c=>c.country))].sort(); 
 const RARITY_LABELS = {common:'Common',rare:'Rare',epic:'Epic',legendary:'Legendary'};
 
 // ══════════════════════════════════════════════
-// IMAGE CACHE
+// IMAGE LOOKUP — static map, no API calls needed
 // ══════════════════════════════════════════════
-const IMG_CACHE_KEY = 'ccb-imgcache-v1';
-const imgCache = {};
+const imgCache = {}; // kept for sighting photo storage compatibility
 
-function loadImgCache() {
-  try { const r = localStorage.getItem(IMG_CACHE_KEY); return r ? JSON.parse(r) : {}; } catch(e) { return {}; }
+function getCarImg(carName) {
+  return CAR_IMAGES[carName] || null;
 }
-function saveImgCache() {
-  try { localStorage.setItem(IMG_CACHE_KEY, JSON.stringify(imgCache)); } catch(e) {}
-}
-Object.assign(imgCache, loadImgCache());
 
+// Kept as async for call-site compatibility, but now instant
 async function fetchWikiImg(carName) {
-  if (imgCache[carName] !== undefined) return imgCache[carName];
-  const page = WIKI_PAGES[carName];
-  if (!page) { imgCache[carName] = null; return null; }
-  // Try two sizes — some pages only have larger thumbnails
-  for (const size of [600, 300]) {
-    try {
-      const url = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(page)}&prop=pageimages&format=json&pithumbsize=${size}&origin=*`;
-      const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!r.ok) continue;
-      const data = await r.json();
-      const pages = data?.query?.pages;
-      const p = pages && Object.values(pages)[0];
-      const imgSrc = p?.thumbnail?.source || null;
-      if (imgSrc) {
-        imgCache[carName] = imgSrc;
-        saveImgCache();
-        return imgSrc;
-      }
-    } catch(e) { /* try next size */ }
-  }
-  // Check if we had a cached value from before
-  const cached = loadImgCache()[carName];
-  if (cached !== undefined) { imgCache[carName] = cached; return cached; }
-  imgCache[carName] = null;
-  return null;
+  return getCarImg(carName);
 }
 
-async function preloadEraImages(cars) {
-  const unique = [...new Set(cars.map(c => c.name))];
-  // Stagger requests in batches of 4 to avoid rate limiting
-  const BATCH = 4;
-  for (let i = 0; i < unique.length; i += BATCH) {
-    const batch = unique.slice(i, i + BATCH);
-    await Promise.all(batch.map(name => fetchWikiImg(name)));
-    if (i === 0) { renderList(); renderEventList(); } // show first batch quickly
-    if (i + BATCH < unique.length) await new Promise(r => setTimeout(r, 200));
-  }
+function preloadEraImages(cars) {
+  // Images are static URLs — no fetching needed, just render
   renderList();
   renderEventList();
 }
@@ -364,7 +328,7 @@ function launch() {
   const currentEraCars = S.board && S.board[S.era] ? S.board[S.era] : [];
   preloadEraImages(currentEraCars);
   const otherEras = (S.boardEras || ERAS).filter(e => e !== S.era);
-  setTimeout(() => otherEras.forEach(era => (S.board&&S.board[era]||[]).forEach(c => fetchWikiImg(c.name))), 800);
+
 }
 
 // ══════════════════════════════════════════════
@@ -514,7 +478,7 @@ function bingoCardHTML(car, era) {
   const sp   = currentSpotted();
   const data = sp[key];
   const count = data ? data.sightings.length : 0;
-  const imgSrc = imgCache[car.name];
+  const imgSrc = getCarImg(car.name);
   const sightingPhoto = data?.sightings?.find(sg => sg.photos?.length > 0)?.photos[0]?.dataUrl;
   const displaySrc = sightingPhoto || imgSrc;
   const imgHTML = displaySrc ? `<img src="${displaySrc}" alt="${car.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : '';
@@ -690,7 +654,7 @@ function evSeenCardHTML(car, key) {
   const data = sp[key];
   const count = data?.sightings?.length || 0;
   const sightingPhoto = data?.sightings?.find(sg => sg.photos?.length>0)?.photos[0]?.dataUrl;
-  const imgSrc = sightingPhoto || imgCache[car.name];
+  const imgSrc = sightingPhoto || getCarImg(car.name);
   const metaStr = data?.sightings?.[0]?.ts || '';
   return `<div class="ev-seen-card ${car.rarity}" data-name="${car.name.replace(/"/g,'&quot;')}" data-key="${key}">
     <div class="ev-seen-thumb">
@@ -844,7 +808,7 @@ function renderGarage() {
 function garageCarHTML(car, entry, isSeen) {
   const safeName = car.name.replace(/"/g,'&quot;');
   if (!isSeen) {
-    const imgSrc = imgCache[car.name];
+    const imgSrc = getCarImg(car.name);
     return `<div class="gcar unseen ${car.rarity}" data-name="${safeName}">
       <div class="gcar-thumb">${imgSrc?`<img src="${imgSrc}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="gcar-ph" style="${imgSrc?'display:none':''}">${car.flag}</div></div>
       <div class="gcar-info"><div class="gcar-name">${car.name}</div><div class="gcar-years">${car.years} · ${car.country}</div><div class="rarity-badge ${car.rarity}">${RARITY_LABELS[car.rarity]}</div></div>
@@ -852,7 +816,7 @@ function garageCarHTML(car, entry, isSeen) {
   }
   const merged = allSpotted();
   const sightingPhoto = Object.entries(merged).filter(([k])=>k===`fil-${car.era}-${car.name}`).flatMap(([,d])=>d.sightings||[]).find(sg=>sg.photos?.length>0)?.photos[0]?.dataUrl;
-  const imgSrc = sightingPhoto || imgCache[car.name];
+  const imgSrc = sightingPhoto || getCarImg(car.name);
   const key    = entry.firstKey;
   const evList = [...new Set(entry.seenAt.map(s=>s.event))].join(', ');
   const total  = entry.totalSightings;
@@ -871,7 +835,7 @@ function openModal(car, key) {
   const sp = currentSpotted();
   const data = sp[key];
   const sightingPhoto = data?.sightings?.find(sg=>sg.photos?.length>0)?.photos[0]?.dataUrl;
-  const wikiImg = imgCache[car.name];
+  const wikiImg = getCarImg(car.name);
   const heroSrc = sightingPhoto || wikiImg;
   const hero = document.getElementById('modal-hero');
   if (heroSrc) {
