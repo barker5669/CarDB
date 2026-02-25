@@ -1,11 +1,8 @@
-
 // ══════════════════════════════════════════════════════════════════════
 // SUPABASE CONFIG — replace these with your actual project values
 // ══════════════════════════════════════════════════════════════════════
 const SUPABASE_URL  = 'https://itjdpmxqsxodrqmwfoyf.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_iiFm7jpE-pweUlSCFYdtyw_ImNM1L-I';
-// ══════════════════════════════════════════════════════════════════════
-
 // ══════════════════════════════════════════════════════════════════════
 // CLIENT — lazy-initialised, works whether Supabase is configured or not
 // ══════════════════════════════════════════════════════════════════════
@@ -13,7 +10,9 @@ let _sb = null;
 function sb() {
   if (!_sb) {
     if (SUPABASE_URL === 'YOUR_SUPABASE_URL') return null; // not yet configured
-    _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+    if (typeof window === 'undefined' || !window.supabase) return null; // SDK not loaded
+    try { _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON); }
+    catch(e) { console.warn('Supabase init failed:', e); return null; }
   }
   return _sb;
 }
