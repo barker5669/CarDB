@@ -1459,11 +1459,65 @@ async function attachWaitingPhoto(key) {
 }
 
 // ══════════════════════════════════════════════
+// CONNECTIVITY + REFRESH
+// ══════════════════════════════════════════════
+function _setOfflineBanner(offline) {
+  const el = document.getElementById('offline-banner');
+  if (el) el.classList.toggle('show', offline);
+}
+
+function _setupConnectivity() {
+  _setOfflineBanner(!navigator.onLine);
+  window.addEventListener('online',  () => {
+    _setOfflineBanner(false);
+    showSnack('🟢 Back online');
+    // Refresh data we may have missed while offline.
+    _refreshOnFocus();
+  });
+  window.addEventListener('offline', () => {
+    _setOfflineBanner(true);
+    showSnack('⚡ You\'re offline');
+  });
+}
+
+// Refreshes sightings + past events from DB. Called when the tab
+// becomes visible again (FIL flips back from another app) and when
+// connectivity returns. Quiet on failure — errors surface elsewhere.
+let _refreshing = false;
+async function _refreshOnFocus() {
+  if (_refreshing) return;
+  if (!CURRENT_SESSION) return;
+  _refreshing = true;
+  try {
+    _invalidateEventsCache();
+    await hydrateSightingsFromDB();
+    await renderPastEvents();
+    if (S.tab === 'event')  renderEventList();
+    if (S.tab === 'garage') renderGarage();
+    if (S.tab === 'bingo')  { buildEraTabs(); renderList(); }
+  } catch (e) {
+    console.warn('_refreshOnFocus:', e);
+  } finally {
+    _refreshing = false;
+  }
+}
+
+function _setupVisibilityRefresh() {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') _refreshOnFocus();
+  });
+}
+
+// ══════════════════════════════════════════════
 // BOOT
 // ══════════════════════════════════════════════
 // Auth gates the app. bootAuth() (in auth.js) routes between the
 // auth screen and the main app, and runs initSetup() after sign-in.
-(async () => { await bootAuth(); })();
+(async () => {
+  _setupConnectivity();
+  _setupVisibilityRefresh();
+  await bootAuth();
+})();
 
 // ══════════════════════════════════════════════
 // EVENT MENU — switch / new event
