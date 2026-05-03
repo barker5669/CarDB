@@ -36,7 +36,7 @@ Dashboard → **Authentication → URL Configuration**
 - Site URL: `https://<you>.github.io/CarDB/` (or your custom domain)
 - Redirect URLs: add the same URL
 
-This is what the magic-link emails redirect back to.
+This is what the password-reset emails redirect back to (the only emails the app sends are first-time / forgot-password recovery links).
 
 ### 4. Create users
 
@@ -59,13 +59,20 @@ Supabase daily to prevent the free-tier inactivity pause.
 
 ## Sign-in flow
 
-The app uses **Supabase magic links** — no passwords. First use:
+The app uses **Supabase email + password**.
 
-1. Open the app URL on the device
-2. Type your email
-3. Tap "Send sign-in link"
-4. Open the email and tap the link on the same device
-5. You're in, and the session persists indefinitely (auto-refreshed)
+**First time** (each user does this once):
+
+1. Open the app URL
+2. Tap "First time / Forgot password?"
+3. Type your email and tap "Send reset link"
+4. Open the email on the same device, tap the link
+5. The app shows "Choose a password" — enter it twice, tap "Save and sign in"
+6. Done — you're in. Future visits use email + password.
+
+**Returning**: type your email + password, tap "Sign in". Session persists indefinitely (auto-refreshed) until you sign out.
+
+**Forgot your password later**: same as first time — tap "First time / Forgot password?" and you'll get a reset email.
 
 Add the app to the iPhone home screen via Safari's Share sheet for the
 best experience (full-screen, durable storage).

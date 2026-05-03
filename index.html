@@ -21,8 +21,9 @@
   <div class="auth-emblem">🏎</div>
   <div class="auth-title">Car <em>Bingo</em></div>
 
-  <div class="auth-view" id="auth-email-view">
-    <div class="auth-hint">Sign in to continue</div>
+  <!-- SIGN IN (default) -->
+  <div class="auth-view" id="auth-signin-view">
+    <div class="auth-hint">Sign in</div>
     <form class="auth-form" id="auth-form" onsubmit="handleAuthSubmit(event)">
       <input
         class="auth-input"
@@ -36,18 +37,79 @@
         placeholder="your@email.com"
         required
       />
-      <button class="auth-submit-btn" type="submit">Send sign-in link</button>
+      <input
+        class="auth-input"
+        type="password"
+        autocomplete="current-password"
+        id="auth-password-input"
+        placeholder="Password"
+        required
+      />
+      <button class="auth-submit-btn" type="submit">Sign in</button>
     </form>
-    <div class="auth-sub">A one-tap link will arrive in your inbox. No password needed.</div>
+    <button class="auth-back-btn" type="button" onclick="showAuthResetView()">First time / Forgot password?</button>
     <div class="auth-error" id="auth-error"></div>
   </div>
 
+  <!-- FORGOT / FIRST-TIME PASSWORD RESET -->
+  <div class="auth-view" id="auth-reset-view" style="display:none">
+    <div class="auth-big-emoji">🔑</div>
+    <div class="auth-hint">Set or reset password</div>
+    <form class="auth-form" id="auth-reset-form" onsubmit="handleAuthResetSubmit(event)">
+      <input
+        class="auth-input"
+        type="email"
+        inputmode="email"
+        autocomplete="email"
+        autocapitalize="none"
+        autocorrect="off"
+        spellcheck="false"
+        id="auth-reset-email"
+        placeholder="your@email.com"
+        required
+      />
+      <button class="auth-submit-btn" type="submit">Send reset link</button>
+    </form>
+    <div class="auth-sub">We'll email you a link. Open it on this device, then choose a password.</div>
+    <button class="auth-back-btn" type="button" onclick="showAuthSigninView()">← Back to sign in</button>
+    <div class="auth-error" id="auth-reset-error"></div>
+  </div>
+
+  <!-- CHECK EMAIL — confirmation that the reset link was sent -->
   <div class="auth-view" id="auth-check-view" style="display:none">
     <div class="auth-big-emoji">📬</div>
     <div class="auth-hint">Check your email</div>
-    <div class="auth-sub">We've sent a sign-in link to<br><strong id="auth-sent-to"></strong></div>
-    <div class="auth-sub auth-sub-soft">Open it on this device. You'll be signed in automatically.</div>
-    <button class="auth-back-btn" type="button" onclick="authReset()">Use a different email</button>
+    <div class="auth-sub">We've sent a reset link to<br><strong id="auth-sent-to"></strong></div>
+    <div class="auth-sub auth-sub-soft">Open it on this device — you'll be able to choose a password.</div>
+    <button class="auth-back-btn" type="button" onclick="showAuthSigninView()">← Back to sign in</button>
+  </div>
+
+  <!-- SET PASSWORD — appears after the user clicks the reset link -->
+  <div class="auth-view" id="auth-setpw-view" style="display:none">
+    <div class="auth-big-emoji">🔒</div>
+    <div class="auth-hint">Choose a password</div>
+    <form class="auth-form" id="auth-setpw-form" onsubmit="handleAuthSetPasswordSubmit(event)">
+      <input
+        class="auth-input"
+        type="password"
+        autocomplete="new-password"
+        id="auth-setpw-input"
+        placeholder="New password (min 6 chars)"
+        required
+        minlength="6"
+      />
+      <input
+        class="auth-input"
+        type="password"
+        autocomplete="new-password"
+        id="auth-setpw-confirm"
+        placeholder="Confirm password"
+        required
+        minlength="6"
+      />
+      <button class="auth-submit-btn" type="submit">Save and sign in</button>
+    </form>
+    <div class="auth-error" id="auth-setpw-error"></div>
   </div>
 </div>
 

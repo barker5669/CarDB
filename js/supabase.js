@@ -41,16 +41,25 @@ function sbOnAuthChange(cb) {
   return SB.auth.onAuthStateChange((event, session) => cb(event, session));
 }
 
-// ─── Magic-link sign-in ──────────────────────────────────────────────
+// ─── Email + password sign-in ────────────────────────────────────────
 
-async function sbSendMagicLink(email) {
-  // Redirect back to the same path the user is on. Supabase's allow-list
-  // for redirect URLs is configured in the dashboard.
+async function sbSignIn(email, password) {
+  const { error } = await SB.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+}
+
+// First-time setup or "forgot password": Supabase emails a recovery link
+// that, when clicked, opens the app authenticated and fires the
+// PASSWORD_RECOVERY event. The Set-Password view then lets the user
+// pick a password via sbUpdatePassword.
+async function sbSendPasswordReset(email) {
   const redirectTo = window.location.origin + window.location.pathname;
-  const { error } = await SB.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: redirectTo },
-  });
+  const { error } = await SB.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) throw error;
+}
+
+async function sbUpdatePassword(password) {
+  const { error } = await SB.auth.updateUser({ password });
   if (error) throw error;
 }
 
