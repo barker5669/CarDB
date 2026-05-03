@@ -569,27 +569,37 @@ async function hydrateSightingsFromDB() {
 
 // Loads the user's board for an event from DB; if none exists, generates
 // it deterministically and persists. Returns nothing — sets S.* directly.
+//
+// Old era-keyed boards (cars stored as { era: [name,...] }) get
+// regenerated to the new flat shape using current defaults. The
+// alternative — hydrating to a flat 60-car list — overwhelms FIL.
 async function _loadOrCreateBoard(eventRow) {
   const userId = currentUserId();
   let row = await DB.boards.getMine(eventRow.id);
-  if (row) {
+  const isFlat = row && Array.isArray(row.cars);
+
+  if (row && isFlat) {
     S.board         = hydrateBoard(row.cars);
     S.boardEras     = (Array.isArray(row.eras) && row.eras.length) ? row.eras : [...ERAS];
-    S.boardCarCount = row.car_count || (Array.isArray(S.board) ? S.board.length : 16);
+    S.boardCarCount = row.car_count || S.board.length;
     S.rolls         = row.rolls;
     return;
   }
-  // New event: read defaults the user set in Settings → Bingo Card.
+
+  // No board, or legacy era-keyed shape — (re)generate using user's
+  // current settings. Sightings already logged are NOT lost; they live
+  // in the sightings table keyed by car_name and surface in the
+  // Spotted tab and lifetime collection regardless of board membership.
   const defaults = loadBingoDefaults();
   S.boardEras     = defaults.eras;
   S.boardCarCount = defaults.carCount;
-  S.rolls         = 0;
-  S.board = buildBoard(eventRow.id, userId, 0, S.boardEras, S.boardCarCount);
+  S.rolls         = row?.rolls || 0;
+  S.board = buildBoard(eventRow.id, userId, S.rolls, S.boardEras, S.boardCarCount);
   await DB.boards.upsert(eventRow.id, {
     cars:      dehydrateBoard(S.board),
     eras:      S.boardEras,
     car_count: S.boardCarCount,
-    rolls:     0,
+    rolls:     S.rolls,
   });
 }
 
@@ -1701,6 +1711,110 @@ function _setupVisibilityRefresh() {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') _refreshOnFocus();
   });
+}
+
+// ══════════════════════════════════════════════
+// EVENT SUMMARY — leaderboard + cars across all attendees
+// Requires the "sightings read shared at event" RLS policy from
+// schema-patch-event-summary.sql.
+// ══════════════════════════════════════════════
+async function _fetchEventSummary(eventId) {
+  const { data: sightings, error: e1 } = await SB.from('sightings')
+    .select('id, user_id, car_name, car_era, car_rarity, spotted_at, sighting_photos(storage_path)')
+    .eq('event_id', eventId);
+  if (e1) throw e1;
+  const userIds = [...new Set(sightings.map(s => s.user_id))];
+  let profileById = {};
+  if (userIds.length) {
+    const { data: profiles } = await SB.from('profiles').select('id, display_name').in('id', userIds);
+    (profiles || []).forEach(p => { profileById[p.id] = p.display_name || 'Someone'; });
+  }
+  return { sightings, profileById };
+}
+
+async function openEventSummary() {
+  if (!S.eventId) { showSnack('Start a show first to see its summary'); return; }
+  const overlay = document.getElementById('event-summary-overlay');
+  const body    = document.getElementById('event-summary-body');
+  const title   = document.getElementById('event-summary-title');
+  if (!overlay || !body) return;
+  if (title) title.textContent = S.event ? `Summary · ${S.event}` : 'Event Summary';
+  body.innerHTML = '<div class="es-loading">Loading…</div>';
+  overlay.classList.add('open');
+  try {
+    const { sightings, profileById } = await _fetchEventSummary(S.eventId);
+    body.innerHTML = _renderEventSummary(sightings, profileById);
+  } catch (err) {
+    console.error('openEventSummary:', err);
+    const detail = err?.message || String(err);
+    body.innerHTML = `<div class="es-empty">⚠️ Couldn't load summary<br><span style="font-size:0.78rem">${escapeHtml(detail)}</span><br><br><span style="font-size:0.78rem;color:var(--dim2)">If this is the first time, run schema-patch-event-summary.sql in Supabase to allow shared reads.</span></div>`;
+  }
+}
+
+function closeEventSummary() {
+  document.getElementById('event-summary-overlay')?.classList.remove('open');
+}
+document.getElementById('event-summary-overlay')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('event-summary-overlay')) closeEventSummary();
+});
+
+function _renderEventSummary(sightings, profileById) {
+  if (!sightings.length) {
+    return '<div class="es-empty">No cars spotted at this event yet.<br><span style="font-size:0.82rem">Spot one and it\'ll show up here.</span></div>';
+  }
+  const me = currentUserId();
+  const byUser = {};
+  for (const s of sightings) {
+    const uid = s.user_id;
+    if (!byUser[uid]) byUser[uid] = {
+      user_id: uid,
+      display_name: profileById[uid] || 'Someone',
+      uniqueCars: new Set(),
+      sightings: 0,
+    };
+    byUser[uid].uniqueCars.add(s.car_name);
+    byUser[uid].sightings++;
+  }
+  const ranked = Object.values(byUser).sort((a, b) => b.uniqueCars.size - a.uniqueCars.size);
+
+  const byCar = {};
+  for (const s of sightings) {
+    const name = s.car_name;
+    if (!byCar[name]) byCar[name] = {
+      car_name: name,
+      car_era:  s.car_era,
+      car_rarity: s.car_rarity || 'common',
+      spotters: new Set(),
+      count:    0,
+    };
+    byCar[name].spotters.add(byUser[s.user_id]?.display_name || 'Someone');
+    byCar[name].count++;
+  }
+  const carList = Object.values(byCar).sort((a, b) => b.count - a.count || a.car_name.localeCompare(b.car_name));
+
+  let html = '<div class="es-leaderboard">';
+  ranked.forEach((u, i) => {
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `<span style="font-family:var(--fh);font-weight:900;color:var(--dim)">#${i+1}</span>`;
+    const isMe  = u.user_id === me;
+    const cls   = isMe ? 'es-row me' : 'es-row';
+    html += `<div class="${cls}">
+      <div class="es-medal">${medal}</div>
+      <div class="es-name">${escapeHtml(u.display_name)}${isMe ? ' (you)' : ''}</div>
+      <div class="es-score">${u.uniqueCars.size}<span class="es-sub">cars</span></div>
+    </div>`;
+  });
+  html += '</div>';
+
+  html += `<div class="es-section-hdr">All cars spotted (${carList.length})</div>`;
+  carList.forEach(c => {
+    const spotters = [...c.spotters].join(', ');
+    html += `<div class="es-car-row ${c.car_rarity}">
+      <div class="es-car-name">${escapeHtml(c.car_name)}</div>
+      <div class="es-car-meta">${escapeHtml(c.car_era)} · spotted by <strong>${escapeHtml(spotters)}</strong>${c.count > 1 ? ` · ×${c.count}` : ''}</div>
+    </div>`;
+  });
+
+  return html;
 }
 
 // ══════════════════════════════════════════════

@@ -600,3 +600,31 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 /* Era badge on each bingo cell */
 .bingo-cell-img{position:relative}
 .bingo-cell-era{position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.65);color:var(--ink);font-size:0.6rem;font-weight:800;padding:2px 7px;border-radius:7px;letter-spacing:0.4px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:1}
+
+/* Bingo extras row — under the grid, above the bottom nav */
+.bingo-extra{flex-shrink:0;padding:10px 14px calc(var(--sb) + 8px);background:var(--bg2);border-top:1px solid var(--bdr);display:flex;flex-direction:column;gap:8px}
+.bingo-extra-btn{width:100%;background:var(--red);border:none;color:var(--ink);font-family:var(--ff);font-size:0.96rem;font-weight:800;padding:14px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;min-height:50px;letter-spacing:0.2px}
+.bingo-extra-btn:active{opacity:0.85;transform:scale(0.98)}
+.bingo-extra-btn-secondary{width:100%;background:var(--card);border:1px solid var(--bdr);color:var(--ink2);font-family:var(--ff);font-size:0.9rem;font-weight:700;padding:11px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;min-height:44px}
+.bingo-extra-btn-secondary:active{opacity:0.78}
+
+/* Event Summary sheet */
+.es-leaderboard{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.es-row{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(200,162,74,0.08),var(--card));border:1px solid var(--bdr);border-radius:var(--R);padding:13px 14px}
+.es-row.me{border-color:var(--gold);background:linear-gradient(135deg,rgba(200,162,74,0.18),var(--card))}
+.es-medal{font-size:1.5rem;flex-shrink:0;width:38px;text-align:center}
+.es-name{flex:1;font-size:1.02rem;font-weight:700;color:var(--ink);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.es-score{font-family:var(--fh);font-size:1.5rem;font-weight:900;color:var(--gold);flex-shrink:0}
+.es-sub{font-family:var(--ff);font-size:0.66rem;font-weight:800;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-left:4px}
+.es-section-hdr{font-size:0.66rem;font-weight:800;letter-spacing:3px;color:var(--dim);text-transform:uppercase;padding:14px 2px 8px}
+.es-car-row{background:var(--card);border:1px solid var(--bdr);border-radius:var(--R);padding:10px 14px;margin-bottom:6px;position:relative}
+.es-car-row::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:var(--R) 0 0 var(--R)}
+.es-car-row.common::before   {background:var(--common)}
+.es-car-row.rare::before     {background:var(--rare)}
+.es-car-row.epic::before     {background:var(--epic)}
+.es-car-row.legendary::before{background:var(--legend)}
+.es-car-name{font-size:0.96rem;font-weight:700;color:var(--ink);padding-left:6px}
+.es-car-meta{font-size:0.78rem;color:var(--dim);font-weight:600;margin-top:2px;padding-left:6px}
+.es-car-meta strong{color:var(--ink2);font-weight:700}
+.es-empty{text-align:center;padding:40px 20px;color:var(--dim);font-weight:600}
+.es-loading{text-align:center;padding:40px 20px;color:var(--dim);font-weight:600}

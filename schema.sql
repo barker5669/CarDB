@@ -268,12 +268,25 @@ create policy "boards update own" on boards for update to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "boards delete own" on boards for delete to authenticated using (user_id = auth.uid());
 
--- ── SIGHTINGS — strictly per-user ───────────────────────────────────
+-- ── SIGHTINGS — own data + read access for event co-attendees ─────
 create policy "sightings read own"   on sightings for select to authenticated using (user_id = auth.uid());
 create policy "sightings insert own" on sightings for insert to authenticated with check (user_id = auth.uid());
 create policy "sightings update own" on sightings for update to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "sightings delete own" on sightings for delete to authenticated using (user_id = auth.uid());
+
+-- Event co-attendees can read each other's sightings for shared
+-- events (powers the Event Summary leaderboard + combined cars-list).
+-- Personal collection rows (event_id IS NULL) remain owner-only.
+create policy "sightings read shared at event" on sightings for select to authenticated
+  using (
+    event_id is not null
+    and exists (
+      select 1 from event_attendees ea
+      where ea.event_id = sightings.event_id
+        and ea.user_id  = auth.uid()
+    )
+  );
 
 -- ── SIGHTING_PHOTOS — gated through parent sighting ─────────────────
 create policy "sighting_photos read own" on sighting_photos for select to authenticated

@@ -154,6 +154,10 @@
         </div>
       </div>
       <div class="car-list" id="car-list"></div>
+      <div class="bingo-extra">
+        <button class="bingo-extra-btn" onclick="openPicker()">📋&nbsp; Spot another car</button>
+        <button class="bingo-extra-btn-secondary" onclick="openEventSummary()">📊&nbsp; Event summary</button>
+      </div>
     </div>
     <nav class="bottom-nav" id="nav-bingo-bar"></nav>
   </div>
@@ -446,6 +450,18 @@
     <div class="form-action">
       <button class="primary-btn" type="button" onclick="startEvent()">🏁&nbsp; Start show</button>
     </div>
+  </div>
+</div>
+
+<!-- EVENT SUMMARY SHEET -->
+<div class="sheet-overlay" id="event-summary-overlay">
+  <div class="picker-sheet form-sheet">
+    <div class="picker-handle"></div>
+    <div class="picker-hdr">
+      <h2 id="event-summary-title">Event Summary</h2>
+      <button class="picker-cancel" type="button" onclick="closeEventSummary()">Done</button>
+    </div>
+    <div class="form-fields" id="event-summary-body"></div>
   </div>
 </div>
 
