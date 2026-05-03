@@ -127,6 +127,11 @@ function allSpotted() {
 // ══════════════════════════════════════════════
 // PERSISTENCE
 // ══════════════════════════════════════════════
+// localStorage is a hot cache only — Supabase is canonical for events,
+// boards, sightings, and photos. A failure here doesn't lose data
+// (a fresh hydrate next session restores from DB) but should surface so
+// FIL knows reload-resilience is degraded.
+let _quotaWarned = false;
 function save() {
   try {
     const store = loadStore();
@@ -145,7 +150,14 @@ function save() {
     }
     store.allSpotted = S.spotted;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-  } catch(e) {}
+    _quotaWarned = false;
+  } catch(e) {
+    console.warn('save() cache failed:', e);
+    if (!_quotaWarned && typeof showSnack === 'function') {
+      _quotaWarned = true;
+      showSnack('⚠️ Local cache full — your data is still saved online');
+    }
+  }
 }
 
 function loadStore() {
@@ -308,32 +320,12 @@ async function rerollBoard() {
 async function initSetup() {
   document.getElementById('date-input').value = new Date().toISOString().slice(0,10);
   renderBoardConfig();
+  // DB is canonical for sightings + events. localStorage is a hot cache
+  // populated by save() and reused on cold start until the hydrate fills.
   const store = loadStore();
-  // Also try legacy storage keys so old shows aren't lost on upgrade
-  const LEGACY_KEYS = ['ccb-fil-v6','ccb-fil-v5','ccb-fil-v4'];
-  LEGACY_KEYS.forEach(k => {
-    try {
-      const raw = localStorage.getItem(k);
-      if (!raw) return;
-      const leg = JSON.parse(raw);
-      if (leg.events) {
-        store.events = store.events || {};
-        Object.entries(leg.events).forEach(([name, data]) => {
-          if (!store.events[name]) store.events[name] = data;
-        });
-      }
-    } catch(e) {}
-  });
-  if (store.allSpotted) {
-    S.spotted = store.allSpotted;
-  } else if (store.events) {
-    Object.entries(store.events).forEach(([evName, evData]) => {
-      if (evData.spotted && Object.keys(evData.spotted).length > 0) {
-        S.spotted[evName] = evData.spotted;
-      }
-    });
-  }
-  // Past events come from DB now (events I'm attending), not localStorage.
+  if (store.allSpotted) S.spotted = store.allSpotted;
+  // Refresh from server so we see anything FIL added on his device.
+  await hydrateSightingsFromDB();
   await renderPastEvents();
 }
 
@@ -403,6 +395,55 @@ async function _findOrCreateEvent(name, location, dateISO) {
   });
   _invalidateEventsCache();
   return created;
+}
+
+// Pulls all of my sightings from DB and rebuilds S.spotted in the
+// shape the existing rendering code expects:
+//   S.spotted[eventName][cellKey] = {
+//     event, ts, sightings: [{ id, event, loc, ts, photos: [{id,path,url,ts}] }]
+//   }
+// event_id IS NULL maps to the PERSONAL_EVENT bucket.
+async function hydrateSightingsFromDB() {
+  // Build event_id → event name map.
+  const eventsById = {};
+  try {
+    const evs = await _eventsList();
+    (evs || []).forEach(e => { eventsById[e.id] = e.name; });
+  } catch (e) { console.warn('hydrateSightingsFromDB: events list', e); }
+
+  let rows;
+  try { rows = await DB.sightings.listMine(); }
+  catch (err) {
+    console.error('hydrateSightingsFromDB:', err);
+    showSnack('⚠️ Could not load your sightings');
+    return;
+  }
+
+  const spotted = {};
+  for (const s of rows) {
+    const eventName = s.event_id != null
+      ? (eventsById[s.event_id] || `Event #${s.event_id}`)
+      : PERSONAL_EVENT;
+    if (!spotted[eventName]) spotted[eventName] = {};
+    const key = cellKey(s.car_era, s.car_name);
+    if (!spotted[eventName][key]) {
+      spotted[eventName][key] = { event: eventName, loc: s.location || '', ts: s.spotted_at, sightings: [] };
+    }
+    const photos = (s.sighting_photos || []).map(sp => ({
+      id:   sp.id,
+      path: sp.storage_path,
+      url:  DB.storage.publicUrl(sp.storage_path),
+      ts:   sp.taken_at,
+    }));
+    spotted[eventName][key].sightings.push({
+      id:    s.id,
+      event: eventName,
+      loc:   s.location || '',
+      ts:    s.spotted_at,
+      photos,
+    });
+  }
+  S.spotted = spotted;
 }
 
 // Loads the user's board for an event from DB; if none exists, generates
@@ -831,22 +872,34 @@ function evUnseenCardHTML(car) {
 }
 
 async function quickAddSighting(car) {
-  const key = `fil-${car.era}-${car.name}`;
-  const ts  = new Date().toLocaleString('en-GB');
-  const id  = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
-  const sp  = currentSpotted();
-  if (!sp[key]) sp[key] = { event:S.event, loc:S.loc, ts, sightings:[] };
-  sp[key].sightings.push({ id, event:S.event, loc:S.loc, ts, photos:[] });
+  const key = cellKey(car.era, car.name);
+  let row;
+  try {
+    row = await DB.sightings.create({
+      event_id:   S.eventId,
+      car_name:   car.name,
+      car_era:    car.era,
+      car_make:   car.make,
+      car_rarity: car.rarity,
+      location:   S.loc || null,
+    });
+  } catch (err) {
+    console.error('quickAddSighting:', err);
+    showSnack('⚠️ Could not save sighting');
+    return;
+  }
+  const sp = currentSpotted();
+  if (!sp[key]) sp[key] = { event:S.event, loc:S.loc, ts:row.spotted_at, sightings:[] };
+  sp[key].sightings.push({ id:row.id, event:S.event, loc:S.loc, ts:row.spotted_at, photos:[] });
   save(); renderEventList(); renderList(); buildEraTabs(); updateScore();
   showSnack(`🎯 ${car.name} spotted!`);
   // Photo-first flow: a Blob is already waiting from the camera FAB.
-  // Attach it directly instead of re-prompting for the camera.
   if (_photoWaiting) {
     closePicker();
     await attachWaitingPhoto(key);
     return;
   }
-  S.modalKey = key; S.pendingSightingId = id;
+  S.modalKey = key; S.pendingSightingId = row.id;
   document.getElementById('camInput').click();
 }
 
@@ -1091,34 +1144,74 @@ function refreshModalSightings() {
 // ══════════════════════════════════════════════
 // COUNTER / SIGHTINGS
 // ══════════════════════════════════════════════
-function changeCount(delta) {
+async function changeCount(delta) {
   if (delta > 0) { addSighting(); return; }
   const sp   = currentSpotted();
   const data = sp[S.modalKey];
   if (!data?.sightings.length) return;
+  const last = data.sightings[data.sightings.length - 1];
+  try { await DB.sightings.remove(last.id); }
+  catch (err) {
+    console.error('changeCount(-):', err);
+    showSnack('⚠️ Could not remove sighting');
+    return;
+  }
   data.sightings.pop();
   if (!data.sightings.length) delete sp[S.modalKey];
+  // Best-effort cleanup of orphaned photo files in Storage.
+  for (const p of (last.photos || [])) {
+    if (p.path) DB.storage.removePhoto(p.path).catch(()=>{});
+  }
   save(); renderList(); buildEraTabs(); refreshModalSightings(); renderEventList();
   showSnack('Removed last sighting');
 }
-function addSighting() {
+
+async function addSighting() {
   const key = S.modalKey;
-  const ts  = new Date().toLocaleString('en-GB');
-  const id  = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
-  const sp  = currentSpotted();
-  if (!sp[key]) sp[key] = { event:S.event, loc:S.loc, ts, sightings:[] };
-  sp[key].sightings.push({ id, event:S.event, loc:S.loc, ts, photos:[] });
+  const car = S.modalCar;
+  if (!key || !car) return;
+  const eventIdForRow = (S.event === PERSONAL_EVENT) ? null : (S.eventId || null);
+  let row;
+  try {
+    row = await DB.sightings.create({
+      event_id:   eventIdForRow,
+      car_name:   car.name,
+      car_era:    car.era,
+      car_make:   car.make,
+      car_rarity: car.rarity,
+      location:   S.loc || null,
+    });
+  } catch (err) {
+    console.error('addSighting:', err);
+    showSnack('⚠️ Could not save sighting');
+    return;
+  }
+  const sp = currentSpotted();
+  if (!sp[key]) sp[key] = { event:S.event, loc:S.loc, ts:row.spotted_at, sightings:[] };
+  sp[key].sightings.push({ id:row.id, event:S.event, loc:S.loc, ts:row.spotted_at, photos:[] });
   save(); renderList(); buildEraTabs(); refreshModalSightings(); renderEventList();
   showSnack('🎯 Spotted! Opening camera…');
-  S.pendingSightingId = id;
+  S.pendingSightingId = row.id;
   document.getElementById('camInput').click();
 }
-function deleteSighting(sgId) {
+
+async function deleteSighting(sgId) {
   const sp   = currentSpotted();
   const data = sp[S.modalKey];
   if (!data) return;
-  data.sightings = data.sightings.filter(sg => sg.id !== sgId);
+  const sg = data.sightings.find(s => String(s.id) === String(sgId));
+  if (!sg) return;
+  try { await DB.sightings.remove(sg.id); }
+  catch (err) {
+    console.error('deleteSighting:', err);
+    showSnack('⚠️ Could not delete sighting');
+    return;
+  }
+  data.sightings = data.sightings.filter(s => String(s.id) !== String(sgId));
   if (!data.sightings.length) delete sp[S.modalKey];
+  for (const p of (sg.photos || [])) {
+    if (p.path) DB.storage.removePhoto(p.path).catch(()=>{});
+  }
   save(); renderList(); buildEraTabs(); refreshModalSightings(); renderEventList();
   showSnack('Sighting removed');
 }
@@ -1134,12 +1227,17 @@ async function handlePhoto(e) {
     const { path, url } = await Photos.captureAndUpload(file, { kind: 'sightings' });
     const sp   = currentSpotted();
     const data = sp[S.modalKey];
-    if (!data) return;
-    let sg = sgId ? data.sightings.find(s=>s.id===sgId) : null;
+    if (!data) throw new Error('Sighting not found');
+    let sg = sgId ? data.sightings.find(s => String(s.id) === String(sgId)) : null;
     if (!sg) sg = data.sightings[data.sightings.length-1];
-    if (!sg) return;
+    if (!sg) throw new Error('No sighting to attach photo to');
+    // Persist the photo row in DB so it's visible across devices.
+    const photoRow = await DB.sightingPhotos.attach({
+      sighting_id:  sg.id,
+      storage_path: path,
+    });
     if (!sg.photos) sg.photos = [];
-    sg.photos.push({ path, url, ts: new Date().toLocaleString('en-GB') });
+    sg.photos.push({ id: photoRow.id, path, url, ts: photoRow.taken_at });
     save(); refreshModalSightings(); renderList(); renderEventList();
     showSnack('📷 Photo saved!');
   } catch (err) {
@@ -1332,6 +1430,9 @@ function camAttachToCollection() {
 }
 
 // Called after user selects a car in picker/garage-add when _photoWaiting is set.
+// The caller is expected to have already created the sighting via
+// quickAddSighting / addCarToPersonalCollection — this function only
+// uploads the waiting Blob and links it to the most recent sighting.
 async function attachWaitingPhoto(key) {
   if (!_photoWaiting) return;
   const blob   = _photoWaiting;
@@ -1342,15 +1443,9 @@ async function attachWaitingPhoto(key) {
   const sp = target === 'collection'
     ? (S.spotted[PERSONAL_EVENT] = S.spotted[PERSONAL_EVENT] || {})
     : currentSpotted();
-  if (!sp[key]) {
-    const ts = new Date().toLocaleString('en-GB');
-    const id = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
-    sp[key] = {
-      event: target==='collection'?PERSONAL_EVENT:S.event,
-      loc:   S.loc,
-      ts,
-      sightings: [{ id, event: S.event||PERSONAL_EVENT, loc: S.loc, ts, photos: [] }],
-    };
+  if (!sp[key] || !sp[key].sightings?.length) {
+    showSnack('⚠️ No sighting to attach photo to');
+    return;
   }
   const sighting = sp[key].sightings[sp[key].sightings.length - 1];
   if (!sighting.photos) sighting.photos = [];
@@ -1358,7 +1453,11 @@ async function attachWaitingPhoto(key) {
   showSnack('📤 Saving photo…');
   try {
     const { path, url } = await DB.storage.uploadPhoto(blob, { kind: 'sightings' });
-    sighting.photos.push({ path, url, ts: new Date().toLocaleString('en-GB') });
+    const photoRow = await DB.sightingPhotos.attach({
+      sighting_id:  sighting.id,
+      storage_path: path,
+    });
+    sighting.photos.push({ id: photoRow.id, path, url, ts: photoRow.taken_at });
     save();
     renderList(); renderEventList(); renderGarage();
     showSnack('📷 Photo attached!');
@@ -1487,15 +1586,27 @@ function renderGarageAddPicker() {
 }
 
 async function addCarToPersonalCollection(car) {
-  const key = `fil-${car.era}-${car.name}`;
+  const key = cellKey(car.era, car.name);
   const loc = document.getElementById('garage-add-loc').value.trim();
-  const ts  = new Date().toLocaleString('en-GB');
-  const id  = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
-
+  let row;
+  try {
+    row = await DB.sightings.create({
+      event_id:   null,
+      car_name:   car.name,
+      car_era:    car.era,
+      car_make:   car.make,
+      car_rarity: car.rarity,
+      location:   loc || null,
+    });
+  } catch (err) {
+    console.error('addCarToPersonalCollection:', err);
+    showSnack('⚠️ Could not save');
+    return;
+  }
   if (!S.spotted[PERSONAL_EVENT]) S.spotted[PERSONAL_EVENT] = {};
   const sp = S.spotted[PERSONAL_EVENT];
-  if (!sp[key]) sp[key] = { event:PERSONAL_EVENT, loc, ts, sightings:[] };
-  sp[key].sightings.push({ id, event:PERSONAL_EVENT, loc, ts, photos:[] });
+  if (!sp[key]) sp[key] = { event:PERSONAL_EVENT, loc, ts:row.spotted_at, sightings:[] };
+  sp[key].sightings.push({ id:row.id, event:PERSONAL_EVENT, loc, ts:row.spotted_at, photos:[] });
   save();
   renderGarageAddPicker();
   renderGarage();
@@ -1508,7 +1619,7 @@ async function addCarToPersonalCollection(car) {
   }
   // Temporarily switch context to PERSONAL_EVENT so handlePhoto saves correctly
   S.modalKey = key;
-  S.pendingSightingId = id;
+  S.pendingSightingId = row.id;
   S._prevEvent = S.event;
   S.event = PERSONAL_EVENT;
   document.getElementById('camInput').click();
