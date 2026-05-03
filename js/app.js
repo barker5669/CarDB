@@ -23,8 +23,14 @@ function escapeJsSq(s) { return String(s ?? '').replace(/\\/g,'\\\\').replace(/'
 
 // ══════════════════════════════════════════════
 // IMAGE CACHE — Wikipedia REST API + localStorage
+//
+// v3 caches ONLY successful URL results. Previous versions (v2)
+// poisoned the cache by storing null for any transient failure
+// (network blip, slow connection, AbortSignal timeout) — once a car
+// got a null cached, it stayed broken forever. v3 leaves failures
+// uncached so the next render attempt re-fetches.
 // ══════════════════════════════════════════════
-const IMG_CACHE_KEY = 'ccb-imgcache-v2';
+const IMG_CACHE_KEY = 'ccb-imgcache-v3';
 const imgCache = {};
 
 function loadImgCache() {
@@ -34,38 +40,43 @@ function saveImgCache() {
   try { localStorage.setItem(IMG_CACHE_KEY, JSON.stringify(imgCache)); } catch(e) {}
 }
 Object.assign(imgCache, loadImgCache());
+// Drop the poisoned v2 cache (full of null entries) once on upgrade.
+try { localStorage.removeItem('ccb-imgcache-v2'); } catch {}
 
-// Hybrid image fetcher:
-//   • If WIKI_PAGES value starts with 'http' → use it directly (Wikimedia Commons, etc.)
-//   • Otherwise → treat as Wikipedia article slug and hit the REST summary API
-//   • Falls back to auto-slugging the car name if no entry exists
-//   • Results cached in localStorage so each device only fetches once
+// In-flight requests are deduped so concurrent renders don't fire the
+// same fetch many times.
+const _imgInFlight = new Map();
+
 async function fetchWikiImg(carName) {
-  if (imgCache[carName] !== undefined) return imgCache[carName];
+  if (imgCache[carName]) return imgCache[carName];           // cache hit (truthy URL)
+  if (_imgInFlight.has(carName)) return _imgInFlight.get(carName);
 
   const mapped = WIKI_PAGES[carName] || carName.replace(/ /g, '_');
 
-  // Direct URL — bypass API entirely
+  // Direct URL → use it as-is and cache.
   if (mapped.startsWith('http')) {
     imgCache[carName] = mapped;
     saveImgCache();
     return mapped;
   }
 
-  // Wikipedia REST summary — returns a guaranteed CDN thumbnail for ~95% of articles
-  try {
-    const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(mapped)}`;
-    const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
-    if (!r.ok) throw new Error(r.status);
-    const data = await r.json();
-    const src = data?.thumbnail?.source || null;
-    imgCache[carName] = src;
-    saveImgCache();
-    return src;
-  } catch(e) {
-    imgCache[carName] = null;
-    return null;
-  }
+  const promise = (async () => {
+    try {
+      const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(mapped)}`;
+      const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      if (!r.ok) throw new Error(r.status);
+      const data = await r.json();
+      const src = data?.thumbnail?.source || null;
+      if (src) { imgCache[carName] = src; saveImgCache(); }    // only cache wins
+      return src;
+    } catch (e) {
+      return null;                                              // do NOT cache failure
+    } finally {
+      _imgInFlight.delete(carName);
+    }
+  })();
+  _imgInFlight.set(carName, promise);
+  return promise;
 }
 
 // Fetch images in batches of 6, update UI after each batch
