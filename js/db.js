@@ -218,8 +218,12 @@ const DB = {
   myCars: {
     async list() {
       const userId = requireUser();
+      // Two FKs link these tables (my_car_photos.my_car_id, and the
+      // reverse my_cars.hero_photo_id). PostgREST can't pick one
+      // automatically — so disambiguate via !my_car_id to mean "the
+      // photos *belonging to* this car".
       const { data, error } = await SB.from('my_cars')
-        .select('*, my_car_photos(id, storage_path, taken_at, log_entry_id)')
+        .select('*, my_car_photos!my_car_id(id, storage_path, taken_at, log_entry_id)')
         .eq('owner_id', userId)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -227,7 +231,7 @@ const DB = {
     },
     async get(id) {
       const { data, error } = await SB.from('my_cars')
-        .select('*, my_car_photos(id, storage_path, taken_at, log_entry_id)')
+        .select('*, my_car_photos!my_car_id(id, storage_path, taken_at, log_entry_id)')
         .eq('id', id).single();
       if (error) throw error;
       return data;
