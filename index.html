@@ -326,27 +326,37 @@
     <div class="modal-handle"></div>
     <div class="modal-hero" id="modal-hero"><button class="modal-x" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
-      <div class="modal-rarity" id="m-rarity"></div>
-      <div class="modal-name"   id="m-name"></div>
-      <div class="modal-make"   id="m-make"></div>
-      <div class="modal-years"  id="m-years"></div>
-      <div class="modal-stats"  id="m-stats"></div>
-      <div class="modal-desc"   id="m-desc"></div>
-      <a class="hagerty-btn" id="m-hagerty" href="#" target="_blank" rel="noopener">📈 View Hagerty Valuation</a>
-      <div class="counter-box">
-        <div class="counter-lbl">How many have you seen?</div>
-        <div class="counter-row">
-          <button class="cnt-btn cnt-minus" id="cnt-minus" onclick="changeCount(-1)">−</button>
-          <div class="cnt-display"><div class="cnt-number" id="cnt-number">0</div><div class="cnt-sub">spotted</div></div>
-          <button class="cnt-btn cnt-plus" onclick="changeCount(1)">+</button>
+      <!-- Identity ─────────────────────────────────────────── -->
+      <div class="modal-id">
+        <div class="modal-rarity" id="m-rarity"></div>
+        <div class="modal-name"   id="m-name"></div>
+        <div class="modal-meta-line">
+          <span class="modal-make"  id="m-make"></span>
+          <span class="modal-years" id="m-years"></span>
         </div>
       </div>
-      <button class="spot-btn" id="spot-btn" onclick="addSighting()">✓  I Spotted It!</button>
+
+      <!-- Primary action: huge, first thing FIL sees ────────── -->
+      <button class="spot-btn" id="spot-btn" onclick="addSighting()">📷  I Spotted It!</button>
+      <div class="spot-counter" id="spot-counter" style="display:none">
+        <span id="spot-counter-text"></span>
+        <button class="spot-undo" id="spot-undo" onclick="changeCount(-1)">Undo last</button>
+      </div>
+
+      <!-- Sightings list (each spotted occurrence with photos) -->
       <div id="sightings-wrap" style="display:none">
-        <div class="sightings-hdr">Each Time You Saw It</div>
+        <div class="sightings-hdr">Each time you saw it</div>
         <div id="sightings-list"></div>
       </div>
-      <div class="modal-close-row"><button class="modal-close-full" onclick="closeModal()">Close</button></div>
+
+      <!-- Secondary: details below the action ─────────────────-->
+      <div class="modal-details">
+        <div class="modal-stats" id="m-stats"></div>
+        <div class="modal-desc"  id="m-desc"></div>
+        <a class="hagerty-btn" id="m-hagerty" href="#" target="_blank" rel="noopener">📈 Hagerty Valuation</a>
+      </div>
+
+      <div class="modal-close-row"><button class="modal-close-full" onclick="closeModal()">Done</button></div>
     </div>
   </div>
 </div>

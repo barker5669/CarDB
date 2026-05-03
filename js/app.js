@@ -1122,16 +1122,33 @@ document.getElementById('modal-overlay')?.addEventListener('click', e => {
 });
 
 function refreshModalSightings() {
-  const key  = S.modalKey;
-  const sp   = currentSpotted();
-  const data = sp[key];
+  const key   = S.modalKey;
+  const sp    = currentSpotted();
+  const data  = sp[key];
   const count = data ? data.sightings.length : 0;
-  document.getElementById('cnt-number').textContent = count;
-  document.getElementById('cnt-minus').disabled     = count === 0;
-  document.getElementById('spot-btn').textContent   = count === 0 ? '✓  I Spotted It!' : '+  I Saw Another One!';
+
+  // Primary action label: first time vs. another sighting.
+  const spotBtn = document.getElementById('spot-btn');
+  if (spotBtn) {
+    spotBtn.textContent = count === 0 ? '📷  I Spotted It!' : '📷  Saw Another One!';
+    spotBtn.classList.toggle('spotted', count > 0);
+  }
+
+  // Subtle counter row only when there's something spotted.
+  const ctr     = document.getElementById('spot-counter');
+  const ctrText = document.getElementById('spot-counter-text');
+  if (ctr && ctrText) {
+    if (count === 0) {
+      ctr.style.display = 'none';
+    } else {
+      ctr.style.display = 'flex';
+      ctrText.textContent = count === 1 ? 'Spotted 1 time' : `Spotted ${count} times`;
+    }
+  }
+
   const wrap = document.getElementById('sightings-wrap');
   const list = document.getElementById('sightings-list');
-  if (!count) { wrap.style.display = 'none'; return; }
+  if (!count) { if (wrap) wrap.style.display = 'none'; return; }
   wrap.style.display = 'block';
   list.innerHTML = data.sightings.map((sg, i) => {
     const photosHTML = (sg.photos||[]).map(p => {
