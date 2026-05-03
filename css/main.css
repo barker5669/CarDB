@@ -549,3 +549,12 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 /* OFFLINE BANNER */
 .offline-banner{display:none;position:fixed;top:calc(var(--st) + 6px);left:50%;transform:translateX(-50%);background:rgba(180,48,36,0.95);color:var(--ink);font-family:var(--ff);font-size:0.78rem;font-weight:800;padding:7px 14px;border-radius:18px;z-index:400;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,0.4);letter-spacing:0.3px}
 .offline-banner.show{display:block}
+
+/* QUEUE INDICATOR */
+.queue-indicator{display:none;position:fixed;top:calc(var(--st) + 6px);right:14px;background:rgba(40,90,140,0.92);color:var(--ink);font-family:var(--ff);font-size:0.74rem;font-weight:800;padding:6px 11px;border-radius:14px;z-index:401;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,0.4);letter-spacing:0.3px}
+.queue-indicator.show{display:block}
+
+/* Pending sighting + photo affordances */
+.car-card.pending,.gcar.pending,.ev-seen-card.pending{position:relative}
+.car-card.pending::after,.gcar.pending::after,.ev-seen-card.pending::after{content:'syncing…';position:absolute;top:8px;right:8px;background:rgba(40,90,140,0.85);color:var(--ink);font-size:0.62rem;font-weight:800;padding:2px 7px;border-radius:8px;letter-spacing:0.4px;pointer-events:none}
+.s-thumb.pending{filter:saturate(0.5) brightness(0.85)}

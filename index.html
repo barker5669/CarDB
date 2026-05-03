@@ -468,7 +468,8 @@
   </div>
 </div>
 
-<div class="offline-banner" id="offline-banner">⚡ Offline — changes will sync when you're back</div>
+<div class="offline-banner"   id="offline-banner">⚡ Offline — changes will sync when you're back</div>
+<div class="queue-indicator"  id="queue-indicator"></div>
 <div class="bingo-toast" id="bingo-toast">🏆<br>BINGO!</div>
 <div class="snackbar" id="snackbar"></div>
 <input type="file" id="camInput"        accept="image/*" capture="environment" onchange="handlePhoto(event)">
@@ -485,6 +486,7 @@ if ('serviceWorker' in navigator) {
 <script src="js/supabase.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/db.js"></script>
+<script src="js/queue.js"></script>
 <script src="js/photos.js"></script>
 <script src="js/forms.js"></script>
 <script src="js/mycars.js"></script>

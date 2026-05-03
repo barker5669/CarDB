@@ -864,7 +864,7 @@ async function quickAddSighting(car) {
   const key = cellKey(car.era, car.name);
   let row;
   try {
-    row = await DB.sightings.create({
+    row = await Queue.sightingCreate({
       event_id:   S.eventId,
       car_name:   car.name,
       car_era:    car.era,
@@ -1109,7 +1109,8 @@ function refreshModalSightings() {
       const safeSrc = src.replace(/'/g,"\\'");
       const safeTs  = (sg.ts||'').replace(/'/g,"\\'");
       const safeEv  = (sg.event||'').replace(/'/g,"\\'");
-      return `<img class="s-thumb" src="${src}" onclick="openLightbox('${safeSrc}','${safeEv} · ${safeTs}')">`;
+      const cls     = p._pending ? 's-thumb pending' : 's-thumb';
+      return `<img class="${cls}" src="${src}" onclick="openLightbox('${safeSrc}','${safeEv} · ${safeTs}')">`;
     }).join('');
     return `<div class="sighting-entry">
       <div class="sighting-top"><div class="sighting-meta"><div class="sighting-num">Sighting #${i+1}</div><div class="sighting-time">${escapeHtml(sg.ts)}</div><div class="sighting-ev">${escapeHtml(sg.event)}${sg.loc?' · '+escapeHtml(sg.loc):''}</div></div><button class="sighting-del" onclick="deleteSighting('${escapeJsSq(sg.id)}')">✕</button></div>
@@ -1140,7 +1141,7 @@ async function changeCount(delta) {
   const data = sp[S.modalKey];
   if (!data?.sightings.length) return;
   const last = data.sightings[data.sightings.length - 1];
-  try { await DB.sightings.remove(last.id); }
+  try { await Queue.sightingDelete(last.id); }
   catch (err) {
     console.error('changeCount(-):', err);
     showSnack('⚠️ Could not remove sighting');
@@ -1160,7 +1161,7 @@ async function addSighting() {
   const eventIdForRow = (S.event === PERSONAL_EVENT) ? null : (S.eventId || null);
   let row;
   try {
-    row = await DB.sightings.create({
+    row = await Queue.sightingCreate({
       event_id:   eventIdForRow,
       car_name:   car.name,
       car_era:    car.era,
@@ -1189,7 +1190,7 @@ async function deleteSighting(sgId) {
   if (!data) return;
   const sg = data.sightings.find(s => String(s.id) === String(sgId));
   if (!sg) return;
-  try { await DB.sightings.remove(sg.id); }
+  try { await Queue.sightingDelete(sg.id); }
   catch (err) {
     console.error('deleteSighting:', err);
     showSnack('⚠️ Could not delete sighting');
@@ -1210,27 +1211,23 @@ async function handlePhoto(e) {
   if (!file || !S.modalKey) { showSnack('✓ Sighting saved'); return; }
   showSnack('📤 Saving photo…');
   try {
-    const { path, url } = await Photos.captureAndUpload(file, { kind: 'sightings' });
+    const blob = await Photos.downscale(file);
     const sp   = currentSpotted();
     const data = sp[S.modalKey];
     if (!data) throw new Error('Sighting not found');
     let sg = sgId ? data.sightings.find(s => String(s.id) === String(sgId)) : null;
     if (!sg) sg = data.sightings[data.sightings.length-1];
     if (!sg) throw new Error('No sighting to attach photo to');
-    // Persist the photo row in DB so it's visible across devices.
-    const photoRow = await DB.sightingPhotos.attach({
-      sighting_id:  sg.id,
-      storage_path: path,
-    });
+    // Queue handles online (upload + DB row) and offline (IDB blob + queue).
+    const photo = await Queue.sightingPhotoAttach(blob, sg.id, { kind: 'sightings' });
     if (!sg.photos) sg.photos = [];
-    sg.photos.push({ id: photoRow.id, path, url, ts: photoRow.taken_at });
+    sg.photos.push(photo);
     save(); refreshModalSightings(); renderList(); renderEventList();
-    showSnack('📷 Photo saved!');
+    showSnack(photo._pending ? '📷 Photo saved (will sync when online)' : '📷 Photo saved!');
   } catch (err) {
     console.error('handlePhoto:', err);
-    showSnack('⚠️ Photo upload failed — check connection and try again');
+    showSnack('⚠️ Could not process photo');
   } finally {
-    // Restore event context if we were doing a personal collection add
     if (S._prevEvent !== undefined) { S.event = S._prevEvent; S._prevEvent = undefined; }
   }
 }
@@ -1438,18 +1435,14 @@ async function attachWaitingPhoto(key) {
 
   showSnack('📤 Saving photo…');
   try {
-    const { path, url } = await DB.storage.uploadPhoto(blob, { kind: 'sightings' });
-    const photoRow = await DB.sightingPhotos.attach({
-      sighting_id:  sighting.id,
-      storage_path: path,
-    });
-    sighting.photos.push({ id: photoRow.id, path, url, ts: photoRow.taken_at });
+    const photo = await Queue.sightingPhotoAttach(blob, sighting.id, { kind: 'sightings' });
+    sighting.photos.push(photo);
     save();
     renderList(); renderEventList(); renderGarage();
-    showSnack('📷 Photo attached!');
+    showSnack(photo._pending ? '📷 Photo saved (will sync when online)' : '📷 Photo attached!');
   } catch (err) {
     console.error('attachWaitingPhoto:', err);
-    showSnack('⚠️ Photo upload failed — try again');
+    showSnack('⚠️ Could not save photo');
   }
 }
 
@@ -1484,6 +1477,7 @@ async function _refreshOnFocus() {
   if (!CURRENT_SESSION) return;
   _refreshing = true;
   try {
+    if (typeof Queue !== 'undefined') await Queue.drain();
     _invalidateEventsCache();
     await hydrateSightingsFromDB();
     await renderPastEvents();
@@ -1630,7 +1624,7 @@ async function addCarToPersonalCollection(car) {
   const loc = document.getElementById('garage-add-loc').value.trim();
   let row;
   try {
-    row = await DB.sightings.create({
+    row = await Queue.sightingCreate({
       event_id:   null,
       car_name:   car.name,
       car_era:    car.era,

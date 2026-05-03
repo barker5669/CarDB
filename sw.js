@@ -1,5 +1,5 @@
 // Car Bingo Service Worker v1
-const CACHE = 'carbingo-v25';
+const CACHE = 'carbingo-v26';
 const ASSETS = [
   '/',
   '/index.html',
@@ -11,6 +11,7 @@ const ASSETS = [
   '/js/forms.js',
   '/js/mycars.js',
   '/js/photos.js',
+  '/js/queue.js',
   '/js/supabase.js',
   '/js/upcoming.js',
   'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@400;500;600;700;800&display=swap'

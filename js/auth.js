@@ -160,10 +160,10 @@ async function afterSignIn(session) {
   CURRENT_PROFILE = await sbGetProfile();
   showAppScreen();
   refreshAccountRow();
-  // initSetup is the legacy entry point in app.js; it'll be gradually
-  // rewired to use the per-user data layer in the next phases.
   if (typeof initSetup === 'function') {
     try { await initSetup(); } catch (e) { console.warn('initSetup:', e); }
   }
   if (typeof buildNav === 'function') buildNav('home');
+  // Drain anything queued from a previous session.
+  if (typeof Queue !== 'undefined') Queue.drain().catch(() => {});
 }
