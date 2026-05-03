@@ -91,9 +91,12 @@ const DB = {
     },
     async join(eventId) {
       const userId = requireUser();
+      // ignoreDuplicates skips ON CONFLICT DO UPDATE (re-joining is a
+      // no-op). Without it, Postgres demands UPDATE permission on the
+      // table even though we never actually update — which fails RLS.
       const { error } = await SB.from('event_attendees')
         .upsert({ event_id: eventId, user_id: userId },
-                { onConflict: 'event_id,user_id' });
+                { onConflict: 'event_id,user_id', ignoreDuplicates: true });
       if (error) throw error;
     },
     async leave(eventId) {
@@ -337,9 +340,12 @@ const DB = {
     async setAttending(upcomingId, attending) {
       const userId = requireUser();
       if (attending) {
+        // ignoreDuplicates: same reason as DB.attendees.join — RSVPing
+        // when already attending is a no-op, and avoiding DO UPDATE
+        // means we don't need an UPDATE policy on the join table.
         const { error } = await SB.from('upcoming_event_attendees').upsert({
           upcoming_event_id: upcomingId, user_id: userId,
-        }, { onConflict: 'upcoming_event_id,user_id' });
+        }, { onConflict: 'upcoming_event_id,user_id', ignoreDuplicates: true });
         if (error) throw error;
       } else {
         const { error } = await SB.from('upcoming_event_attendees').delete()
