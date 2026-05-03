@@ -537,7 +537,7 @@ function launch() {
 // ══════════════════════════════════════════════
 function switchTab(tab) {
   S.tab = tab;
-  const tabs = ['home','bingo','event','garage','settings'];
+  const tabs = ['home','bingo','event','garage','mycars','settings'];
   tabs.forEach(t => {
     const el = document.getElementById('s-' + t);
     if (el) el.classList.toggle('active', t === tab);
@@ -547,6 +547,7 @@ function switchTab(tab) {
   if (tab === 'event')    { buildEvFilters(); renderEventList(); }
   if (tab === 'garage')   { buildGarageFilters(); renderGarage(); }
   if (tab === 'home')     { updateHomeCard(); renderPastEvents(); }
+  if (tab === 'mycars')   { /* renderMyCarsList is called explicitly by showMyCars */ }
   if (tab === 'settings') { /* static */ }
 }
 
@@ -571,7 +572,7 @@ function buildNav(activeTab) {
 
   const html = tabBtn(NAV_TABS[0]) + tabBtn(NAV_TABS[1]) + camBtn + tabBtn(NAV_TABS[2]) + tabBtn(NAV_TABS[3]);
 
-  ['home','bingo','event','garage','settings'].forEach(id => {
+  ['home','bingo','event','garage','mycars','settings'].forEach(id => {
     const bar = document.getElementById('nav-' + id + '-bar');
     if (bar) bar.innerHTML = html;
   });

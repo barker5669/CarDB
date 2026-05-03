@@ -313,6 +313,66 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 .picker-add-btn:active{transform:scale(0.86)}
 .picker-done{width:9px;height:9px;border-radius:50%;background:var(--grn);flex-shrink:0;margin-right:4px}
 
+/* MY CARS TAB */
+#s-mycars{background:var(--bg)}
+.mycars-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px calc(var(--sb) + 14px)}
+.mycars-scroll::-webkit-scrollbar{display:none}
+.mc-empty{text-align:center;padding:48px 24px}
+.mc-empty-icon{font-size:3.5rem;margin-bottom:14px}
+.mc-empty h3{font-family:var(--fh);font-size:1.5rem;font-weight:900;color:var(--ink);margin-bottom:8px}
+.mc-empty p{font-size:0.92rem;color:var(--dim);margin-bottom:18px;line-height:1.55}
+.mc-list{display:flex;flex-direction:column;gap:10px}
+.mc-card{display:flex;align-items:stretch;width:100%;background:var(--card);border:1px solid var(--bdr);border-radius:var(--R);overflow:hidden;cursor:pointer;-webkit-appearance:none;text-align:left;min-height:86px}
+.mc-card:active{transform:scale(0.985)}
+.mc-card-thumb{width:96px;flex-shrink:0;background:var(--bg2);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.mc-card-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.mc-card-ph{font-size:2rem;color:var(--dim2)}
+.mc-card-body{flex:1;padding:12px 14px;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.mc-card-name{font-family:var(--fh);font-size:1.08rem;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc-card-meta{font-size:0.82rem;color:var(--dim);font-weight:600;margin-top:3px}
+.mc-card-arrow{padding:0 14px;display:flex;align-items:center;color:var(--dim);font-size:1.4rem}
+.mc-add-wrap{margin-top:14px}
+.mc-back-btn{background:transparent;border:1px solid var(--bdr);color:var(--dim);font-family:var(--ff);font-size:0.86rem;font-weight:700;padding:8px 14px;border-radius:20px;cursor:pointer;-webkit-appearance:none;margin-bottom:14px}
+.mc-back-btn:active{opacity:0.7}
+.mc-hero{width:100%;aspect-ratio:16/10;background:var(--bg2);border-radius:var(--RL);overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.mc-hero img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}
+.mc-hero-ph{font-size:4rem;color:var(--dim2)}
+.mc-detail{display:flex;flex-direction:column;gap:10px}
+.mc-name{font-family:var(--fh);font-size:1.7rem;font-weight:900;color:var(--ink);line-height:1.1}
+.mc-meta{font-size:0.92rem;color:var(--ink2);font-weight:600}
+.mc-reg{display:inline-block;background:var(--card2);border:1px solid var(--bdr2);border-radius:6px;padding:4px 10px;font-family:var(--fh);font-size:0.95rem;font-weight:800;color:var(--gold);letter-spacing:1px;width:fit-content}
+.mc-notes{font-size:0.92rem;color:var(--ink2);line-height:1.55;background:var(--card);border:1px solid var(--bdr);border-radius:var(--R);padding:11px 13px}
+.mc-actions{display:flex;gap:8px;margin-top:6px}
+.mc-action-btn{flex:1;background:var(--red);border:none;color:var(--ink);font-family:var(--ff);font-size:0.92rem;font-weight:800;padding:13px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none}
+.mc-action-btn:active{opacity:0.85;transform:scale(0.98)}
+.mc-section{margin-top:14px}
+.mc-section-hdr{font-size:0.66rem;font-weight:800;letter-spacing:3px;color:var(--dim);text-transform:uppercase;padding:0 2px 9px}
+.mc-section-empty{font-size:0.88rem;color:var(--dim);font-weight:500;padding:14px;background:var(--card);border:1px dashed var(--bdr);border-radius:var(--R);text-align:center}
+.mc-photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.mc-photo{aspect-ratio:1;background:var(--bg2);border-radius:var(--R);overflow:hidden}
+.mc-photo img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}
+.mc-log-entry{position:relative;background:var(--card);border:1px solid var(--bdr);border-radius:var(--R);padding:11px 13px 11px;margin-bottom:7px}
+.mc-log-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.mc-log-kind{font-size:0.74rem;font-weight:800;color:var(--gold);letter-spacing:0.5px}
+.mc-log-date{font-size:0.74rem;font-weight:600;color:var(--dim)}
+.mc-log-title{font-size:0.96rem;font-weight:700;color:var(--ink);line-height:1.35}
+.mc-log-body{font-size:0.86rem;color:var(--ink2);font-weight:500;line-height:1.5;margin-top:5px;white-space:pre-wrap}
+.mc-log-del{position:absolute;top:8px;right:8px;background:transparent;border:none;color:var(--dim2);font-size:0.95rem;cursor:pointer;-webkit-appearance:none;padding:4px 6px;border-radius:6px}
+.mc-log-del:active{color:var(--red2);background:rgba(180,48,36,0.15)}
+.mc-detail-edit{display:flex;gap:8px;margin-top:18px}
+.mc-edit-btn{flex:1;background:var(--card);border:1px solid var(--bdr);color:var(--ink2);font-family:var(--ff);font-size:0.86rem;font-weight:700;padding:11px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none}
+.mc-delete-btn{flex:1;background:transparent;border:1px solid var(--red);color:var(--red2);font-family:var(--ff);font-size:0.86rem;font-weight:700;padding:11px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none}
+.mc-edit-btn:active,.mc-delete-btn:active{opacity:0.75}
+
+/* Home shortcut card to My Cars */
+.home-shortcut{display:flex;align-items:center;gap:12px;width:100%;background:linear-gradient(135deg,rgba(200,162,74,0.08),var(--card));border:1px solid var(--bdr);border-radius:var(--R);padding:14px 15px;margin-bottom:14px;cursor:pointer;-webkit-appearance:none;text-align:left;color:var(--ink)}
+.home-shortcut:active{opacity:0.78;transform:scale(0.99)}
+.home-shortcut-icon{font-size:1.6rem;flex-shrink:0}
+.home-shortcut-body{flex:1;min-width:0}
+.home-shortcut-name{font-size:1rem;font-weight:700;color:var(--ink)}
+.home-shortcut-sub{font-size:0.78rem;color:var(--dim);font-weight:600;margin-top:2px}
+.home-shortcut-arrow{font-size:1.3rem;color:var(--dim);flex-shrink:0}
+
 /* COLLECTION TAB */
 #s-garage{background:var(--bg)}
 .garage-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px 14px}
@@ -516,6 +576,16 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
         </button>
       </div>
 
+      <!-- My Cars shortcut -->
+      <button class="home-shortcut" onclick="showMyCars()">
+        <span class="home-shortcut-icon">🏎️</span>
+        <div class="home-shortcut-body">
+          <div class="home-shortcut-name">My Cars</div>
+          <div class="home-shortcut-sub" id="home-mycars-sub">Photos, services, mods, drives</div>
+        </div>
+        <span class="home-shortcut-arrow">›</span>
+      </button>
+
       <!-- Active show (shown when S.event is set) -->
       <div id="home-active-show" style="display:none">
         <div class="home-section-lbl">Your Current Show</div>
@@ -697,6 +767,20 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
     <nav class="bottom-nav" id="nav-garage-bar"></nav>
   </div>
 
+  <!-- MY CARS TAB -->
+  <div class="screen" id="s-mycars">
+    <div class="page-hdr">
+      <button class="hdr-icon-btn" onclick="switchTab('home')" title="Back to Home">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="page-hdr-text">
+        <div class="page-hdr-title" id="mycars-hdr-title">My Cars</div>
+      </div>
+    </div>
+    <div class="mycars-scroll" id="mycars-body"></div>
+    <nav class="bottom-nav" id="nav-mycars-bar"></nav>
+  </div>
+
   <!-- SETTINGS TAB -->
   <div class="screen" id="s-settings">
     <div class="page-hdr">
@@ -833,8 +917,9 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 
 <div class="bingo-toast" id="bingo-toast">🏆<br>BINGO!</div>
 <div class="snackbar" id="snackbar"></div>
-<input type="file" id="camInput"      accept="image/*" capture="environment" onchange="handlePhoto(event)">
-<input type="file" id="camInputFirst" accept="image/*" capture="environment" onchange="handlePhotoFirst(event)">
+<input type="file" id="camInput"        accept="image/*" capture="environment" onchange="handlePhoto(event)">
+<input type="file" id="camInputFirst"   accept="image/*" capture="environment" onchange="handlePhotoFirst(event)">
+<input type="file" id="myCarPhotoInput" accept="image/*" capture="environment" onchange="handleMyCarPhoto(event)">
 
 <script>
 if ('serviceWorker' in navigator) {
@@ -847,6 +932,7 @@ if ('serviceWorker' in navigator) {
 <script src="js/auth.js"></script>
 <script src="js/db.js"></script>
 <script src="js/photos.js"></script>
+<script src="js/mycars.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
