@@ -654,10 +654,16 @@ function buildEraTabs() {
   const activeEras = S.boardEras || ERAS;
   const sp = currentSpotted();
   document.getElementById('era-scroller').innerHTML = activeEras.map(era => {
-    const cars   = S.board ? (S.board[era]||[]) : [];
-    const unique = [...new Map(cars.map(c=>[c.name,c])).values()];
-    const spotted = unique.filter(c => sp[cellKey(era,c.name)]).length;
-    return `<div class="era-tab${era===S.era?' active':''}" onclick="pickEra('${era}')">${era}<span class="era-count">${spotted}/${unique.length}</span></div>`;
+    const cars     = S.board ? (S.board[era]||[]) : [];
+    const unique   = [...new Map(cars.map(c=>[c.name,c])).values()];
+    const spotted  = unique.filter(c => sp[cellKey(era,c.name)]).length;
+    const isActive = era === S.era;
+    const isDone   = unique.length > 0 && spotted === unique.length;
+    const cls = ['era-tab'];
+    if (isActive) cls.push('active');
+    if (isDone)   cls.push('complete');
+    const label = isDone ? `${era} ✓` : era;
+    return `<div class="${cls.join(' ')}" onclick="pickEra('${escapeJsSq(era)}')">${escapeHtml(label)}<span class="era-count">${spotted}/${unique.length}</span></div>`;
   }).join('');
 }
 

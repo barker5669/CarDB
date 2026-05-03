@@ -81,15 +81,6 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 #s-home{background:var(--bg)}
 .home-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px calc(var(--sb) + 14px)}
 .home-scroll::-webkit-scrollbar{display:none}
-.home-hero{background:linear-gradient(150deg,#1e3826,var(--bg) 70%);border-radius:var(--RL);border:1px solid var(--bdr);padding:18px 18px 16px;margin-bottom:16px;position:relative;overflow:hidden}
-.home-hero::after{content:'';position:absolute;right:-20px;top:-20px;width:130px;height:130px;background:radial-gradient(circle,rgba(200,162,74,0.13) 0%,transparent 70%);pointer-events:none}
-.home-hero-row{display:flex;align-items:center;gap:14px}
-.home-logo{font-size:2.6rem;line-height:1;flex-shrink:0}
-.home-brand-title{font-family:var(--fh);font-size:1.85rem;font-weight:900;line-height:1}
-.home-brand-title em{font-style:italic;color:var(--gold)}
-.home-brand-sub{font-size:0.68rem;font-weight:700;letter-spacing:3px;color:var(--dim);text-transform:uppercase;margin-top:5px}
-.home-tagline{font-size:0.86rem;color:var(--ink2);font-weight:500;margin-top:10px;line-height:1.55}
-
 .home-section-lbl{font-size:0.66rem;font-weight:800;letter-spacing:3px;color:var(--dim);text-transform:uppercase;padding:0 2px 9px;margin-top:4px}
 
 /* Active show card */
@@ -102,19 +93,7 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 .sab-meta{font-size:0.76rem;color:var(--dim);font-weight:600;margin-top:2px}
 .sab-badge{background:var(--gold);color:var(--bg);font-size:0.7rem;font-weight:900;padding:2px 8px;border-radius:6px;flex-shrink:0}
 .sab-arrow{font-size:1.3rem;color:var(--goldl);flex-shrink:0}
-.show-active-footer{padding:0 16px 14px;display:flex;gap:8px}
-.show-end-btn{flex:1;background:transparent;border:1px solid var(--bdr);color:var(--dim);font-family:var(--ff);font-size:0.82rem;font-weight:700;padding:9px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none;appearance:none;text-align:center}
-.show-end-btn:active{opacity:0.7}
-
-/* New show form */
-.nsf-card{background:var(--card);border:1px solid var(--bdr);border-radius:var(--RL);overflow:hidden;margin-bottom:14px}
-.nsf-section{padding:13px 16px 11px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px}
-.nsf-section-lbl{font-size:0.68rem;font-weight:800;letter-spacing:3px;color:var(--gold);text-transform:uppercase;flex:1}
-.nsf-body{padding:14px 16px;display:flex;flex-direction:column;gap:11px}
-.form-field label{display:block;font-size:0.72rem;font-weight:800;color:var(--dim);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px}
-.form-field input{width:100%;background:var(--bg2);border:1.5px solid var(--bdr);color:var(--ink);font-family:var(--ff);font-size:1rem;font-weight:600;padding:13px 15px;border-radius:var(--R);outline:none;-webkit-appearance:none;appearance:none}
-.form-field input:focus{border-color:var(--gold)}
-.form-field input::placeholder{color:var(--dim2);font-weight:400}
+/* Board config (still used inside the new-show sheet) */
 .bc-label{font-size:0.72rem;font-weight:800;color:var(--dim);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px}
 .bc-label strong{color:var(--ink2);font-size:0.97rem;letter-spacing:0}
 .bc-eras{display:flex;flex-wrap:wrap;gap:6px}
@@ -125,7 +104,6 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 .bc-slider-lbl{font-size:0.8rem;font-weight:700;color:var(--dim);min-width:16px;text-align:center}
 .bc-slider{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:var(--bdr2);outline:none;cursor:pointer}
 .bc-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:26px;height:26px;border-radius:50%;background:var(--gold);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.45)}
-.nsf-start-wrap{padding:0 16px 16px}
 .primary-btn{width:100%;background:var(--red);border:none;color:var(--ink);font-family:var(--ff);font-size:1.05rem;font-weight:800;padding:17px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;gap:9px}
 .primary-btn:active{opacity:0.85;transform:scale(0.98)}
 
@@ -137,12 +115,6 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 .pb-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pb-meta{font-size:0.75rem;color:var(--dim);font-weight:600;margin-top:2px}
 .pb-arrow{font-size:1.3rem;color:var(--dim);flex-shrink:0}
-
-/* Supabase status */
-.home-settings-link{margin-top:10px;background:transparent;border:1px solid var(--bdr);border-radius:20px;color:var(--dim);font-family:var(--ff);font-size:0.78rem;font-weight:700;padding:7px 12px;cursor:pointer;-webkit-appearance:none;appearance:none;display:inline-flex;align-items:center;gap:6px;letter-spacing:0.3px}
-.home-settings-link:active{color:var(--ink)}
-.sb-status{background:rgba(200,162,74,0.08);border:1px solid rgba(200,162,74,0.2);border-radius:var(--R);padding:12px 14px;font-size:0.82rem;color:var(--ink2);font-weight:600;line-height:1.55;margin-top:8px}
-.sb-status strong{color:var(--goldl)}
 
 /* FILTER BAR */
 .filter-toggle-bar{background:var(--bg2);border-bottom:1px solid var(--bdr);display:flex;align-items:center;padding:7px 14px;gap:10px;flex-shrink:0}
@@ -181,8 +153,11 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 .era-scroller::-webkit-scrollbar{display:none}
 .era-tab{flex-shrink:0;font-family:var(--ff);font-size:0.96rem;font-weight:700;padding:10px 18px;border-radius:24px;border:1.5px solid var(--bdr);background:var(--card);color:var(--ink2);cursor:pointer;white-space:nowrap;min-height:50px;display:flex;align-items:center;gap:7px;-webkit-appearance:none;appearance:none;transition:transform 0.12s}
 .era-tab.active{background:var(--red);border-color:var(--red);color:var(--ink);box-shadow:0 4px 14px rgba(180,48,36,0.35)}
+.era-tab.complete{background:rgba(43,120,64,0.18);border-color:var(--grn);color:#a6e6b8}
+.era-tab.complete.active{background:var(--grn);border-color:var(--grn);color:var(--ink);box-shadow:0 4px 14px rgba(43,120,64,0.45)}
 .era-tab:active{transform:scale(0.96)}
 .era-count{font-size:0.74rem!important;font-weight:800;background:rgba(255,255,255,0.18);border-radius:8px;padding:2px 7px}
+.era-tab.complete .era-count{background:rgba(255,255,255,0.22)}
 .era-count{font-size:0.68rem;font-weight:800;background:rgba(255,255,255,0.16);border-radius:6px;padding:1px 5px}
 .score-strip{background:var(--bg);padding:5px 16px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-bottom:1px solid var(--bdr)}
 .score-txt{font-size:0.84rem;font-weight:700;color:var(--gold)}
@@ -399,15 +374,6 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 .mc-edit-btn{flex:1;background:var(--card);border:1px solid var(--bdr);color:var(--ink2);font-family:var(--ff);font-size:0.86rem;font-weight:700;padding:11px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none;appearance:none}
 .mc-delete-btn{flex:1;background:transparent;border:1px solid var(--red);color:var(--red2);font-family:var(--ff);font-size:0.86rem;font-weight:700;padding:11px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none;appearance:none}
 .mc-edit-btn:active,.mc-delete-btn:active{opacity:0.75}
-
-/* Home shortcut card to My Cars */
-.home-shortcut{display:flex;align-items:center;gap:12px;width:100%;background:linear-gradient(135deg,rgba(200,162,74,0.08),var(--card));border:1px solid var(--bdr);border-radius:var(--R);padding:14px 15px;margin-bottom:14px;cursor:pointer;-webkit-appearance:none;appearance:none;text-align:left;color:var(--ink)}
-.home-shortcut:active{opacity:0.78;transform:scale(0.99)}
-.home-shortcut-icon{font-size:1.6rem;flex-shrink:0}
-.home-shortcut-body{flex:1;min-width:0}
-.home-shortcut-name{font-size:1rem;font-weight:700;color:var(--ink)}
-.home-shortcut-sub{font-size:0.78rem;color:var(--dim);font-weight:600;margin-top:2px}
-.home-shortcut-arrow{font-size:1.3rem;color:var(--dim);flex-shrink:0}
 
 /* COLLECTION TAB */
 #s-garage{background:var(--bg)}
