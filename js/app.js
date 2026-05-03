@@ -786,10 +786,13 @@ function renderList() {
   // line detection (rows / cols / diagonals) stays meaningful.
   const cells = unique.map((car, i) => bingoCellHTML(car, i)).join('');
   list.innerHTML = `<div class="bingo-grid">${cells}</div>`;
-  list.querySelectorAll('.bingo-cell[data-name]').forEach(el => {
-    const car = unique.find(c => c.name === el.dataset.name);
-    if (car) el.addEventListener('click', () => openModal(car, cellKey(car.era, car.name)));
-  });
+  // Delegated click — survives the re-renders from preloadEraImages.
+  list.onclick = (e) => {
+    const cell = e.target.closest('.bingo-cell[data-name]');
+    if (!cell) return;
+    const car = unique.find(c => c.name === cell.dataset.name);
+    if (car) openModal(car, cellKey(car.era, car.name));
+  };
   updateScore();
 }
 
@@ -956,26 +959,29 @@ function renderEventList() {
   }
   const list = document.getElementById('ev-list');
   list.innerHTML = html;
-  list.querySelectorAll('.ev-seen-card').forEach(el => {
-    el.addEventListener('click', () => {
-      const car = CAR_DB.find(c => c.name === el.dataset.name);
-      if (car && el.dataset.key) openModal(car, el.dataset.key);
-    });
-  });
-  list.querySelectorAll('.ev-unseen-card').forEach(el => {
-    el.addEventListener('click', e => {
-      if (e.target.closest('.ev-unseen-add')) return;
-      const car = CAR_DB.find(c => c.name === el.dataset.name);
-      if (car) openModal(car, `fil-${car.era}-${car.name}`);
-    });
-  });
-  list.querySelectorAll('.ev-unseen-add').forEach(btn => {
-    btn.addEventListener('click', e => {
+  // Single delegated click handler — survives subsequent re-renders
+  // (preloadEraImages re-renders the list mid-load and the per-element
+  // listeners attached above used to get blown away).
+  list.onclick = (e) => {
+    const seen = e.target.closest('.ev-seen-card');
+    if (seen && seen.dataset.name && seen.dataset.key) {
+      const car = CAR_DB.find(c => c.name === seen.dataset.name);
+      if (car) openModal(car, seen.dataset.key);
+      return;
+    }
+    const addBtn = e.target.closest('.ev-unseen-add');
+    if (addBtn && addBtn.dataset.name) {
       e.stopPropagation();
-      const car = CAR_DB.find(c => c.name === btn.dataset.name);
+      const car = CAR_DB.find(c => c.name === addBtn.dataset.name);
       if (car) quickAddSighting(car);
-    });
-  });
+      return;
+    }
+    const unseen = e.target.closest('.ev-unseen-card');
+    if (unseen && unseen.dataset.name) {
+      const car = CAR_DB.find(c => c.name === unseen.dataset.name);
+      if (car) openModal(car, `fil-${car.era}-${car.name}`);
+    }
+  };
 }
 
 function evSeenCardHTML(car, key) {
@@ -1149,8 +1155,15 @@ function renderGarage() {
     if(!html)html=`<div class="garage-empty"><div class="icon">🚗</div><p>No cars spotted yet.<br>Get out there!</p></div>`;
   }
   body.innerHTML = html;
-  body.querySelectorAll('.gcar[data-key]').forEach(el=>{el.addEventListener('click',()=>{const car=CAR_DB.find(c=>c.name===el.dataset.name);if(car)openModal(car,el.dataset.key);});});
-  body.querySelectorAll('.gcar[data-name]:not([data-key])').forEach(el=>{el.addEventListener('click',()=>{const car=CAR_DB.find(c=>c.name===el.dataset.name);if(car)openModal(car,`fil-${car.era}-${car.name}`);});});
+  // Delegated click — survives the re-renders from preloadEraImages.
+  body.onclick = (e) => {
+    const card = e.target.closest('.gcar[data-name]');
+    if (!card) return;
+    const car = CAR_DB.find(c => c.name === card.dataset.name);
+    if (!car) return;
+    const key = card.dataset.key || `fil-${car.era}-${car.name}`;
+    openModal(car, key);
+  };
 }
 
 function garageCarHTML(car, entry, isSeen) {

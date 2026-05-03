@@ -1,0 +1,632 @@
+{
+  "total_entries": 504,
+  "total_unique_slugs": 409,
+  "broken_count": 62,
+  "broken": [
+    {
+      "slug": "Alfa_Romeo_6C_1750",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Alfa Romeo 6C 1750"
+      ]
+    },
+    {
+      "slug": "Alfa_Romeo_6C_2300",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Alfa Romeo 6C 2300"
+      ]
+    },
+    {
+      "slug": "Alfa_Romeo_8C_2300",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Alfa Romeo 8C 2300"
+      ]
+    },
+    {
+      "slug": "Alfa_Romeo_8C_2900",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Alfa Romeo 2900B"
+      ]
+    },
+    {
+      "slug": "Alfa_Romeo_Giulia_(105)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Alfa Romeo Giulia Saloon"
+      ]
+    },
+    {
+      "slug": "Alfa_Romeo_Giulia_Ti_Super",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Alfa Romeo Giulia TI Super"
+      ]
+    },
+    {
+      "slug": "Alfa_Romeo_Tipo_33",
+      "status": 200,
+      "title": "Alfa Romeo Tipo 33",
+      "canonical": "Alfa_Romeo_Tipo_33",
+      "error": null,
+      "cars": [
+        "Alfa Romeo 33/3"
+      ]
+    },
+    {
+      "slug": "Alpine_GTA",
+      "status": 200,
+      "title": "Renault Alpine GTA/A610",
+      "canonical": "Renault_Alpine_GTA/A610",
+      "error": null,
+      "cars": [
+        "Renault GTA V6 Turbo"
+      ]
+    },
+    {
+      "slug": "Amilcar",
+      "status": 200,
+      "title": "Amilcar",
+      "canonical": "Amilcar",
+      "error": null,
+      "cars": [
+        "Amilcar CGS"
+      ]
+    },
+    {
+      "slug": "Aston_Martin_1½_Litre",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Aston Martin Le Mans"
+      ]
+    },
+    {
+      "slug": "Aston_Martin_DBS_(1967)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Aston Martin DBS",
+        "Aston Martin DBS V8"
+      ]
+    },
+    {
+      "slug": "Aston_Martin_Lagonda_(series_2)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Aston Martin Lagonda"
+      ]
+    },
+    {
+      "slug": "Aston_Martin_Ulster",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Aston Martin Ulster"
+      ]
+    },
+    {
+      "slug": "Audi_Sport_quattro",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Audi Sport Quattro",
+        "Audi Quattro Sport SWB"
+      ]
+    },
+    {
+      "slug": "Austin_Seven",
+      "status": 200,
+      "title": "Austin Seven",
+      "canonical": "Austin_Seven",
+      "error": null,
+      "cars": [
+        "Austin Seven"
+      ]
+    },
+    {
+      "slug": "BMW_M3_(E46)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "BMW E46 M3"
+      ]
+    },
+    {
+      "slug": "BMW_M3_CSL_(E46)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "BMW M3 CSL E46"
+      ]
+    },
+    {
+      "slug": "BMW_M5_(E39)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "BMW E39 M5"
+      ]
+    },
+    {
+      "slug": "BMW_M5_(E60)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "BMW M5 E60"
+      ]
+    },
+    {
+      "slug": "BMW_M6_(E24)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "BMW M635 CSi"
+      ]
+    },
+    {
+      "slug": "BMW_Z3_M",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "BMW Z3 M Roadster"
+      ]
+    },
+    {
+      "slug": "Bentley_R-Type",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Bentley R-Type Continental"
+      ]
+    },
+    {
+      "slug": "Bristol_Fighter",
+      "status": 200,
+      "title": "Bristol Fighter",
+      "canonical": "Bristol_Fighter",
+      "error": null,
+      "cars": [
+        "Bristol Fighter"
+      ]
+    },
+    {
+      "slug": "DB_(automobile)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "DB Panhard"
+      ]
+    },
+    {
+      "slug": "Dodge_Viper_(SR_III)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Dodge Viper SRT-10"
+      ]
+    },
+    {
+      "slug": "Facel_Vega_HK",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Facel Vega HK500"
+      ]
+    },
+    {
+      "slug": "Ferrari_250_GT_Tour_de_France",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Ferrari 250 GT TdF"
+      ]
+    },
+    {
+      "slug": "Ferrari_330",
+      "status": 200,
+      "title": "Ferrari 330",
+      "canonical": "Ferrari_330",
+      "error": null,
+      "cars": [
+        "Ferrari 330 GTC"
+      ]
+    },
+    {
+      "slug": "Ferrari_412",
+      "status": 200,
+      "title": "Ferrari 412",
+      "canonical": "Ferrari_412",
+      "error": null,
+      "cars": [
+        "Ferrari 412"
+      ]
+    },
+    {
+      "slug": "Ferrari_Dino_206_GT_and_246_GT",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Ferrari 246 Dino GT",
+        "Ferrari 246 Dino GTS"
+      ]
+    },
+    {
+      "slug": "Fiat_500_(1957)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Fiat 500 Nuova"
+      ]
+    },
+    {
+      "slug": "Ford_Cortina_(Mark_I)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Ford Cortina Mk1 Lotus"
+      ]
+    },
+    {
+      "slug": "Ford_Cortina_(Mark_II)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Lotus Cortina Mk2"
+      ]
+    },
+    {
+      "slug": "Ford_Escort_Mk1",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Ford Escort Mk1 RS1600",
+        "Ford Escort Mk1 Mexico"
+      ]
+    },
+    {
+      "slug": "Frazer_Nash_TT_Replica",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Frazer Nash TT Replica"
+      ]
+    },
+    {
+      "slug": "HRG_Engineering",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "HRG 1500"
+      ]
+    },
+    {
+      "slug": "Honda_Beat_(Japan)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Honda Beat"
+      ]
+    },
+    {
+      "slug": "Honda_Civic_Type_R_(EK9)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Honda Civic Type R EK9"
+      ]
+    },
+    {
+      "slug": "Honda_Civic_Type_R_(EP3)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Honda Civic Type R EP3"
+      ]
+    },
+    {
+      "slug": "Invicta_car",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Invicta 4½ Litre S-Type"
+      ]
+    },
+    {
+      "slug": "Jaguar_XJR",
+      "status": 200,
+      "title": "Jaguar XJR",
+      "canonical": "Jaguar_XJR",
+      "error": null,
+      "cars": [
+        "Jaguar XJR 100"
+      ]
+    },
+    {
+      "slug": "Jaguar_XJ_(Series_I)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Jaguar XJ12"
+      ]
+    },
+    {
+      "slug": "Jaguar_XJ_(Series_II)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Jaguar XJ6 Series 2"
+      ]
+    },
+    {
+      "slug": "Lotus_Elan_+2",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Lotus Elan +2"
+      ]
+    },
+    {
+      "slug": "Lotus_Elite_(Type_14)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Lotus Elite Type 14"
+      ]
+    },
+    {
+      "slug": "Lotus_Elite_(Type_75)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Lotus Elite S2 Type 75"
+      ]
+    },
+    {
+      "slug": "MGA",
+      "status": 200,
+      "title": "MGA",
+      "canonical": "MGA",
+      "error": null,
+      "cars": [
+        "MGA Roadster"
+      ]
+    },
+    {
+      "slug": "MGB_(car)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "MGB Roadster",
+        "MGB GT"
+      ]
+    },
+    {
+      "slug": "Marcos_(car)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Marcos GT"
+      ]
+    },
+    {
+      "slug": "Maserati_Ghibli_(1966)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Maserati Ghibli"
+      ]
+    },
+    {
+      "slug": "Mazda_RX-7_(SA22C)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Mazda RX-7 SA22C"
+      ]
+    },
+    {
+      "slug": "Mini_Cooper_(BMW)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "MINI Cooper S R53"
+      ]
+    },
+    {
+      "slug": "Mustang_SVT_Cobra",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Ford Mustang SVT Cobra R"
+      ]
+    },
+    {
+      "slug": "Packard_Twelve",
+      "status": 200,
+      "title": "Packard Twelve",
+      "canonical": "Packard_Twelve",
+      "error": null,
+      "cars": [
+        "Packard Twelve"
+      ]
+    },
+    {
+      "slug": "Pontiac_GTO_(1964–1967)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Pontiac GTO 1st Gen"
+      ]
+    },
+    {
+      "slug": "Porsche_911_R",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Porsche 911 R"
+      ]
+    },
+    {
+      "slug": "SS_Cars",
+      "status": 200,
+      "title": "SS Cars",
+      "canonical": "SS_Cars",
+      "error": null,
+      "cars": [
+        "SS Jaguar 100"
+      ]
+    },
+    {
+      "slug": "Sunbeam_3_Litre",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Sunbeam 3 Litre"
+      ]
+    },
+    {
+      "slug": "TVR_Tuscan",
+      "status": 200,
+      "title": "TVR Tuscan",
+      "canonical": "TVR_Tuscan",
+      "error": null,
+      "cars": [
+        "TVR Tuscan Speed Six"
+      ]
+    },
+    {
+      "slug": "Talbot-Lago_T150",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Talbot-Lago T150SS"
+      ]
+    },
+    {
+      "slug": "Turner_(automobile)",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Turner Sports"
+      ]
+    },
+    {
+      "slug": "Westfield_Seven",
+      "status": 404,
+      "title": null,
+      "canonical": null,
+      "error": "HTTP Error 404: Not Found",
+      "cars": [
+        "Westfield SEight"
+      ]
+    }
+  ]
+}
