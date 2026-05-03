@@ -2054,4 +2054,10 @@ const WIKI_PAGES = {
   'Dodge Viper GTS':                 'Dodge_Viper',
   'Dodge Viper RT/10':               'Dodge_Viper_(SR_I)',
   'Dodge Viper SRT-10':              'Dodge_Viper_(SR_III)',
+  'Lamborghini Murcielago':          'Lamborghini_Murciélago',
+  'Matra Murena':                    'Matra_Murena',
+  'McLaren F1':                      'McLaren_F1',
+  'McLaren F1 GTR':                  'McLaren_F1_GTR',
+  'Seat Ibiza Cupra':                'SEAT_Ibiza',
+  'Subaru Impreza P1':               'Subaru_Impreza_WRX',
 };
