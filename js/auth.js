@@ -109,8 +109,7 @@ async function showAccountInfo() {
     refreshAccountRow();
     showSnack('✓ Name updated');
   } catch (err) {
-    console.error(err);
-    showSnack('⚠️ Could not update name');
+    showErr('Could not update name', err);
   }
 }
 

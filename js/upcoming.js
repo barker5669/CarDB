@@ -127,8 +127,7 @@ async function openAddUpcoming() {
     showSnack('📅 Event added!');
     await renderUpcoming();
   } catch (err) {
-    console.error('openAddUpcoming:', err);
-    showSnack('⚠️ Could not save event');
+    showErr('Could not save event', err);
   }
 }
 
@@ -137,8 +136,7 @@ async function toggleUpcomingRSVP(id, currentlyGoing) {
     await DB.upcoming.setAttending(id, !currentlyGoing);
     await renderUpcoming();
   } catch (err) {
-    console.error('toggleUpcomingRSVP:', err);
-    showSnack('⚠️ Could not update RSVP');
+    showErr('Could not update RSVP', err);
   }
 }
 
@@ -154,7 +152,6 @@ async function confirmDeleteUpcoming(id) {
     showSnack('Deleted');
     await renderUpcoming();
   } catch (err) {
-    console.error('confirmDeleteUpcoming:', err);
-    showSnack('⚠️ Could not delete');
+    showErr('Could not delete', err);
   }
 }

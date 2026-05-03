@@ -17,7 +17,7 @@ const MC_LOG_LABEL = { service:'🔧 Service', mod:'⚙️ Mod', drive:'🛣️ 
 async function _loadMyCars(force = false) {
   if (!force && _myCars) return _myCars;
   try { _myCars = await DB.myCars.list(); }
-  catch (err) { console.error('loadMyCars:', err); _myCars = []; showSnack('⚠️ Could not load your cars'); }
+  catch (err) { _myCars = []; showErr('Could not load your cars', err); }
   return _myCars;
 }
 
@@ -77,7 +77,7 @@ async function showMyCarDetail(carId) {
 
   let car;
   try { car = await DB.myCars.get(carId); }
-  catch (err) { console.error(err); showSnack('⚠️ Could not load car'); return; }
+  catch (err) { showErr('Could not load car', err); return; }
 
   let logEntries = [];
   try { logEntries = await DB.myCarLog.list(carId); }
@@ -176,8 +176,7 @@ async function openAddMyCar() {
     showSnack('🚗 Car added!');
     await renderMyCarsList();
   } catch (err) {
-    console.error('openAddMyCar:', err);
-    showSnack('⚠️ Could not save car');
+    showErr('Could not save car', err);
   }
 }
 
@@ -211,8 +210,7 @@ async function openEditMyCar(carId) {
     showSnack('Saved');
     await showMyCarDetail(carId);
   } catch (err) {
-    console.error('openEditMyCar:', err);
-    showSnack('⚠️ Could not save');
+    showErr('Could not save', err);
   }
 }
 
@@ -230,8 +228,7 @@ async function confirmDeleteMyCar(carId) {
     showSnack('Deleted');
     await renderMyCarsList();
   } catch (err) {
-    console.error('confirmDeleteMyCar:', err);
-    showSnack('⚠️ Could not delete');
+    showErr('Could not delete', err);
   }
 }
 
@@ -264,8 +261,7 @@ async function openAddMyCarLog() {
     showSnack('Logged');
     await showMyCarDetail(_myCarsActive);
   } catch (err) {
-    console.error('openAddMyCarLog:', err);
-    showSnack('⚠️ Could not save log entry');
+    showErr('Could not save log entry', err);
   }
 }
 
@@ -281,8 +277,7 @@ async function deleteMyCarLog(logId) {
     showSnack('Deleted');
     if (_myCarsActive) await showMyCarDetail(_myCarsActive);
   } catch (err) {
-    console.error('deleteMyCarLog:', err);
-    showSnack('⚠️ Could not delete');
+    showErr('Could not delete', err);
   }
 }
 
@@ -303,7 +298,6 @@ async function handleMyCarPhoto(e) {
     showSnack('📷 Photo saved!');
     await showMyCarDetail(_myCarsActive);
   } catch (err) {
-    console.error('handleMyCarPhoto:', err);
-    showSnack('⚠️ Photo upload failed — try again');
+    showErr('Photo upload failed', err);
   }
 }
