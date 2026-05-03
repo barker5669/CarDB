@@ -122,16 +122,20 @@ async function showMyCarDetail(carId) {
       <div class="mc-section">
         <div class="mc-section-hdr">Log (${logEntries.length})</div>
         ${logEntries.length
-          ? logEntries.map(e => `
-              <div class="mc-log-entry mc-log-${e.entry_kind}">
+          ? logEntries.map(e => {
+              const linked = (photos || []).find(p => p.log_entry_id === e.id);
+              const linkedUrl = linked ? DB.storage.publicUrl(linked.storage_path) : null;
+              return `<div class="mc-log-entry mc-log-${e.entry_kind}">
                 <div class="mc-log-row">
                   <span class="mc-log-kind">${MC_LOG_LABEL[e.entry_kind] || e.entry_kind}</span>
                   <span class="mc-log-date">${escapeHtml(e.entry_date || '')}</span>
                 </div>
                 <div class="mc-log-title">${escapeHtml(e.title)}</div>
                 ${e.body ? `<div class="mc-log-body">${escapeHtml(e.body)}</div>` : ''}
+                ${linkedUrl ? `<img class="mc-log-photo" src="${escapeAttr(linkedUrl)}" alt="" loading="lazy" onclick="openLightbox('${escapeJsSq(linkedUrl)}','${escapeJsSq(e.title)}')">` : ''}
                 <button class="mc-log-del" onclick="deleteMyCarLog(${e.id})" title="Delete entry">✕</button>
-              </div>`).join('')
+              </div>`;
+            }).join('')
           : `<div class="mc-section-empty">No entries yet.</div>`}
       </div>
 
@@ -232,48 +236,179 @@ async function confirmDeleteMyCar(carId) {
   }
 }
 
-async function openAddMyCarLog() {
-  if (!_myCarsActive) return;
-  const data = await openFormSheet({
-    title:       'New log entry',
-    submitLabel: 'Save entry',
-    fields: [
-      { id:'kind',  label:`Kind — ${MC_LOG_KINDS.join(' / ')}`, required:true, placeholder:'note' },
-      { id:'title', label:'Title', required:true, placeholder:'e.g. Annual service' },
-      { id:'date',  label:'Date',  type:'date' },
-      { id:'body',  label:'Notes', type:'textarea', placeholder:'Optional details' },
-    ],
-    initial: { kind: 'note', date: new Date().toISOString().slice(0, 10) },
+// ══════════════════════════════════════════════════════════════════════
+// Unified Add-Entry sheet — supports any log kind plus an optional photo.
+//
+// "📷 Add photo" is the same flow primed with kind='photo' and the just-
+// captured Blob; "＋ Log entry" is the same flow primed with kind='note'.
+// User can flip kinds, add or remove a photo, and edit anything before
+// hitting Save. Both flows produce one log entry plus (optionally) one
+// my_car_photos row linked to it via log_entry_id.
+// ══════════════════════════════════════════════════════════════════════
+
+let _mceState = null;  // { carId, blob, previewUrl }
+
+function openMyCarEntry(carId, opts = {}) {
+  const { presetKind = 'note', presetTitle = '', preBlob = null } = opts;
+  if (_mceState?.previewUrl) URL.revokeObjectURL(_mceState.previewUrl);
+  _mceState = {
+    carId,
+    blob:       preBlob,
+    previewUrl: preBlob ? URL.createObjectURL(preBlob) : null,
+  };
+  const kindsEl = document.getElementById('mce-kinds');
+  if (kindsEl) {
+    kindsEl.innerHTML = MC_LOG_KINDS.map(k =>
+      `<button class="bc-era-btn ${k === presetKind ? 'active' : ''}" type="button" onclick="setMyCarEntryKind('${k}')" data-kind="${escapeAttr(k)}">${escapeHtml(MC_LOG_LABEL[k] || k)}</button>`
+    ).join('');
+  }
+  const titleInput = document.getElementById('mce-title-input');
+  const dateInput  = document.getElementById('mce-date');
+  const bodyInput  = document.getElementById('mce-body');
+  if (titleInput) titleInput.value = presetTitle;
+  if (dateInput)  dateInput.value  = new Date().toISOString().slice(0, 10);
+  if (bodyInput)  bodyInput.value  = '';
+
+  const img     = document.getElementById('mce-photo-img');
+  const preview = document.getElementById('mce-photo-preview');
+  if (_mceState.previewUrl && img && preview) {
+    img.src = _mceState.previewUrl;
+    preview.style.display = '';
+  } else if (preview) {
+    preview.style.display = 'none';
+  }
+
+  const titleEl = document.getElementById('mce-sheet-title');
+  if (titleEl) titleEl.textContent = presetKind === 'photo' ? 'New Photo' : 'New Entry';
+
+  document.getElementById('my-car-entry-overlay')?.classList.add('open');
+  setTimeout(() => {
+    if (presetTitle) { titleInput?.focus(); titleInput?.select(); }
+    else titleInput?.focus();
+  }, 280);
+}
+
+function setMyCarEntryKind(kind) {
+  const kinds = document.getElementById('mce-kinds');
+  if (!kinds) return;
+  kinds.querySelectorAll('button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.kind === kind);
   });
-  if (!data) return;
-  if (!MC_LOG_KINDS.includes(data.kind)) {
-    showSnack(`Kind must be one of: ${MC_LOG_KINDS.join(', ')}`);
+}
+
+function _getMyCarEntryKind() {
+  return document.querySelector('#mce-kinds button.active')?.dataset.kind || 'note';
+}
+
+function closeMyCarEntry() {
+  if (_mceState?.previewUrl) URL.revokeObjectURL(_mceState.previewUrl);
+  _mceState = null;
+  document.getElementById('my-car-entry-overlay')?.classList.remove('open');
+}
+document.getElementById('my-car-entry-overlay')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('my-car-entry-overlay')) closeMyCarEntry();
+});
+
+function triggerMyCarEntryPhoto() {
+  document.getElementById('myCarEntryPhotoInput')?.click();
+}
+
+async function handleMyCarEntryPhoto(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file || !_mceState) return;
+  try {
+    const blob = await Photos.downscale(file);
+    if (_mceState.previewUrl) URL.revokeObjectURL(_mceState.previewUrl);
+    _mceState.blob       = blob;
+    _mceState.previewUrl = URL.createObjectURL(blob);
+    const img = document.getElementById('mce-photo-img');
+    const preview = document.getElementById('mce-photo-preview');
+    if (img)     img.src = _mceState.previewUrl;
+    if (preview) preview.style.display = '';
+  } catch (err) {
+    showErr('Could not process photo', err);
+  }
+}
+
+function clearMyCarEntryPhoto() {
+  if (_mceState?.previewUrl) URL.revokeObjectURL(_mceState.previewUrl);
+  if (_mceState) { _mceState.blob = null; _mceState.previewUrl = null; }
+  const preview = document.getElementById('mce-photo-preview');
+  const img     = document.getElementById('mce-photo-img');
+  if (preview) preview.style.display = 'none';
+  if (img) img.src = '';
+}
+
+async function saveMyCarEntry() {
+  if (!_mceState) return;
+  const carId = _mceState.carId;
+  const blob  = _mceState.blob;
+  const kind  = _getMyCarEntryKind();
+  const title = document.getElementById('mce-title-input').value.trim();
+  const date  = document.getElementById('mce-date').value || undefined;
+  const body  = document.getElementById('mce-body').value.trim() || null;
+  if (!title) {
+    showSnack('Add a title');
+    document.getElementById('mce-title-input')?.focus();
     return;
   }
+  if (!MC_LOG_KINDS.includes(kind)) { showSnack('Pick a kind'); return; }
+  showSnack('📤 Saving…');
   try {
-    await DB.myCarLog.create({
-      my_car_id:  _myCarsActive,
-      entry_kind: data.kind,
-      title:      data.title,
-      body:       data.body,
-      entry_date: data.date || undefined,
+    const entry = await DB.myCarLog.create({
+      my_car_id:  carId,
+      entry_kind: kind,
+      title,
+      body,
+      entry_date: date,
     });
-    showSnack('Logged');
-    await showMyCarDetail(_myCarsActive);
+    if (blob) {
+      const { path } = await DB.storage.uploadPhoto(blob, { kind: 'my-car-log' });
+      await DB.myCarPhotos.attach({
+        my_car_id:    carId,
+        log_entry_id: entry.id,
+        storage_path: path,
+      });
+    }
+    _myCars = null;
+    closeMyCarEntry();
+    showSnack('Saved');
+    if (_myCarsActive) await showMyCarDetail(_myCarsActive);
   } catch (err) {
-    showErr('Could not save log entry', err);
+    showErr('Could not save entry', err);
   }
+}
+
+async function openAddMyCarLog() {
+  if (!_myCarsActive) return;
+  openMyCarEntry(_myCarsActive, { presetKind: 'note' });
 }
 
 async function deleteMyCarLog(logId) {
   const ok = await confirmSheet({
     title:        'Delete this log entry?',
+    body:         'The photo attached to it (if any) will be removed too.',
     confirmLabel: 'Delete',
     danger:       true,
   });
   if (!ok) return;
   try {
+    // Best-effort: clean up any photo Storage objects linked to this
+    // entry first. The DB row's log_entry_id has on-delete-set-null,
+    // not cascade — without explicit removal the photo would be
+    // orphaned (unlinked but still in Storage and in my_car_photos).
+    const { data: photos } = await SB.from('my_car_photos')
+      .select('id, storage_path')
+      .eq('log_entry_id', logId);
+    for (const p of (photos || [])) {
+      try {
+        await SB.from('my_car_photos').delete().eq('id', p.id);
+        if (p.storage_path) await DB.storage.removePhoto(p.storage_path);
+      } catch (e) { console.warn('photo cleanup:', e); }
+    }
     await DB.myCarLog.remove(logId);
+    _myCars = null;
     showSnack('Deleted');
     if (_myCarsActive) await showMyCarDetail(_myCarsActive);
   } catch (err) {
@@ -281,6 +416,8 @@ async function deleteMyCarLog(logId) {
   }
 }
 
+// "📷 Add photo" — opens the camera, then routes the captured Blob into
+// the same entry sheet so the user can add a caption/notes.
 function triggerMyCarPhoto() {
   if (!_myCarsActive) return;
   document.getElementById('myCarPhotoInput')?.click();
@@ -290,14 +427,14 @@ async function handleMyCarPhoto(e) {
   const file = e.target.files[0];
   e.target.value = '';
   if (!file || !_myCarsActive) return;
-  showSnack('📤 Saving photo…');
   try {
-    const { path } = await Photos.captureAndUpload(file, { kind: 'my-car' });
-    await DB.myCarPhotos.attach({ my_car_id: _myCarsActive, log_entry_id: null, storage_path: path });
-    _myCars = null;
-    showSnack('📷 Photo saved!');
-    await showMyCarDetail(_myCarsActive);
+    const blob = await Photos.downscale(file);
+    openMyCarEntry(_myCarsActive, {
+      presetKind:  'photo',
+      presetTitle: 'Photo',
+      preBlob:     blob,
+    });
   } catch (err) {
-    showErr('Photo upload failed', err);
+    showErr('Could not process photo', err);
   }
 }

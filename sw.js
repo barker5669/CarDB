@@ -1,5 +1,5 @@
 // Car Bingo Service Worker v1
-const CACHE = 'carbingo-v40';
+const CACHE = 'carbingo-v41';
 const ASSETS = [
   '/',
   '/index.html',

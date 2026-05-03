@@ -453,7 +453,8 @@ async function renderPastEvents() {
     const me = currentUserId();
     events = (all || []).filter(e =>
       Array.isArray(e.event_attendees) &&
-      e.event_attendees.some(a => a.user_id === me)
+      e.event_attendees.some(a => a.user_id === me) &&
+      e.id !== S.eventId   // current show shows in the active card above; don't double-list
     );
   } catch (err) {
     console.warn('renderPastEvents:', err);
@@ -1011,17 +1012,42 @@ function evUnseenCardHTML(car) {
 
 async function quickAddSighting(car) {
   const key = cellKey(car.era, car.name);
+  const sightingPromise = Queue.sightingCreate({
+    event_id:   S.eventId,
+    car_name:   car.name,
+    car_era:    car.era,
+    car_make:   car.make,
+    car_rarity: car.rarity,
+    location:   S.loc || null,
+  });
+
+  // Photo-first flow: blob already waiting; no camera prompt needed.
+  if (_photoWaiting) {
+    closePicker();
+    let row;
+    try { row = await sightingPromise; }
+    catch (err) { showErr('Could not save sighting', err); return; }
+    const sp = currentSpotted();
+    if (!sp[key]) sp[key] = { event:S.event, loc:S.loc, ts:row.spotted_at, sightings:[] };
+    sp[key].sightings.push({ id:row.id, event:S.event, loc:S.loc, ts:row.spotted_at, photos:[] });
+    save(); renderEventList(); renderList(); buildEraTabs(); updateScore();
+    showSnack(`🎯 ${car.name} spotted!`);
+    checkBingo();
+    await attachWaitingPhoto(key);
+    return;
+  }
+
+  // No waiting photo — open the camera while the user gesture is fresh
+  // (iOS Safari rejects camInput.click() if it follows an `await`).
+  S.modalKey = key;
+  S.pendingSightingPromise = sightingPromise;
+  document.getElementById('camInput').click();
+  showSnack(`🎯 ${car.name} spotted!`);
+
   let row;
-  try {
-    row = await Queue.sightingCreate({
-      event_id:   S.eventId,
-      car_name:   car.name,
-      car_era:    car.era,
-      car_make:   car.make,
-      car_rarity: car.rarity,
-      location:   S.loc || null,
-    });
-  } catch (err) {
+  try { row = await sightingPromise; }
+  catch (err) {
+    S.pendingSightingPromise = null;
     showErr('Could not save sighting', err);
     return;
   }
@@ -1030,15 +1056,7 @@ async function quickAddSighting(car) {
   sp[key].sightings.push({ id:row.id, event:S.event, loc:S.loc, ts:row.spotted_at, photos:[] });
   save(); renderEventList(); renderList(); buildEraTabs(); updateScore();
   checkBingo();
-  showSnack(`🎯 ${car.name} spotted!`);
-  // Photo-first flow: a Blob is already waiting from the camera FAB.
-  if (_photoWaiting) {
-    closePicker();
-    await attachWaitingPhoto(key);
-    return;
-  }
-  S.modalKey = key; S.pendingSightingId = row.id;
-  document.getElementById('camInput').click();
+  S.pendingSightingId = row.id;
 }
 
 function openPicker() {
@@ -1074,12 +1092,31 @@ function renderPicker() {
       ${added?`<div class="picker-done"></div>`:`<button class="picker-add-btn" data-name="${c.name.replace(/"/g,'&quot;')}">+</button>`}
     </div>`;
   }).join('');
-  document.getElementById('picker-list').querySelectorAll('.picker-add-btn').forEach(btn => {
-    btn.addEventListener('click', e => { e.stopPropagation(); const car=CAR_DB.find(c=>c.name===btn.dataset.name); if(car){quickAddSighting(car);renderPicker();} });
-  });
-  document.getElementById('picker-list').querySelectorAll('.picker-row:not(.added)').forEach(el => {
-    el.addEventListener('click', e => { if(e.target.closest('.picker-add-btn'))return; const car=CAR_DB.find(c=>c.name===el.dataset.name); if(car){closePicker();openModal(car,`fil-${car.era}-${car.name}`);} });
-  });
+  // Delegated click — survives the renderPicker re-renders that fire
+  // on every keystroke in the search field.
+  const pickerList = document.getElementById('picker-list');
+  pickerList.onclick = (e) => {
+    const addBtn = e.target.closest('.picker-add-btn');
+    if (addBtn) {
+      e.stopPropagation();
+      const car = CAR_DB.find(c => c.name === addBtn.dataset.name);
+      if (car) { quickAddSighting(car); renderPicker(); }
+      return;
+    }
+    const row = e.target.closest('.picker-row:not(.added)');
+    if (!row) return;
+    const car = CAR_DB.find(c => c.name === row.dataset.name);
+    if (!car) return;
+    if (_photoWaiting) {
+      // Photo-first flow — attach the waiting photo directly. Don't
+      // open the modal (which would loop the user back through "I
+      // Spotted It" and re-prompt the camera).
+      quickAddSighting(car);
+      return;
+    }
+    closePicker();
+    openModal(car, `fil-${car.era}-${car.name}`);
+  };
 }
 
 // ══════════════════════════════════════════════
@@ -1330,17 +1367,28 @@ async function addSighting() {
   const car = S.modalCar;
   if (!key || !car) return;
   const eventIdForRow = (S.event === PERSONAL_EVENT) ? null : (S.eventId || null);
+
+  // iOS Safari throws away the user-gesture context across an `await`.
+  // If we wait for the DB insert before calling camInput.click(), the
+  // camera silently doesn't open on the second tap onwards. So we kick
+  // off the insert as a Promise, click the camera *synchronously*, and
+  // let handlePhoto await the same promise to learn the row id.
+  const sightingPromise = Queue.sightingCreate({
+    event_id:   eventIdForRow,
+    car_name:   car.name,
+    car_era:    car.era,
+    car_make:   car.make,
+    car_rarity: car.rarity,
+    location:   S.loc || null,
+  });
+  S.pendingSightingPromise = sightingPromise;
+  document.getElementById('camInput').click();
+  showSnack('🎯 Spotted! Opening camera…');
+
   let row;
-  try {
-    row = await Queue.sightingCreate({
-      event_id:   eventIdForRow,
-      car_name:   car.name,
-      car_era:    car.era,
-      car_make:   car.make,
-      car_rarity: car.rarity,
-      location:   S.loc || null,
-    });
-  } catch (err) {
+  try { row = await sightingPromise; }
+  catch (err) {
+    S.pendingSightingPromise = null;
     showErr('Could not save sighting', err);
     return;
   }
@@ -1349,9 +1397,7 @@ async function addSighting() {
   sp[key].sightings.push({ id:row.id, event:S.event, loc:S.loc, ts:row.spotted_at, photos:[] });
   save(); renderList(); buildEraTabs(); refreshModalSightings(); renderEventList();
   checkBingo();
-  showSnack('🎯 Spotted! Opening camera…');
   S.pendingSightingId = row.id;
-  document.getElementById('camInput').click();
 }
 
 async function deleteSighting(sgId) {
@@ -1375,11 +1421,23 @@ function triggerPhoto(sgId) { S.pendingSightingId = sgId; document.getElementByI
 
 async function handlePhoto(e) {
   const file = e.target.files[0];
-  const sgId = S.pendingSightingId;
-  S.pendingSightingId = null; e.target.value = '';
+  let   sgId = S.pendingSightingId;
+  const pendingPromise = S.pendingSightingPromise;
+  S.pendingSightingId = null;
+  S.pendingSightingPromise = null;
+  e.target.value = '';
   if (!file || !S.modalKey) { showSnack('✓ Sighting saved'); return; }
+
   showSnack('📤 Saving photo…');
   try {
+    // The camera was opened synchronously to preserve iOS gesture
+    // context, so the sighting row may still be in flight. Wait for it.
+    if (!sgId && pendingPromise) {
+      try {
+        const row = await pendingPromise;
+        sgId = row?.id || null;
+      } catch { /* swallowed; the sighting create surfaced its own error toast */ }
+    }
     const blob = await Photos.downscale(file);
     const sp   = currentSpotted();
     const data = sp[S.modalKey];
@@ -1387,7 +1445,6 @@ async function handlePhoto(e) {
     let sg = sgId ? data.sightings.find(s => String(s.id) === String(sgId)) : null;
     if (!sg) sg = data.sightings[data.sightings.length-1];
     if (!sg) throw new Error('No sighting to attach photo to');
-    // Queue handles online (upload + DB row) and offline (IDB blob + queue).
     const photo = await Queue.sightingPhotoAttach(blob, sg.id, { kind: 'sightings' });
     if (!sg.photos) sg.photos = [];
     sg.photos.push(photo);
@@ -1859,6 +1916,31 @@ function goToNewEvent() {
   setTimeout(() => openNewShowSheet(), 100);
 }
 
+// "End this show" — clears the current event from the running app. The
+// event row and all sightings stay in Supabase; user can resume from
+// Home → Previous Shows whenever.
+async function endCurrentShow() {
+  closeEventMenu();
+  if (!S.event) { showSnack('No active show'); return; }
+  const ok = await confirmSheet({
+    title:        `End "${S.event}"?`,
+    body:         "Your sightings stay saved. You can come back to it from Previous Shows on Home.",
+    confirmLabel: 'End show',
+  });
+  if (!ok) return;
+  S.event   = '';
+  S.eventId = null;
+  S.board   = null;
+  S.boardEras = null;
+  S.boardCarCount = null;
+  S.rolls   = 0;
+  S._fired  = {};
+  save();
+  _invalidateEventsCache();
+  showSnack('Show ended');
+  switchTab('home');
+}
+
 function openNewShowSheet() {
   const overlay = document.getElementById('new-show-overlay');
   if (!overlay) return;
@@ -1960,45 +2042,71 @@ function renderGarageAddPicker() {
     </div>`;
   }).join('');
 
-  document.getElementById('garage-add-list').querySelectorAll('.picker-add-btn').forEach(btn => {
-    btn.addEventListener('click', e => {
+  // Delegated — same reason as the main picker: re-renders on every
+  // keystroke, per-element handlers don't survive.
+  const gaList = document.getElementById('garage-add-list');
+  gaList.onclick = (e) => {
+    const addBtn = e.target.closest('.picker-add-btn');
+    if (addBtn) {
       e.stopPropagation();
-      const car = CAR_DB.find(c => c.name === btn.dataset.name);
+      const car = CAR_DB.find(c => c.name === addBtn.dataset.name);
       if (car) addCarToPersonalCollection(car);
-    });
-  });
-  // Tapping anywhere on a non-added row also adds — small + button is
-  // too easy to miss for FIL.
-  document.getElementById('garage-add-list').querySelectorAll('.picker-row:not(.added)').forEach(el => {
-    el.addEventListener('click', e => {
-      if (e.target.closest('.picker-add-btn')) return;  // let the + handler fire
-      const car = CAR_DB.find(c => c.name === el.dataset.name);
-      if (car) addCarToPersonalCollection(car);
-    });
-  });
-  // Tap row opens modal for cars already in collection
-  document.getElementById('garage-add-list').querySelectorAll('.picker-row.added').forEach(el => {
-    el.addEventListener('click', () => {
-      const car = CAR_DB.find(c => c.name === el.dataset.name);
+      return;
+    }
+    const addedRow = e.target.closest('.picker-row.added');
+    if (addedRow) {
+      const car = CAR_DB.find(c => c.name === addedRow.dataset.name);
       if (car) { closeGarageAdd(); openModal(car, `fil-${car.era}-${car.name}`); }
-    });
-  });
+      return;
+    }
+    const row = e.target.closest('.picker-row:not(.added)');
+    if (!row) return;
+    const car = CAR_DB.find(c => c.name === row.dataset.name);
+    if (car) addCarToPersonalCollection(car);
+  };
 }
 
 async function addCarToPersonalCollection(car) {
   const key = cellKey(car.era, car.name);
   const loc = document.getElementById('garage-add-loc').value.trim();
+  const sightingPromise = Queue.sightingCreate({
+    event_id:   null,
+    car_name:   car.name,
+    car_era:    car.era,
+    car_make:   car.make,
+    car_rarity: car.rarity,
+    location:   loc || null,
+  });
+
+  // Photo-first flow: blob already waiting from the camera FAB.
+  if (_photoWaiting) {
+    closeGarageAdd();
+    let row;
+    try { row = await sightingPromise; }
+    catch (err) { showErr('Could not add to collection', err); return; }
+    if (!S.spotted[PERSONAL_EVENT]) S.spotted[PERSONAL_EVENT] = {};
+    const sp = S.spotted[PERSONAL_EVENT];
+    if (!sp[key]) sp[key] = { event:PERSONAL_EVENT, loc, ts:row.spotted_at, sightings:[] };
+    sp[key].sightings.push({ id:row.id, event:PERSONAL_EVENT, loc, ts:row.spotted_at, photos:[] });
+    save(); renderGarageAddPicker(); renderGarage();
+    showSnack(`🚗 ${car.name} added!`);
+    await attachWaitingPhoto(key);
+    return;
+  }
+
+  // No waiting photo — fire the camera click synchronously while the
+  // user gesture is fresh, then resolve the DB row in parallel.
+  S.modalKey = key;
+  S._prevEvent = S.event;
+  S.event = PERSONAL_EVENT;
+  S.pendingSightingPromise = sightingPromise;
+  document.getElementById('camInput').click();
+  showSnack(`🚗 ${car.name} added!`);
+
   let row;
-  try {
-    row = await Queue.sightingCreate({
-      event_id:   null,
-      car_name:   car.name,
-      car_era:    car.era,
-      car_make:   car.make,
-      car_rarity: car.rarity,
-      location:   loc || null,
-    });
-  } catch (err) {
+  try { row = await sightingPromise; }
+  catch (err) {
+    S.pendingSightingPromise = null;
     showErr('Could not add to collection', err);
     return;
   }
@@ -2006,22 +2114,8 @@ async function addCarToPersonalCollection(car) {
   const sp = S.spotted[PERSONAL_EVENT];
   if (!sp[key]) sp[key] = { event:PERSONAL_EVENT, loc, ts:row.spotted_at, sightings:[] };
   sp[key].sightings.push({ id:row.id, event:PERSONAL_EVENT, loc, ts:row.spotted_at, photos:[] });
-  save();
-  renderGarageAddPicker();
-  renderGarage();
-  showSnack(`🚗 ${car.name} added to collection!`);
-  // Photo-first flow: attach the waiting photo and skip the camera prompt.
-  if (_photoWaiting) {
-    closeGarageAdd();
-    await attachWaitingPhoto(key);
-    return;
-  }
-  // Temporarily switch context to PERSONAL_EVENT so handlePhoto saves correctly
-  S.modalKey = key;
+  save(); renderGarageAddPicker(); renderGarage();
   S.pendingSightingId = row.id;
-  S._prevEvent = S.event;
-  S.event = PERSONAL_EVENT;
-  document.getElementById('camInput').click();
 }
 
 // ══════════════════════════════════════════════

@@ -383,6 +383,7 @@
     <div class="action-sheet-title">Change Show</div>
     <button class="action-btn" onclick="goToNewEvent()">＋ Start a New Show</button>
     <button class="action-btn" onclick="goToSwitchEvent()">▶ Continue Another Show</button>
+    <button class="action-btn action-btn-danger" onclick="endCurrentShow()">🏁 End This Show</button>
     <button class="action-btn action-btn-cancel" onclick="closeEventMenu()">Cancel</button>
   </div>
 </div>
@@ -449,6 +450,46 @@
     </div>
     <div class="form-action">
       <button class="primary-btn" type="button" onclick="startEvent()">🏁&nbsp; Start show</button>
+    </div>
+  </div>
+</div>
+
+<!-- MY CAR ENTRY SHEET (note + photo, or photo + note) -->
+<div class="sheet-overlay" id="my-car-entry-overlay">
+  <div class="picker-sheet form-sheet">
+    <div class="picker-handle"></div>
+    <div class="picker-hdr">
+      <h2 id="mce-sheet-title">New Entry</h2>
+      <button class="picker-cancel" type="button" onclick="closeMyCarEntry()">Cancel</button>
+    </div>
+    <div class="form-fields">
+      <div class="form-field-wrap">
+        <label>Kind</label>
+        <div class="bc-eras" id="mce-kinds"></div>
+      </div>
+      <div class="form-field-wrap">
+        <label for="mce-title-input">Title</label>
+        <input id="mce-title-input" type="text" placeholder="What happened?">
+      </div>
+      <div class="form-field-wrap">
+        <label for="mce-date">Date</label>
+        <input id="mce-date" type="date">
+      </div>
+      <div class="form-field-wrap">
+        <label for="mce-body">Notes</label>
+        <textarea id="mce-body" rows="3" placeholder="Optional details"></textarea>
+      </div>
+      <div class="form-field-wrap">
+        <label>Photo</label>
+        <div class="mce-photo-preview" id="mce-photo-preview" style="display:none">
+          <img id="mce-photo-img" alt="">
+          <button type="button" class="mce-photo-remove" onclick="clearMyCarEntryPhoto()">✕ Remove</button>
+        </div>
+        <button type="button" class="mce-photo-btn" onclick="triggerMyCarEntryPhoto()">📷 Add a photo</button>
+      </div>
+    </div>
+    <div class="form-action">
+      <button class="primary-btn" type="button" onclick="saveMyCarEntry()">Save</button>
     </div>
   </div>
 </div>
@@ -521,9 +562,10 @@
 <div class="queue-indicator"  id="queue-indicator"></div>
 <div class="bingo-toast" id="bingo-toast">🏆<br>BINGO!</div>
 <div class="snackbar" id="snackbar"></div>
-<input type="file" id="camInput"        accept="image/*" capture="environment" onchange="handlePhoto(event)">
-<input type="file" id="camInputFirst"   accept="image/*" capture="environment" onchange="handlePhotoFirst(event)">
-<input type="file" id="myCarPhotoInput" accept="image/*" capture="environment" onchange="handleMyCarPhoto(event)">
+<input type="file" id="camInput"             accept="image/*" capture="environment" onchange="handlePhoto(event)">
+<input type="file" id="camInputFirst"        accept="image/*" capture="environment" onchange="handlePhotoFirst(event)">
+<input type="file" id="myCarPhotoInput"      accept="image/*" capture="environment" onchange="handleMyCarPhoto(event)">
+<input type="file" id="myCarEntryPhotoInput" accept="image/*" capture="environment" onchange="handleMyCarEntryPhoto(event)">
 
 <script>
 if ('serviceWorker' in navigator) {
