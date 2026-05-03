@@ -14,6 +14,15 @@ const RARITY_LABELS = {common:'Common',rare:'Rare',epic:'Epic',legendary:'Legend
 //             tolerated only so a half-rolled-out client doesn't NPE)
 function photoUrl(p) { return p?.url || p?.dataUrl || null; }
 
+function escapeHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function escapeAttr(s) { return escapeHtml(s); }
+// Escape for embedding in a single-quoted JS string in onclick="..."
+function escapeJsSq(s) { return String(s ?? '').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
 // ══════════════════════════════════════════════
 // IMAGE CACHE — Wikipedia REST API + localStorage
 // ══════════════════════════════════════════════
@@ -82,7 +91,7 @@ async function preloadEraImages(cars) {
 //   S.spotted[eventName][carKey] = { sightings:[], ... }
 // ══════════════════════════════════════════════
 let S = {
-  event: '', loc: '', date: '',
+  event: '', eventId: null, loc: '', date: '',
   board: null,
   boardEras: null,
   boardCarCount: 12,
@@ -164,11 +173,13 @@ function strSeed(str) {
   for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
   return Math.abs(h) || 1;
 }
-function buildBoard(eventName, roll, eras, carCount) {
+// eventKey + userId fold into the seed so the same event yields a
+// different bingo card per user (e.g. you and FIL at the same show).
+function buildBoard(eventKey, userId, roll, eras, carCount) {
   eras     = eras     || S.boardEras     || ERAS;
   carCount = carCount || S.boardCarCount || 12;
   roll     = (roll !== undefined) ? roll : (S.rolls || 0);
-  const baseSeed = strSeed((eventName || 'default') + '-r' + roll);
+  const baseSeed = strSeed(`${eventKey || 'default'}::${userId || 'anon'}::r${roll}`);
   function quotaFor(n) {
     const leg  = 1;
     const epic = Math.max(1, Math.round(n * 0.17));
@@ -196,6 +207,27 @@ function buildBoard(eventName, roll, eras, carCount) {
     board[era] = seededShuffle(picks, seed + 12345);
   });
   return board;
+}
+
+// DB.boards.cars stores car names only ({ era: [name, ...] }) to avoid
+// duplicating the catalogue. Hydrate to full car objects on read,
+// dehydrate on write.
+function hydrateBoard(carsByEra) {
+  const out = {};
+  for (const era in (carsByEra || {})) {
+    out[era] = (carsByEra[era] || [])
+      .map(name => CAR_DB.find(c => c.name === name))
+      .filter(Boolean);
+  }
+  return out;
+}
+
+function dehydrateBoard(boardObj) {
+  const out = {};
+  for (const era in (boardObj || {})) {
+    out[era] = (boardObj[era] || []).map(c => c.name);
+  }
+  return out;
 }
 
 // ══════════════════════════════════════════════
@@ -242,12 +274,28 @@ function bcSetCount(val) {
 }
 
 // ══════════════════════════════════════════════
-// REROLL — keeps sightings
+// REROLL — keeps sightings, persists via DB.boards
 // ══════════════════════════════════════════════
-function rerollBoard() {
+async function rerollBoard() {
   if ((S.rolls || 0) >= 3) { showSnack('No rerolls left for this event'); return; }
-  S.rolls = (S.rolls || 0) + 1;
-  S.board = buildBoard(S.event, S.rolls, S.boardEras, S.boardCarCount);
+  const newRolls = (S.rolls || 0) + 1;
+  const newBoard = buildBoard(S.eventId || S.event, currentUserId(), newRolls, S.boardEras, S.boardCarCount);
+  if (S.eventId) {
+    try {
+      await DB.boards.upsert(S.eventId, {
+        cars:      dehydrateBoard(newBoard),
+        eras:      S.boardEras,
+        car_count: S.boardCarCount,
+        rolls:     newRolls,
+      });
+    } catch (err) {
+      console.error('rerollBoard:', err);
+      showSnack('⚠️ Reroll save failed — try again');
+      return;
+    }
+  }
+  S.rolls = newRolls;
+  S.board = newBoard;
   save();
   S.era = (S.boardEras||ERAS)[0];
   buildEraTabs(); renderList();
@@ -285,72 +333,147 @@ async function initSetup() {
       }
     });
   }
-  const localEvents = store.events ? Object.keys(store.events) : [];
-  let allEvents = [...localEvents];
-  // Cross-device event list will be re-introduced by the Phase-3 db
-  // layer; for now allEvents is just whatever is in this device's
-  // localStorage cache.
+  // Past events come from DB now (events I'm attending), not localStorage.
+  await renderPastEvents();
+}
+
+async function renderPastEvents() {
   const pastEl = document.getElementById('past-events');
   const listEl = document.getElementById('past-list');
-  if (allEvents.length && pastEl && listEl) {
-    pastEl.style.display = '';
-    listEl.innerHTML = allEvents.map(e => {
-      const evData = store.events && store.events[e];
-      const count = evData && evData.spotted ? Object.keys(evData.spotted).length : 
-                    (S.spotted[e] ? Object.keys(S.spotted[e]).length : 0);
-      const meta = [evData?.loc, evData?.date].filter(Boolean).join(' · ');
-      return `<button class="past-btn" onclick="resumeEvent('${e.replace(/'/g,"\\'")}')">
-        <span class="pb-icon">🏁</span>
-        <div class="pb-body">
-          <div class="pb-name">${e}</div>
-          ${meta ? `<div class="pb-meta">${meta}</div>` : ''}
-        </div>
-        ${count > 0 ? `<span style="background:var(--gold);color:var(--bg);font-size:0.68rem;font-weight:900;padding:2px 8px;border-radius:6px;flex-shrink:0">${count} spotted</span>` : ''}
-        <span class="pb-arrow">›</span>
-      </button>`;
-    }).join('');
+  if (!pastEl || !listEl) return;
+  let events = [];
+  try {
+    const all = await _eventsList();
+    const me = currentUserId();
+    events = (all || []).filter(e =>
+      Array.isArray(e.event_attendees) &&
+      e.event_attendees.some(a => a.user_id === me)
+    );
+  } catch (err) {
+    console.warn('renderPastEvents:', err);
+    pastEl.style.display = 'none';
+    return;
   }
+  if (!events.length) { pastEl.style.display = 'none'; return; }
+  pastEl.style.display = '';
+  // Sightings count still reads from localStorage until Phase 6.
+  const countFor = (name) => Object.keys(S.spotted[name] || {}).length;
+  const fmtDate = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return isNaN(d) ? iso : d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  };
+  listEl.innerHTML = events.map(e => {
+    const meta = [e.location, fmtDate(e.event_date)].filter(Boolean).join(' · ');
+    const count = countFor(e.name);
+    return `<button class="past-btn" onclick="resumeEvent('${escapeJsSq(e.name)}')">
+      <span class="pb-icon">🏁</span>
+      <div class="pb-body">
+        <div class="pb-name">${escapeHtml(e.name)}</div>
+        ${meta ? `<div class="pb-meta">${escapeHtml(meta)}</div>` : ''}
+      </div>
+      ${count > 0 ? `<span style="background:var(--gold);color:var(--bg);font-size:0.68rem;font-weight:900;padding:2px 8px;border-radius:6px;flex-shrink:0">${count} spotted</span>` : ''}
+      <span class="pb-arrow">›</span>
+    </button>`;
+  }).join('');
+}
+
+// Cache of recent DB events to avoid re-listing on every action.
+let _eventsCache = null;
+async function _eventsList() {
+  if (_eventsCache) return _eventsCache;
+  _eventsCache = await DB.events.list();
+  return _eventsCache;
+}
+function _invalidateEventsCache() { _eventsCache = null; }
+
+async function _findEventByName(name) {
+  const all = await _eventsList();
+  const lower = name.trim().toLowerCase();
+  return all.find(e => (e.name || '').toLowerCase() === lower) || null;
+}
+
+async function _findOrCreateEvent(name, location, dateISO) {
+  const existing = await _findEventByName(name);
+  if (existing) return existing;
+  const created = await DB.events.create({
+    name,
+    location:   location || null,
+    event_date: dateISO  || null,
+  });
+  _invalidateEventsCache();
+  return created;
+}
+
+// Loads the user's board for an event from DB; if none exists, generates
+// it deterministically and persists. Returns nothing — sets S.* directly.
+async function _loadOrCreateBoard(eventRow) {
+  const userId = currentUserId();
+  let row = await DB.boards.getMine(eventRow.id);
+  if (row) {
+    S.board         = hydrateBoard(row.cars);
+    S.boardEras     = row.eras;
+    S.boardCarCount = row.car_count;
+    S.rolls         = row.rolls;
+    return;
+  }
+  S.boardEras     = S.boardEras     || [...ERAS];
+  S.boardCarCount = S.boardCarCount || 12;
+  S.rolls         = 0;
+  S.board = buildBoard(eventRow.id, userId, 0, S.boardEras, S.boardCarCount);
+  await DB.boards.upsert(eventRow.id, {
+    cars:      dehydrateBoard(S.board),
+    eras:      S.boardEras,
+    car_count: S.boardCarCount,
+    rolls:     0,
+  });
 }
 
 async function resumeEvent(name) {
-  const data = loadEventData(name);
-  if (data) {
-    S.board = data.board; S.event = name; S.loc = data.loc||''; S.date = data.date||'';
-    S.rolls = data.rolls||0; S.boardEras = data.eras||[...ERAS]; S.boardCarCount = data.carCount||12;
-    if (data.spotted) S.spotted[name] = data.spotted;
-  } else {
-    S.event = name; S.spotted[name] = {}; S.rolls = 0;
-    S.boardEras = [...ERAS]; S.boardCarCount = 12;
-    S.board = buildBoard(name, 0, S.boardEras, S.boardCarCount);
+  try {
+    const eventRow = await _findEventByName(name);
+    if (!eventRow) { showSnack('Event not found'); return; }
+    S.event   = eventRow.name;
+    S.eventId = eventRow.id;
+    S.loc     = eventRow.location  || '';
+    S.date    = eventRow.event_date || '';
+    await DB.attendees.join(eventRow.id);  // idempotent
+    await _loadOrCreateBoard(eventRow);
+    if (!S.spotted[eventRow.name]) S.spotted[eventRow.name] = {};
+    S.era = (S.boardEras || ERAS)[0];
+    save();
+    launch();
+  } catch (err) {
+    console.error('resumeEvent:', err);
+    showSnack('⚠️ Could not load event — check connection');
   }
-  // Cross-device sighting hydration is handled by the Phase-3 db layer.
-  S.era = (S.boardEras || ERAS)[0];
-  launch();
 }
 
 async function startEvent() {
   const ev   = document.getElementById('ev-input').value.trim();
   const loc  = document.getElementById('loc-input').value.trim();
-  const date = document.getElementById('date-input').value;
+  const date = document.getElementById('date-input').value;  // "YYYY-MM-DD" or ""
   if (!ev) { document.getElementById('ev-input').focus(); return; }
-  S.event = ev; S.loc = loc;
-  S.date = date ? new Date(date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})
-                : new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
-  const existing = loadEventData(ev);
-  if (existing && existing.board) {
-    S.board = existing.board; S.rolls = existing.rolls||0;
-    S.boardEras = existing.eras||S.boardEras||[...ERAS];
-    S.boardCarCount = existing.carCount||S.boardCarCount||12;
-    if (existing.spotted) S.spotted[ev] = existing.spotted;
-    else if (!S.spotted[ev]) S.spotted[ev] = {};
-  } else {
-    S.spotted[ev] = {}; S.rolls = 0;
-    S.boardEras = S.boardEras||[...ERAS]; S.boardCarCount = S.boardCarCount||12;
-    S.board = buildBoard(ev, 0, S.boardEras, S.boardCarCount);
+
+  try {
+    const eventRow = await _findOrCreateEvent(ev, loc, date || null);
+    S.event   = eventRow.name;
+    S.eventId = eventRow.id;
+    S.loc     = eventRow.location || '';
+    S.date    = eventRow.event_date
+      ? new Date(eventRow.event_date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})
+      : '';
+    await DB.attendees.join(eventRow.id);
+    await _loadOrCreateBoard(eventRow);
+    if (!S.spotted[eventRow.name]) S.spotted[eventRow.name] = {};
+    S.era = (S.boardEras || ERAS)[0];
+    save();
+    _invalidateEventsCache();
+    launch();
+  } catch (err) {
+    console.error('startEvent:', err);
+    showSnack('⚠️ Could not start show — check connection');
   }
-  S.era = (S.boardEras || ERAS)[0];
-  save();
-  launch();
 }
 
 function launch() {
@@ -382,7 +505,7 @@ function switchTab(tab) {
   if (tab === 'bingo')    { updateBingoState(); }
   if (tab === 'event')    { buildEvFilters(); renderEventList(); }
   if (tab === 'garage')   { buildGarageFilters(); renderGarage(); }
-  if (tab === 'home')     { updateHomeCard(); }
+  if (tab === 'home')     { updateHomeCard(); renderPastEvents(); }
   if (tab === 'settings') { /* static */ }
 }
 
