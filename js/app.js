@@ -2056,7 +2056,17 @@ function renderGarageAddPicker() {
     const addedRow = e.target.closest('.picker-row.added');
     if (addedRow) {
       const car = CAR_DB.find(c => c.name === addedRow.dataset.name);
-      if (car) { closeGarageAdd(); openModal(car, `fil-${car.era}-${car.name}`); }
+      if (!car) return;
+      if (_photoWaiting) {
+        // Photo-first flow: even for a car already in the collection,
+        // tapping it should log another sighting + attach the photo.
+        // Without this branch the click went to openModal and the
+        // waiting photo just sat there unsaved.
+        addCarToPersonalCollection(car);
+      } else {
+        closeGarageAdd();
+        openModal(car, `fil-${car.era}-${car.name}`);
+      }
       return;
     }
     const row = e.target.closest('.picker-row:not(.added)');
