@@ -476,6 +476,7 @@ async function resumeEvent(name) {
     await _loadOrCreateBoard(eventRow);
     if (!S.spotted[eventRow.name]) S.spotted[eventRow.name] = {};
     S.era = (S.boardEras || ERAS)[0];
+    _resetBingoFiredForEvent();
     save();
     launch();
   } catch (err) {
@@ -502,6 +503,7 @@ async function startEvent() {
     await _loadOrCreateBoard(eventRow);
     if (!S.spotted[eventRow.name]) S.spotted[eventRow.name] = {};
     S.era = (S.boardEras || ERAS)[0];
+    _resetBingoFiredForEvent();
     save();
     _invalidateEventsCache();
     launch();
@@ -636,7 +638,7 @@ function buildEraTabs() {
 }
 
 function pickEra(era) {
-  S.era = era; bingoShown = false;
+  S.era = era;
   buildEraTabs(); renderList();
   const cars = S.board ? (S.board[era]||[]) : [];
   preloadEraImages(cars);
@@ -646,39 +648,44 @@ function renderList() {
   const list  = document.getElementById('car-list');
   const cars  = S.board ? (S.board[S.era]||[]) : [];
   const unique = [...new Map(cars.map(c=>[c.name,c])).values()];
-  const sp = currentSpotted();
-  const unspotted = unique.filter(c => !sp[cellKey(S.era, c.name)]);
-  const spotted   = unique.filter(c =>  sp[cellKey(S.era, c.name)]);
-  let html = '';
-  if (unspotted.length) {
-    html += `<div class="list-section-hdr">Still Looking For (${unspotted.length})</div>`;
-    html += unspotted.map(c => bingoCardHTML(c, S.era)).join('');
+  if (!unique.length) {
+    list.innerHTML = `<div class="bingo-empty">No cars on the board for ${escapeHtml(S.era)}.</div>`;
+    updateScore();
+    return;
   }
-  if (spotted.length) {
-    html += `<div class="list-section-hdr">Spotted ✓ (${spotted.length})</div>`;
-    html += spotted.map(c => bingoCardHTML(c, S.era)).join('');
-  }
-  list.innerHTML = html;
-  list.querySelectorAll('.car-card[data-name]').forEach(el => {
+  // 3-column grid renders as the "bingo card." Cells in original order
+  // so line detection (rows / cols / diagonals) stays meaningful.
+  const cells = unique.map((car, i) => bingoCellHTML(car, i)).join('');
+  list.innerHTML = `<div class="bingo-grid">${cells}</div>`;
+  list.querySelectorAll('.bingo-cell[data-name]').forEach(el => {
     const car = unique.find(c => c.name === el.dataset.name);
     if (car) el.addEventListener('click', () => openModal(car, cellKey(S.era, car.name)));
   });
   updateScore();
 }
 
-function bingoCardHTML(car, era) {
-  const key  = cellKey(era, car.name);
-  const sp   = currentSpotted();
-  const data = sp[key];
+function bingoCellHTML(car, idx) {
+  const key   = cellKey(S.era, car.name);
+  const sp    = currentSpotted();
+  const data  = sp[key];
   const count = data ? data.sightings.length : 0;
-  const imgSrc = imgCache[car.name];
+  const spotted = count > 0;
+  const isPending = (data?.sightings || []).some(s => String(s.id || '').startsWith('local-'));
   const sightingPhoto = photoUrl(data?.sightings?.find(sg => sg.photos?.length > 0)?.photos[0]);
-  const displaySrc = sightingPhoto || imgSrc;
-  const imgHTML = displaySrc ? `<img src="${displaySrc}" alt="${car.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : '';
-  return `<div class="car-card ${car.rarity}${count>0?' spotted':''}" data-name="${car.name.replace(/"/g,'&quot;')}">
-    <div class="car-img-wrap">${imgHTML}<div class="car-placeholder" style="${displaySrc?'display:none':''}">${car.flag}</div><div class="img-count">${count>0?'×'+count:''}</div></div>
-    <div class="car-info"><div><div class="car-name">${car.name}</div><div class="car-years">${car.years} · ${car.country}</div><div class="rarity-badge ${car.rarity}">${RARITY_LABELS[car.rarity]}</div></div></div>
-    <div class="car-arrow">${count>0?'✓':'›'}</div>
+  const wikiPic = imgCache[car.name];
+  const displaySrc = sightingPhoto || wikiPic;
+  const imgHTML = displaySrc
+    ? `<img src="${escapeAttr(displaySrc)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+    : '';
+  const stamp = spotted
+    ? `<div class="bingo-stamp">✓${count > 1 ? ` ×${count}` : ''}</div>`
+    : '';
+  const pendCls = isPending ? ' pending' : '';
+  const spotCls = spotted   ? ' spotted' : '';
+  return `<div class="bingo-cell ${car.rarity}${spotCls}${pendCls}" data-name="${escapeAttr(car.name)}" data-idx="${idx}">
+    <div class="bingo-cell-img">${imgHTML}<div class="bingo-cell-flag" style="${displaySrc?'display:none':''}">${car.flag}</div></div>
+    ${stamp}
+    <div class="bingo-cell-name">${escapeHtml(car.name)}</div>
   </div>`;
 }
 
@@ -1250,18 +1257,96 @@ function showSnack(msg) {
   clearTimeout(snackTimer);
   snackTimer = setTimeout(() => el.classList.remove('show'), 2600);
 }
-let bingoShown = false;
-function checkBingo() {
-  const eraBoard = S.board ? (S.board[S.era]||[]) : [];
-  const unique = [...new Map(eraBoard.map(c=>[c.name,c])).values()];
-  const sp = currentSpotted();
-  const spotted = unique.filter(c => sp[cellKey(S.era, c.name)]).length;
-  if (spotted >= 5 && !bingoShown) {
-    bingoShown = true;
-    const t = document.getElementById('bingo-toast');
-    t.classList.add('show');
-    setTimeout(() => { t.classList.remove('show'); bingoShown = false; }, 4000);
+// Bingo milestones — line (3 in a row/col/diag), era (every cell in
+// current era), board (every cell in every selected era).
+// Each milestone fires once per event session via S._fired.
+let bingoShown = false;  // legacy flag, kept for any external check
+
+function _detectLines(uniqueCars, spottedSet) {
+  const COLS = 3;
+  const ROWS = Math.ceil(uniqueCars.length / COLS);
+  const out  = [];
+  // Rows — only rows that have all 3 cells (never the partial last row)
+  for (let r = 0; r < ROWS; r++) {
+    const row = uniqueCars.slice(r * COLS, r * COLS + COLS);
+    if (row.length === COLS && row.every(c => spottedSet.has(c.name))) {
+      out.push({ kind: 'row', r });
+    }
   }
+  // Columns — only count if there are at least 3 cells in that column
+  for (let c = 0; c < COLS; c++) {
+    let allOk = true, cnt = 0;
+    for (let r = 0; r < ROWS; r++) {
+      const i = r * COLS + c;
+      if (i >= uniqueCars.length) break;
+      cnt++;
+      if (!spottedSet.has(uniqueCars[i].name)) { allOk = false; break; }
+    }
+    if (allOk && cnt >= 3) out.push({ kind: 'col', c });
+  }
+  // Diagonals — only on a 3×3 board
+  if (uniqueCars.length === 9) {
+    const has = (i) => spottedSet.has(uniqueCars[i].name);
+    if (has(0) && has(4) && has(8)) out.push({ kind: 'diag', i: 0 });
+    if (has(2) && has(4) && has(6)) out.push({ kind: 'diag', i: 1 });
+  }
+  return out;
+}
+
+function fireBingoToast(html, size = 'small') {
+  const t = document.getElementById('bingo-toast');
+  if (!t) return;
+  t.innerHTML = html;
+  t.className = `bingo-toast toast-${size} show`;
+  clearTimeout(t._tmr);
+  const ms = size === 'big' ? 5500 : (size === 'medium' ? 4000 : 3000);
+  t._tmr = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+function checkBingo() {
+  if (!S.board) return;
+  S._fired = S._fired || {};
+  const sp = currentSpotted();
+
+  // ─ Era / line state for the active era ────────────────────────────
+  const eraCars = [...new Map((S.board[S.era] || []).map(c => [c.name, c])).values()];
+  const eraSpotted = new Set(eraCars.filter(c => sp[cellKey(S.era, c.name)]).map(c => c.name));
+  const eraComplete = eraCars.length > 0 && eraSpotted.size === eraCars.length;
+  const lines = _detectLines(eraCars, eraSpotted);
+
+  // ─ Board state across all selected eras ──────────────────────────
+  const allEras = S.boardEras || ERAS;
+  const allComplete = allEras.length > 0 && allEras.every(era => {
+    const cars = [...new Map((S.board[era] || []).map(c => [c.name, c])).values()];
+    if (!cars.length) return false;
+    return cars.every(c => sp[cellKey(era, c.name)]);
+  });
+
+  // Fire highest-impact milestone first; lesser ones are subsumed.
+  const fk = `${S.event || ''}::${S.era}`;
+  if (allComplete && !S._fired.boardWin) {
+    S._fired.boardWin = true;
+    fireBingoToast('🏆<br>FULL BOARD!<br><span style="font-size:0.7em">Every era complete</span>', 'big');
+    return;
+  }
+  if (eraComplete && !S._fired[`era:${fk}`]) {
+    S._fired[`era:${fk}`] = true;
+    fireBingoToast(`🎉<br>${escapeHtml(S.era)} COMPLETE!`, 'medium');
+    return;
+  }
+  if (lines.length > 0 && !S._fired[`line:${fk}`]) {
+    S._fired[`line:${fk}`] = true;
+    bingoShown = true;
+    fireBingoToast('🎯<br>BINGO!<br><span style="font-size:0.7em">3 in a row</span>', 'small');
+    return;
+  }
+}
+
+function _resetBingoFiredForEvent() {
+  // Called when starting / resuming an event so milestones can fire
+  // again for the new session.
+  S._fired = {};
+  bingoShown = false;
 }
 
 // (Legacy supabase compat helpers removed; replaced by the per-user db

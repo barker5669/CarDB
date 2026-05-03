@@ -558,3 +558,32 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 .car-card.pending,.gcar.pending,.ev-seen-card.pending{position:relative}
 .car-card.pending::after,.gcar.pending::after,.ev-seen-card.pending::after{content:'syncing…';position:absolute;top:8px;right:8px;background:rgba(40,90,140,0.85);color:var(--ink);font-size:0.62rem;font-weight:800;padding:2px 7px;border-radius:8px;letter-spacing:0.4px;pointer-events:none}
 .s-thumb.pending{filter:saturate(0.5) brightness(0.85)}
+
+/* BINGO GRID — Phase 14 */
+.bingo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 12px calc(var(--sb) + 14px)}
+.bingo-cell{position:relative;background:var(--card);border:1px solid var(--bdr);border-radius:var(--R);overflow:hidden;cursor:pointer;display:flex;flex-direction:column;aspect-ratio:1/1.18;transition:transform 0.12s,box-shadow 0.18s;-webkit-appearance:none;appearance:none}
+.bingo-cell:active{transform:scale(0.96)}
+.bingo-cell::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.bingo-cell.common::before   {background:var(--common)}
+.bingo-cell.rare::before     {background:var(--rare)}
+.bingo-cell.epic::before     {background:var(--epic)}
+.bingo-cell.legendary::before{background:var(--legend)}
+.bingo-cell-img{flex:1;background:var(--bg2);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.bingo-cell-img img{width:100%;height:100%;object-fit:cover;display:block}
+.bingo-cell-flag{font-size:2.4rem;line-height:1;color:var(--dim2)}
+.bingo-cell-name{font-size:0.7rem;font-weight:700;color:var(--ink2);padding:5px 6px;line-height:1.2;text-align:center;background:var(--card);min-height:30px;display:flex;align-items:center;justify-content:center;text-overflow:ellipsis;overflow:hidden}
+.bingo-cell.spotted{box-shadow:0 0 0 2px var(--gold);border-color:var(--gold)}
+.bingo-cell.spotted .bingo-cell-img::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(0,0,0,0.4) 100%);pointer-events:none}
+.bingo-cell.spotted .bingo-cell-name{color:var(--gold)}
+.bingo-stamp{position:absolute;top:7px;right:7px;background:var(--gold);color:var(--bg);font-family:var(--fh);font-size:0.78rem;font-weight:900;padding:3px 8px;border-radius:6px;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(0,0,0,0.45);transform:rotate(8deg);z-index:2}
+.bingo-cell.pending{opacity:0.78}
+.bingo-cell.pending::after{content:'syncing…';position:absolute;top:7px;left:9px;background:rgba(40,90,140,0.85);color:var(--ink);font-size:0.6rem;font-weight:800;padding:2px 7px;border-radius:8px;letter-spacing:0.4px;z-index:2}
+.bingo-empty{padding:48px 24px;text-align:center;font-size:0.92rem;color:var(--dim);font-weight:600}
+
+/* Bingo toast sizes */
+.bingo-toast{display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.7);z-index:500;text-align:center;font-family:var(--fh);font-weight:900;color:var(--ink);text-shadow:0 4px 18px rgba(0,0,0,0.7);pointer-events:none;line-height:1.2}
+.bingo-toast.show{display:block;animation:bingoPop 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards}
+.bingo-toast.toast-small {font-size:3.2rem}
+.bingo-toast.toast-medium{font-size:4rem}
+.bingo-toast.toast-big   {font-size:5rem}
+@keyframes bingoPop{0%{transform:translate(-50%,-50%) scale(0.6);opacity:0}60%{transform:translate(-50%,-50%) scale(1.1);opacity:1}100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
