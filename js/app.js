@@ -323,10 +323,23 @@ async function initSetup() {
   await renderPastEvents();
 }
 
+function _renderPastEventsSkeleton() {
+  const listEl = document.getElementById('past-list');
+  if (!listEl) return;
+  listEl.innerHTML = `
+    <div class="past-skel"></div>
+    <div class="past-skel"></div>
+    <div class="past-skel"></div>`;
+}
+
 async function renderPastEvents() {
   const pastEl = document.getElementById('past-events');
   const listEl = document.getElementById('past-list');
+  const welcomeEl = document.getElementById('home-welcome');
   if (!pastEl || !listEl) return;
+  // Show skeletons immediately so the home isn't blank during fetch.
+  pastEl.style.display = '';
+  _renderPastEventsSkeleton();
   let events = [];
   try {
     const all = await _eventsList();
@@ -338,9 +351,16 @@ async function renderPastEvents() {
   } catch (err) {
     console.warn('renderPastEvents:', err);
     pastEl.style.display = 'none';
+    if (welcomeEl) welcomeEl.style.display = !S.event ? 'block' : 'none';
     return;
   }
-  if (!events.length) { pastEl.style.display = 'none'; return; }
+  if (!events.length) {
+    pastEl.style.display = 'none';
+    // Show welcome only when there's no active show either.
+    if (welcomeEl) welcomeEl.style.display = !S.event ? 'block' : 'none';
+    return;
+  }
+  if (welcomeEl) welcomeEl.style.display = 'none';
   pastEl.style.display = '';
   // Sightings count still reads from localStorage until Phase 6.
   const countFor = (name) => Object.keys(S.spotted[name] || {}).length;

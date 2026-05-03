@@ -609,3 +609,14 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 
 /* Bingo board config inside the new-show sheet */
 .ns-board-config{display:flex;flex-direction:column;gap:12px;background:var(--bg2);border:1.5px solid var(--bdr);border-radius:var(--R);padding:13px 14px}
+
+/* SKELETONS + WELCOME — Phase 16 */
+@keyframes skelShimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.past-skel{height:62px;border-radius:var(--R);background:linear-gradient(90deg,var(--card) 25%,var(--card2) 50%,var(--card) 75%);background-size:200% 100%;animation:skelShimmer 1.4s linear infinite;margin-bottom:8px;border:1px solid var(--bdr)}
+
+.welcome-card{background:linear-gradient(150deg,#1e3826,var(--bg2) 70%);border:1px solid var(--bdr);border-radius:var(--RL);padding:24px 20px 22px;text-align:center;margin:6px 0 10px}
+.welcome-emoji{font-size:2.6rem;line-height:1;margin-bottom:8px}
+.welcome-title{font-family:var(--fh);font-size:1.6rem;font-weight:900;color:var(--ink);margin-bottom:8px}
+.welcome-title em{font-style:italic;color:var(--gold)}
+.welcome-body{font-size:0.92rem;color:var(--ink2);font-weight:500;line-height:1.55}
+.welcome-body strong{color:var(--gold)}
