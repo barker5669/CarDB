@@ -189,65 +189,152 @@ function strSeed(str) {
   for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
   return Math.abs(h) || 1;
 }
+function _quotaFor(n) {
+  const leg  = 1;
+  const epic = Math.max(1, Math.round(n * 0.17));
+  const rare = Math.max(1, Math.round(n * 0.42));
+  const com  = Math.max(0, n - leg - epic - rare);
+  return { legendary: leg, epic, rare, common: com };
+}
+
+// Returns a single flat array of cars mixed across the selected eras.
 // eventKey + userId fold into the seed so the same event yields a
-// different bingo card per user (e.g. you and FIL at the same show).
-function buildBoard(eventKey, userId, roll, eras, carCount) {
-  eras     = eras     || S.boardEras     || ERAS;
-  carCount = carCount || S.boardCarCount || 12;
-  roll     = (roll !== undefined) ? roll : (S.rolls || 0);
+// different card per user (you and FIL get different boards).
+function buildBoard(eventKey, userId, roll, eras, totalCount) {
+  const defaults = (typeof loadBingoDefaults === 'function') ? loadBingoDefaults() : { eras: [...ERAS], carCount: 16 };
+  eras       = (eras && eras.length) ? eras : defaults.eras;
+  totalCount = totalCount || defaults.carCount;
+  roll       = (roll !== undefined) ? roll : (S.rolls || 0);
   const baseSeed = strSeed(`${eventKey || 'default'}::${userId || 'anon'}::r${roll}`);
-  function quotaFor(n) {
-    const leg  = 1;
-    const epic = Math.max(1, Math.round(n * 0.17));
-    const rare = Math.max(1, Math.round(n * 0.42));
-    const com  = Math.max(0, n - leg - epic - rare);
-    return { legendary: leg, epic, rare, common: com };
-  }
-  const board = {};
-  eras.forEach((era, ei) => {
-    const seed  = baseSeed + ei * 7919;
-    const quota = quotaFor(carCount);
-    const byR   = { legendary:[], epic:[], rare:[], common:[] };
-    CAR_DB.filter(c => c.era === era).forEach(c => { if (byR[c.rarity]) byR[c.rarity].push(c); });
-    const picks = [];
-    Object.entries(quota).forEach(([rarity, q]) => {
-      const pool = seededShuffle(byR[rarity], seed + rarity.length * 31);
-      for (let i = 0; i < q && i < pool.length; i++) picks.push(pool[i]);
-    });
-    const needed = carCount - picks.length;
-    if (needed > 0) {
-      const used = new Set(picks.map(c => c.name));
-      const filler = seededShuffle(CAR_DB.filter(c => c.era === era && !used.has(c.name)), seed + 99991).slice(0, needed);
-      picks.push(...filler);
-    }
-    board[era] = seededShuffle(picks, seed + 12345);
+
+  const quota = _quotaFor(totalCount);
+  const byR   = { legendary:[], epic:[], rare:[], common:[] };
+  CAR_DB.filter(c => eras.includes(c.era))
+        .forEach(c => { if (byR[c.rarity]) byR[c.rarity].push(c); });
+
+  const picks = [];
+  Object.entries(quota).forEach(([rarity, q]) => {
+    const pool = seededShuffle(byR[rarity], baseSeed + rarity.length * 31);
+    for (let i = 0; i < q && i < pool.length; i++) picks.push(pool[i]);
   });
-  return board;
+  // Fill any shortfall (small pools, or carCount > sum of quota).
+  if (picks.length < totalCount) {
+    const used = new Set(picks.map(c => c.name));
+    const filler = seededShuffle(
+      CAR_DB.filter(c => eras.includes(c.era) && !used.has(c.name)),
+      baseSeed + 99991
+    ).slice(0, totalCount - picks.length);
+    picks.push(...filler);
+  }
+  return seededShuffle(picks, baseSeed + 12345);
 }
 
-// DB.boards.cars stores car names only ({ era: [name, ...] }) to avoid
-// duplicating the catalogue. Hydrate to full car objects on read,
-// dehydrate on write.
-function hydrateBoard(carsByEra) {
-  const out = {};
-  for (const era in (carsByEra || {})) {
-    out[era] = (carsByEra[era] || [])
-      .map(name => CAR_DB.find(c => c.name === name))
-      .filter(Boolean);
+// DB.boards.cars stores car names only. New shape: flat ["name", ...].
+// Old shape: era-keyed { "Pre-War": ["name", ...] }. Hydrate handles both.
+function hydrateBoard(stored) {
+  if (Array.isArray(stored)) {
+    return stored.map(name => CAR_DB.find(c => c.name === name)).filter(Boolean);
+  }
+  const out = [];
+  for (const era in (stored || {})) {
+    for (const name of (stored[era] || [])) {
+      const car = CAR_DB.find(c => c.name === name);
+      if (car) out.push(car);
+    }
   }
   return out;
 }
 
-function dehydrateBoard(boardObj) {
-  const out = {};
-  for (const era in (boardObj || {})) {
-    out[era] = (boardObj[era] || []).map(c => c.name);
-  }
-  return out;
+function dehydrateBoard(boardArr) {
+  if (!Array.isArray(boardArr)) return [];
+  return boardArr.map(c => c.name);
 }
 
 // ══════════════════════════════════════════════
-// BOARD CONFIGURATOR
+// BINGO DEFAULTS — eras + cars-per-board
+// User-tunable via Settings → Bingo Card. Defaults are read once when
+// a new event is created; existing events keep their own settings.
+// ══════════════════════════════════════════════
+const BINGO_DEFAULTS_KEY = 'cb-bingo-defaults-v1';
+const BINGO_DEFAULTS_FALLBACK = { eras: ERAS.slice(), carCount: 16 };
+
+function loadBingoDefaults() {
+  try {
+    const raw = localStorage.getItem(BINGO_DEFAULTS_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
+    return {
+      eras: (Array.isArray(obj.eras) && obj.eras.length)
+        ? obj.eras.filter(e => ERAS.includes(e))
+        : ERAS.slice(),
+      carCount: Number.isInteger(obj.carCount) ? obj.carCount : BINGO_DEFAULTS_FALLBACK.carCount,
+    };
+  } catch { return { ...BINGO_DEFAULTS_FALLBACK, eras: BINGO_DEFAULTS_FALLBACK.eras.slice() }; }
+}
+
+function saveBingoDefaults(d) {
+  try { localStorage.setItem(BINGO_DEFAULTS_KEY, JSON.stringify(d)); } catch (e) { console.warn('saveBingoDefaults:', e); }
+  refreshBingoSettingsRow();
+}
+
+function refreshBingoSettingsRow() {
+  const sub = document.getElementById('sr-bingo-sub');
+  if (!sub) return;
+  const d = loadBingoDefaults();
+  const erasLbl = d.eras.length === ERAS.length ? 'All eras' : (d.eras.length + ' eras');
+  sub.textContent = `${erasLbl} · ${d.carCount} cars`;
+}
+
+function openBingoSettings() {
+  const overlay = document.getElementById('bingo-settings-overlay');
+  if (!overlay) return;
+  _renderBingoSettingsBody();
+  overlay.classList.add('open');
+}
+function closeBingoSettings() {
+  document.getElementById('bingo-settings-overlay')?.classList.remove('open');
+}
+document.getElementById('bingo-settings-overlay')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('bingo-settings-overlay')) closeBingoSettings();
+});
+
+function _renderBingoSettingsBody() {
+  const d = loadBingoDefaults();
+  const erasEl = document.getElementById('bs-eras');
+  if (erasEl) {
+    erasEl.innerHTML = ERAS.map(era =>
+      `<button class="bc-era-btn ${d.eras.includes(era) ? 'active' : ''}" type="button" onclick="bsToggleEra('${escapeJsSq(era)}')">${escapeHtml(era)}</button>`
+    ).join('');
+  }
+  const slider = document.getElementById('bs-slider');
+  const cntVal = document.getElementById('bs-count-val');
+  if (slider) {
+    slider.value = d.carCount;
+    slider.oninput = () => {
+      if (cntVal) cntVal.textContent = slider.value;
+      const cur = loadBingoDefaults();
+      cur.carCount = parseInt(slider.value, 10);
+      saveBingoDefaults(cur);
+    };
+  }
+  if (cntVal) cntVal.textContent = d.carCount;
+}
+
+function bsToggleEra(era) {
+  const d = loadBingoDefaults();
+  const idx = d.eras.indexOf(era);
+  if (idx === -1) {
+    d.eras.push(era);
+    d.eras.sort((a, b) => ERAS.indexOf(a) - ERAS.indexOf(b));
+  } else {
+    if (d.eras.length <= 1) return;  // must keep at least one era
+    d.eras.splice(idx, 1);
+  }
+  saveBingoDefaults(d);
+  _renderBingoSettingsBody();
+}
+
+// ══════════════════════════════════════════════
+// LEGACY board configurator (kept until verified unused)
 // ══════════════════════════════════════════════
 function renderBoardConfig() {
   const el = document.getElementById('board-config');
@@ -305,15 +392,14 @@ async function rerollBoard() {
         rolls:     newRolls,
       });
     } catch (err) {
-      console.error('rerollBoard:', err);
-      showSnack('⚠️ Reroll save failed — try again');
+      showErr('Reroll save failed', err);
       return;
     }
   }
   S.rolls = newRolls;
   S.board = newBoard;
+  S._fired = {};   // milestones reset for the new card
   save();
-  S.era = (S.boardEras||ERAS)[0];
   buildEraTabs(); renderList();
   showSnack(`🎲 New board! (${3 - S.rolls} reroll${3-S.rolls===1?'':'s'} remaining)`);
 }
@@ -323,7 +409,7 @@ async function rerollBoard() {
 // ══════════════════════════════════════════════
 async function initSetup() {
   document.getElementById('date-input').value = new Date().toISOString().slice(0,10);
-  renderBoardConfig();
+  refreshBingoSettingsRow();
   // DB is canonical for sightings + events. localStorage is a hot cache
   // populated by save() and reused on cold start until the hydrate fills.
   const store = loadStore();
@@ -477,13 +563,15 @@ async function _loadOrCreateBoard(eventRow) {
   let row = await DB.boards.getMine(eventRow.id);
   if (row) {
     S.board         = hydrateBoard(row.cars);
-    S.boardEras     = row.eras;
-    S.boardCarCount = row.car_count;
+    S.boardEras     = (Array.isArray(row.eras) && row.eras.length) ? row.eras : [...ERAS];
+    S.boardCarCount = row.car_count || (Array.isArray(S.board) ? S.board.length : 16);
     S.rolls         = row.rolls;
     return;
   }
-  S.boardEras     = S.boardEras     || [...ERAS];
-  S.boardCarCount = S.boardCarCount || 12;
+  // New event: read defaults the user set in Settings → Bingo Card.
+  const defaults = loadBingoDefaults();
+  S.boardEras     = defaults.eras;
+  S.boardCarCount = defaults.carCount;
   S.rolls         = 0;
   S.board = buildBoard(eventRow.id, userId, 0, S.boardEras, S.boardCarCount);
   await DB.boards.upsert(eventRow.id, {
@@ -505,7 +593,6 @@ async function resumeEvent(name) {
     await DB.attendees.join(eventRow.id);  // idempotent
     await _loadOrCreateBoard(eventRow);
     if (!S.spotted[eventRow.name]) S.spotted[eventRow.name] = {};
-    S.era = (S.boardEras || ERAS)[0];
     _resetBingoFiredForEvent();
     save();
     launch();
@@ -531,7 +618,6 @@ async function startEvent() {
     await DB.attendees.join(eventRow.id);
     await _loadOrCreateBoard(eventRow);
     if (!S.spotted[eventRow.name]) S.spotted[eventRow.name] = {};
-    S.era = (S.boardEras || ERAS)[0];
     _resetBingoFiredForEvent();
     save();
     _invalidateEventsCache();
@@ -547,14 +633,11 @@ function launch() {
   document.getElementById('s-auth')?.classList.remove('active');
   document.getElementById('s-app')?.classList.add('active');
   updateHomeCard();
-  // Update headers
   const bingoSub = document.getElementById('bingo-ev-sub');
   if (bingoSub) bingoSub.textContent = S.event || '';
   switchTab('bingo');
-  const currentEraCars = S.board && S.board[S.era] ? S.board[S.era] : [];
-  preloadEraImages(currentEraCars);
-  const otherEras = (S.boardEras || ERAS).filter(e => e !== S.era);
-
+  // Preload Wikipedia thumbs for the cars on the (now flat) board.
+  if (Array.isArray(S.board) && S.board.length) preloadEraImages(S.board);
 }
 
 // ══════════════════════════════════════════════
@@ -650,8 +733,11 @@ function showGoLive() {
 function cellKey(era, name) { return `fil-${era}-${name}`; }
 
 function buildEraTabs() {
+  // Header subtitle (event name · location · date)
   const ev = S.event + (S.loc ? ' · '+S.loc : '') + (S.date ? ' · '+S.date : '');
-  document.getElementById('bingo-ev-sub').textContent = ev;
+  const sub = document.getElementById('bingo-ev-sub');
+  if (sub) sub.textContent = ev;
+  // Reroll pill
   const rb = document.getElementById('reroll-btn');
   if (rb) {
     const left = 3 - (S.rolls || 0);
@@ -659,51 +745,36 @@ function buildEraTabs() {
     rb.title = left > 0 ? `Reroll board (${left} left)` : 'No rerolls remaining';
     rb.classList.toggle('exhausted', left <= 0);
   }
-  const activeEras = S.boardEras || ERAS;
-  const sp = currentSpotted();
-  document.getElementById('era-scroller').innerHTML = activeEras.map(era => {
-    const cars     = S.board ? (S.board[era]||[]) : [];
-    const unique   = [...new Map(cars.map(c=>[c.name,c])).values()];
-    const spotted  = unique.filter(c => sp[cellKey(era,c.name)]).length;
-    const isActive = era === S.era;
-    const isDone   = unique.length > 0 && spotted === unique.length;
-    const cls = ['era-tab'];
-    if (isActive) cls.push('active');
-    if (isDone)   cls.push('complete');
-    const label = isDone ? `${era} ✓` : era;
-    return `<div class="${cls.join(' ')}" onclick="pickEra('${escapeJsSq(era)}')">${escapeHtml(label)}<span class="era-count">${spotted}/${unique.length}</span></div>`;
-  }).join('');
-}
-
-function pickEra(era) {
-  S.era = era;
-  buildEraTabs(); renderList();
-  const cars = S.board ? (S.board[era]||[]) : [];
-  preloadEraImages(cars);
+  // Era scroller is hidden in the flat-card layout (cards mix eras).
+  // Cleared so any old content disappears on legacy data.
+  const eraScroller = document.getElementById('era-scroller');
+  if (eraScroller) { eraScroller.innerHTML = ''; eraScroller.style.display = 'none'; }
 }
 
 function renderList() {
-  const list  = document.getElementById('car-list');
-  const cars  = S.board ? (S.board[S.era]||[]) : [];
-  const unique = [...new Map(cars.map(c=>[c.name,c])).values()];
+  const list = document.getElementById('car-list');
+  if (!list) return;
+  const cars = Array.isArray(S.board) ? S.board : [];
+  const unique = [...new Map(cars.map(c => [c.name, c])).values()];
   if (!unique.length) {
-    list.innerHTML = `<div class="bingo-empty">No cars on the board for ${escapeHtml(S.era)}.</div>`;
+    list.innerHTML = `<div class="bingo-empty">No cars on this board yet.</div>`;
     updateScore();
     return;
   }
-  // 3-column grid renders as the "bingo card." Cells in original order
-  // so line detection (rows / cols / diagonals) stays meaningful.
+  // Flat 3-column grid mixing eras. Order is the buildBoard output so
+  // line detection (rows / cols / diagonals) stays meaningful.
   const cells = unique.map((car, i) => bingoCellHTML(car, i)).join('');
   list.innerHTML = `<div class="bingo-grid">${cells}</div>`;
   list.querySelectorAll('.bingo-cell[data-name]').forEach(el => {
     const car = unique.find(c => c.name === el.dataset.name);
-    if (car) el.addEventListener('click', () => openModal(car, cellKey(S.era, car.name)));
+    if (car) el.addEventListener('click', () => openModal(car, cellKey(car.era, car.name)));
   });
   updateScore();
 }
 
 function bingoCellHTML(car, idx) {
-  const key   = cellKey(S.era, car.name);
+  // Key uses car.era (board mixes eras now, so S.era is meaningless here).
+  const key   = cellKey(car.era, car.name);
   const sp    = currentSpotted();
   const data  = sp[key];
   const count = data ? data.sightings.length : 0;
@@ -721,17 +792,23 @@ function bingoCellHTML(car, idx) {
   const pendCls = isPending ? ' pending' : '';
   const spotCls = spotted   ? ' spotted' : '';
   return `<div class="bingo-cell ${car.rarity}${spotCls}${pendCls}" data-name="${escapeAttr(car.name)}" data-idx="${idx}">
-    <div class="bingo-cell-img">${imgHTML}<div class="bingo-cell-flag" style="${displaySrc?'display:none':''}">${car.flag}</div></div>
+    <div class="bingo-cell-img">
+      ${imgHTML}<div class="bingo-cell-flag" style="${displaySrc?'display:none':''}">${car.flag}</div>
+      <div class="bingo-cell-era">${escapeHtml(car.era)}</div>
+    </div>
     ${stamp}
     <div class="bingo-cell-name">${escapeHtml(car.name)}</div>
   </div>`;
 }
 
 function updateScore() {
+  const cars = Array.isArray(S.board) ? S.board : [];
+  const unique = [...new Map(cars.map(c => [c.name, c])).values()];
+  const total = unique.length;
   const sp = currentSpotted();
-  const total = Object.keys(sp).length;
-  const sightings = Object.values(sp).reduce((a,v) => a + (v.sightings?.length||0), 0);
-  document.getElementById('score-txt').textContent = `${total} cars · ${sightings} sightings`;
+  const spotted = unique.filter(c => sp[cellKey(c.era, c.name)]).length;
+  const el = document.getElementById('score-txt');
+  if (el) el.textContent = `${spotted} / ${total} spotted`;
 }
 
 // ══════════════════════════════════════════════
@@ -1354,34 +1431,18 @@ function fireBingoToast(html, size = 'small') {
 }
 
 function checkBingo() {
-  if (!S.board) return;
+  if (!Array.isArray(S.board)) return;
   S._fired = S._fired || {};
   const sp = currentSpotted();
+  const cars = S.board;
+  const spotted = new Set(cars.filter(c => sp[cellKey(c.era, c.name)]).map(c => c.name));
+  const allComplete = cars.length > 0 && spotted.size === cars.length;
+  const lines = _detectLines(cars, spotted);
 
-  // ─ Era / line state for the active era ────────────────────────────
-  const eraCars = [...new Map((S.board[S.era] || []).map(c => [c.name, c])).values()];
-  const eraSpotted = new Set(eraCars.filter(c => sp[cellKey(S.era, c.name)]).map(c => c.name));
-  const eraComplete = eraCars.length > 0 && eraSpotted.size === eraCars.length;
-  const lines = _detectLines(eraCars, eraSpotted);
-
-  // ─ Board state across all selected eras ──────────────────────────
-  const allEras = S.boardEras || ERAS;
-  const allComplete = allEras.length > 0 && allEras.every(era => {
-    const cars = [...new Map((S.board[era] || []).map(c => [c.name, c])).values()];
-    if (!cars.length) return false;
-    return cars.every(c => sp[cellKey(era, c.name)]);
-  });
-
-  // Fire highest-impact milestone first; lesser ones are subsumed.
-  const fk = `${S.event || ''}::${S.era}`;
+  const fk = `${S.event || ''}`;
   if (allComplete && !S._fired.boardWin) {
     S._fired.boardWin = true;
-    fireBingoToast('🏆<br>FULL BOARD!<br><span style="font-size:0.7em">Every era complete</span>', 'big');
-    return;
-  }
-  if (eraComplete && !S._fired[`era:${fk}`]) {
-    S._fired[`era:${fk}`] = true;
-    fireBingoToast(`🎉<br>${escapeHtml(S.era)} COMPLETE!`, 'medium');
+    fireBingoToast('🏆<br>FULL BOARD!<br><span style="font-size:0.7em">Every car spotted</span>', 'big');
     return;
   }
   if (lines.length > 0 && !S._fired[`line:${fk}`]) {
@@ -1665,9 +1726,13 @@ function openNewShowSheet() {
   if (!overlay) return;
   const di = document.getElementById('date-input');
   if (di && !di.value) di.value = new Date().toISOString().slice(0, 10);
-  renderBoardConfig();
+  // Clear any stale value in the inputs from a previous open.
+  const ev = document.getElementById('ev-input');
+  const lc = document.getElementById('loc-input');
+  if (ev) ev.value = '';
+  if (lc) lc.value = '';
   overlay.classList.add('open');
-  setTimeout(() => document.getElementById('ev-input')?.focus(), 280);
+  setTimeout(() => ev?.focus(), 280);
 }
 function closeNewShowSheet() {
   document.getElementById('new-show-overlay')?.classList.remove('open');

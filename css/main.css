@@ -592,3 +592,11 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 .welcome-title em{font-style:italic;color:var(--gold)}
 .welcome-body{font-size:0.92rem;color:var(--ink2);font-weight:500;line-height:1.55}
 .welcome-body strong{color:var(--gold)}
+
+/* Form hints inside sheets */
+.form-hint{font-size:0.82rem;color:var(--dim);font-weight:500;line-height:1.5;padding:6px 2px}
+.form-hint strong{color:var(--ink2);font-weight:700}
+
+/* Era badge on each bingo cell */
+.bingo-cell-img{position:relative}
+.bingo-cell-era{position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.65);color:var(--ink);font-size:0.6rem;font-weight:800;padding:2px 7px;border-radius:7px;letter-spacing:0.4px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:1}

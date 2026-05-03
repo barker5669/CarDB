@@ -292,6 +292,12 @@
         <div class="sr-body"><div class="sr-label">Sign Out</div><div class="sr-sub">You'll need a new sign-in link to return</div></div>
         <span class="sr-arrow">›</span>
       </button>
+      <div class="settings-group-lbl">Bingo</div>
+      <button class="settings-row" onclick="openBingoSettings()">
+        <span class="sr-icon">🎯</span>
+        <div class="sr-body"><div class="sr-label">Bingo Card</div><div class="sr-sub" id="sr-bingo-sub">All eras · 16 cars</div></div>
+        <span class="sr-arrow">›</span>
+      </button>
       <div class="settings-group-lbl">App</div>
       <button class="settings-row" onclick="showInstallInfo()">
         <span class="sr-icon">📲</span>
@@ -435,13 +441,36 @@
         <label for="date-input">Date</label>
         <input id="date-input" type="date">
       </div>
-      <div class="form-field-wrap">
-        <label>Bingo card</label>
-        <div id="board-config" class="ns-board-config"></div>
-      </div>
+      <div class="form-hint">Your bingo card builds itself from your <strong>Settings</strong> defaults — eras and card size.</div>
     </div>
     <div class="form-action">
       <button class="primary-btn" type="button" onclick="startEvent()">🏁&nbsp; Start show</button>
+    </div>
+  </div>
+</div>
+
+<!-- BINGO SETTINGS SHEET -->
+<div class="sheet-overlay" id="bingo-settings-overlay">
+  <div class="picker-sheet form-sheet">
+    <div class="picker-handle"></div>
+    <div class="picker-hdr">
+      <h2>Bingo Card</h2>
+      <button class="picker-cancel" type="button" onclick="closeBingoSettings()">Done</button>
+    </div>
+    <div class="form-fields">
+      <div class="form-field-wrap">
+        <label>Eras to mix in</label>
+        <div id="bs-eras" class="bc-eras"></div>
+      </div>
+      <div class="form-field-wrap">
+        <label>Cars per board: <strong id="bs-count-val">16</strong></label>
+        <div class="bc-slider-wrap">
+          <span class="bc-slider-lbl">6</span>
+          <input id="bs-slider" type="range" min="6" max="30" value="16" class="bc-slider">
+          <span class="bc-slider-lbl">30</span>
+        </div>
+      </div>
+      <div class="form-hint">These are <strong>defaults</strong> for new shows. Your existing shows keep the card you already started.</div>
     </div>
   </div>
 </div>
