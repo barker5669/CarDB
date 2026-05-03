@@ -4,8 +4,6 @@
 // ══════════════════════════════════════════════
 const STORAGE_KEY = 'ccb-fil-v7'; // v7: per-event sightings
 const ERAS = ['Pre-War','1950s','1960s','70s–80s','1990s'];
-function allMakes()     { return [...new Set(CAR_DB.map(c=>c.make))].sort(); }
-function allCountries() { return [...new Set(CAR_DB.map(c=>c.country))].sort(); }
 const RARITY_LABELS = {common:'Common',rare:'Rare',epic:'Epic',legendary:'Legendary'};
 
 // Photo entry shape:
@@ -162,10 +160,6 @@ function save() {
 
 function loadStore() {
   try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : {}; } catch(e) { return {}; }
-}
-function loadEventData(name) {
-  const store = loadStore();
-  return (store.events && store.events[name]) || null;
 }
 
 // ══════════════════════════════════════════════
@@ -642,7 +636,8 @@ function buildEraTabs() {
 }
 
 function pickEra(era) {
-  S.era = era; buildEraTabs(); renderList();
+  S.era = era; bingoShown = false;
+  buildEraTabs(); renderList();
   const cars = S.board ? (S.board[era]||[]) : [];
   preloadEraImages(cars);
 }
@@ -716,13 +711,6 @@ function pillSelect(id, options, current, onchangeFn, placeholder) {
 const EV_F = { era:'All', rarity:'All', make:'All', country:'All', showSeen:true, showUnseen:true };
 const G_F  = { era:'All', rarity:'All', make:'All', country:'All', event:'All', showSeen:true, showUnseen:true };
 let pickerEra = 'All';
-
-function boardCarNames() {
-  if (!S.board) return new Set();
-  const names = new Set();
-  ERAS.forEach(era => (S.board[era]||[]).forEach(c => names.add(c.name)));
-  return names;
-}
 
 function eventSpottedMap() {
   const map = {};
@@ -893,6 +881,7 @@ async function quickAddSighting(car) {
   if (!sp[key]) sp[key] = { event:S.event, loc:S.loc, ts:row.spotted_at, sightings:[] };
   sp[key].sightings.push({ id:row.id, event:S.event, loc:S.loc, ts:row.spotted_at, photos:[] });
   save(); renderEventList(); renderList(); buildEraTabs(); updateScore();
+  checkBingo();
   showSnack(`🎯 ${car.name} spotted!`);
   // Photo-first flow: a Blob is already waiting from the camera FAB.
   if (_photoWaiting) {
@@ -1035,10 +1024,10 @@ function garageCarHTML(car, entry, isSeen) {
   const sightingPhoto = photoUrl(Object.entries(merged).filter(([k])=>k===`fil-${car.era}-${car.name}`).flatMap(([,d])=>d.sightings||[]).find(sg=>sg.photos?.length>0)?.photos[0]);
   const imgSrc = sightingPhoto || imgCache[car.name];
   const key    = entry.firstKey;
-  const evList = [...new Set(entry.seenAt.map(s=>s.event))].join(', ');
+  const evList = [...new Set(entry.seenAt.map(s=>s.event))].map(escapeHtml).join(', ');
   const total  = entry.totalSightings;
-  return `<div class="gcar seen ${car.rarity}" data-name="${safeName}" data-key="${key}">
-    <div class="gcar-thumb">${imgSrc?`<img src="${imgSrc}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="gcar-ph" style="${imgSrc?'display:none':''}">${car.flag}</div><div class="gcar-badge">×${total}</div></div>
+  return `<div class="gcar seen ${car.rarity}" data-name="${safeName}" data-key="${escapeAttr(key)}">
+    <div class="gcar-thumb">${imgSrc?`<img src="${escapeAttr(imgSrc)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:''}<div class="gcar-ph" style="${imgSrc?'display:none':''}">${car.flag}</div><div class="gcar-badge">×${total}</div></div>
     <div class="gcar-info"><div class="gcar-name">${car.name}</div><div class="gcar-years">${car.years} · ${car.country}</div><div class="rarity-badge ${car.rarity}">${RARITY_LABELS[car.rarity]}</div><div class="gcar-evs" style="margin-top:4px">${evList}</div></div>
     <div class="gcar-arrow">›</div></div>`;
 }
@@ -1123,7 +1112,7 @@ function refreshModalSightings() {
       return `<img class="s-thumb" src="${src}" onclick="openLightbox('${safeSrc}','${safeEv} · ${safeTs}')">`;
     }).join('');
     return `<div class="sighting-entry">
-      <div class="sighting-top"><div class="sighting-meta"><div class="sighting-num">Sighting #${i+1}</div><div class="sighting-time">${sg.ts}</div><div class="sighting-ev">${sg.event}${sg.loc?' · '+sg.loc:''}</div></div><button class="sighting-del" onclick="deleteSighting('${sg.id}')">✕</button></div>
+      <div class="sighting-top"><div class="sighting-meta"><div class="sighting-num">Sighting #${i+1}</div><div class="sighting-time">${escapeHtml(sg.ts)}</div><div class="sighting-ev">${escapeHtml(sg.event)}${sg.loc?' · '+escapeHtml(sg.loc):''}</div></div><button class="sighting-del" onclick="deleteSighting('${escapeJsSq(sg.id)}')">✕</button></div>
       ${photosHTML?`<div class="sighting-photos">${photosHTML}</div>`:''}
       <button class="add-photo-btn" onclick="triggerPhoto('${sg.id}')">📷  Add a Photo</button>
     </div>`;
@@ -1191,6 +1180,7 @@ async function addSighting() {
   if (!sp[key]) sp[key] = { event:S.event, loc:S.loc, ts:row.spotted_at, sightings:[] };
   sp[key].sightings.push({ id:row.id, event:S.event, loc:S.loc, ts:row.spotted_at, photos:[] });
   save(); renderList(); buildEraTabs(); refreshModalSightings(); renderEventList();
+  checkBingo();
   showSnack('🎯 Spotted! Opening camera…');
   S.pendingSightingId = row.id;
   document.getElementById('camInput').click();

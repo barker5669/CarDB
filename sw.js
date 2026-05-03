@@ -1,8 +1,9 @@
 // Car Bingo Service Worker v1
-const CACHE = 'carbingo-v23';
+const CACHE = 'carbingo-v24';
 const ASSETS = [
   '/',
   '/index.html',
+  '/css/main.css',
   '/js/app.js',
   '/js/auth.js',
   '/js/cars.js',
