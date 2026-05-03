@@ -59,95 +59,42 @@
     <div class="page-hdr">
       <div class="page-hdr-text">
         <div class="page-hdr-title">Car <em style="font-style:italic;color:var(--gold)">Bingo</em></div>
-        <div class="page-hdr-sub">Classic Car Spotter</div>
+        <div class="page-hdr-sub" id="home-greeting">Classic Car Spotter</div>
       </div>
+      <button class="hdr-icon-btn" onclick="switchTab('settings')" title="Settings">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
     </div>
     <div class="home-scroll">
-      <div class="home-hero">
-        <div class="home-hero-row">
-          <div class="home-logo">🏎</div>
-          <div>
-            <div class="home-brand-title">Car <em>Bingo</em></div>
-            <div class="home-brand-sub">Classic Car Spotter</div>
-          </div>
-        </div>
-        <div class="home-tagline">Spot classic cars, build your collection, and track every show you attend.</div>
-        <button class="home-settings-link" onclick="switchTab('settings')">
-          <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          Settings
-        </button>
-      </div>
 
-      <!-- My Cars shortcut -->
-      <button class="home-shortcut" onclick="showMyCars()">
-        <span class="home-shortcut-icon">🏎️</span>
-        <div class="home-shortcut-body">
-          <div class="home-shortcut-name">My Cars</div>
-          <div class="home-shortcut-sub" id="home-mycars-sub">Photos, services, mods, drives</div>
-        </div>
-        <span class="home-shortcut-arrow">›</span>
-      </button>
-
-      <!-- Upcoming events shortcut -->
-      <button class="home-shortcut" onclick="showUpcoming()">
-        <span class="home-shortcut-icon">📅</span>
-        <div class="home-shortcut-body">
-          <div class="home-shortcut-name">Upcoming Events</div>
-          <div class="home-shortcut-sub">Shows you're planning to attend</div>
-        </div>
-        <span class="home-shortcut-arrow">›</span>
-      </button>
-
-      <!-- Active show (shown when S.event is set) -->
+      <!-- Active show card (only shown when there's a current event) -->
       <div id="home-active-show" style="display:none">
-        <div class="home-section-lbl">Your Current Show</div>
         <div class="show-active-card">
           <button class="show-active-btn" onclick="showGoLive()">
             <div class="sab-icon">🏁</div>
             <div class="sab-body">
+              <div class="sab-eyebrow">Your current show</div>
               <div class="sab-name" id="home-show-name">—</div>
               <div class="sab-meta" id="home-show-meta">Tap to continue spotting</div>
             </div>
             <div class="sab-badge" id="home-show-badge">0</div>
             <div class="sab-arrow">›</div>
           </button>
-          <div class="show-active-footer">
-            <button class="show-end-btn" onclick="goToNewEvent()">＋ Switch / New Show</button>
-          </div>
         </div>
       </div>
 
-      <!-- New show form -->
-      <div class="home-section-lbl" id="home-new-lbl">Start a New Show</div>
-      <div class="nsf-card">
-        <div class="nsf-section">
-          <span style="font-size:1.05rem">📋</span>
-          <span class="nsf-section-lbl">Show Details</span>
-        </div>
-        <div class="nsf-body">
-          <div class="form-field">
-            <label>Name of the show</label>
-            <input type="text" id="ev-input" placeholder="e.g. Tatton Park Classic" autocomplete="off" />
-          </div>
-          <div class="form-field">
-            <label>Location</label>
-            <input type="text" id="loc-input" placeholder="e.g. Cheshire" autocomplete="off" />
-          </div>
-          <div class="form-field">
-            <label>Date</label>
-            <input type="date" id="date-input" />
-          </div>
-        </div>
-        <div class="nsf-section" style="border-top:1px solid var(--bdr)">
-          <span style="font-size:1.05rem">🎯</span>
-          <span class="nsf-section-lbl">Bingo Board Settings</span>
-        </div>
-        <div class="nsf-body">
-          <div id="board-config"></div>
-        </div>
-        <div class="nsf-start-wrap">
-          <button class="primary-btn" onclick="startEvent()">🏁&nbsp; Start This Show</button>
-        </div>
+      <!-- Two-column shortcuts -->
+      <div class="home-shortcut-row">
+        <button class="home-tile" onclick="showMyCars()">
+          <span class="home-tile-icon">🏎️</span>
+          <span class="home-tile-name">My Cars</span>
+          <span class="home-tile-sub">Garage &amp; log</span>
+        </button>
+        <button class="home-tile" onclick="showUpcoming()">
+          <span class="home-tile-icon">📅</span>
+          <span class="home-tile-name">Upcoming</span>
+          <span class="home-tile-sub">Future shows</span>
+        </button>
       </div>
 
       <!-- Previous shows -->
@@ -156,8 +103,14 @@
         <div id="past-list"></div>
       </div>
 
+      <!-- Start a new show -->
+      <button class="home-start-btn" onclick="openNewShowSheet()">
+        <span class="home-start-icon">🏁</span>
+        <span class="home-start-text"><span class="home-start-title">Start a New Show</span><span class="home-start-sub">Build a fresh bingo card</span></span>
+        <span class="home-start-arrow">›</span>
+      </button>
+
     </div>
-    <!-- Home tab nav -->
     <nav class="bottom-nav" id="nav-home-bar"></nav>
   </div>
 
@@ -439,6 +392,38 @@
     </div>
     <div class="picker-era-row" id="garage-add-era-row"></div>
     <div class="picker-list" id="garage-add-list"></div>
+  </div>
+</div>
+
+<!-- NEW SHOW SHEET -->
+<div class="sheet-overlay" id="new-show-overlay">
+  <div class="picker-sheet form-sheet">
+    <div class="picker-handle"></div>
+    <div class="picker-hdr">
+      <h2>Start a new show</h2>
+      <button class="picker-cancel" type="button" onclick="closeNewShowSheet()">Cancel</button>
+    </div>
+    <div class="form-fields">
+      <div class="form-field-wrap">
+        <label for="ev-input">Show name</label>
+        <input id="ev-input" type="text" placeholder="e.g. Tatton Park Classic" autocomplete="off">
+      </div>
+      <div class="form-field-wrap">
+        <label for="loc-input">Location</label>
+        <input id="loc-input" type="text" placeholder="e.g. Cheshire" autocomplete="off">
+      </div>
+      <div class="form-field-wrap">
+        <label for="date-input">Date</label>
+        <input id="date-input" type="date">
+      </div>
+      <div class="form-field-wrap">
+        <label>Bingo card</label>
+        <div id="board-config" class="ns-board-config"></div>
+      </div>
+    </div>
+    <div class="form-action">
+      <button class="primary-btn" type="button" onclick="startEvent()">🏁&nbsp; Start show</button>
+    </div>
   </div>
 </div>
 

@@ -506,6 +506,7 @@ async function startEvent() {
     _resetBingoFiredForEvent();
     save();
     _invalidateEventsCache();
+    closeNewShowSheet();
     launch();
   } catch (err) {
     console.error('startEvent:', err);
@@ -587,9 +588,14 @@ function updateBingoState() {
 }
 
 function updateHomeCard() {
-  const activeDiv  = document.getElementById('home-active-show');
-  const newLbl     = document.getElementById('home-new-lbl');
+  const activeDiv = document.getElementById('home-active-show');
   if (!activeDiv) return;
+  // Friendly greeting in the header sub-line.
+  const greeting = document.getElementById('home-greeting');
+  if (greeting && typeof currentDisplayName === 'function') {
+    const name = currentDisplayName();
+    greeting.textContent = name ? `Hello, ${name}` : 'Classic Car Spotter';
+  }
   if (S.event) {
     activeDiv.style.display = 'block';
     const nameEl  = document.getElementById('home-show-name');
@@ -601,10 +607,8 @@ function updateHomeCard() {
       const count = Object.keys(currentSpotted()).length;
       badgeEl.textContent = count + ' spotted';
     }
-    if (newLbl) newLbl.textContent = 'Start a Different Show';
   } else {
     activeDiv.style.display = 'none';
-    if (newLbl) newLbl.textContent = 'Start a New Show';
   }
 }
 
@@ -1605,7 +1609,27 @@ function closeEventMenu() {
 document.getElementById('event-menu-overlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('event-menu-overlay')) closeEventMenu();
 });
-function goToNewEvent() { closeEventMenu(); switchTab('home'); }
+function goToNewEvent() {
+  closeEventMenu();
+  switchTab('home');
+  setTimeout(() => openNewShowSheet(), 100);
+}
+
+function openNewShowSheet() {
+  const overlay = document.getElementById('new-show-overlay');
+  if (!overlay) return;
+  const di = document.getElementById('date-input');
+  if (di && !di.value) di.value = new Date().toISOString().slice(0, 10);
+  renderBoardConfig();
+  overlay.classList.add('open');
+  setTimeout(() => document.getElementById('ev-input')?.focus(), 280);
+}
+function closeNewShowSheet() {
+  document.getElementById('new-show-overlay')?.classList.remove('open');
+}
+document.getElementById('new-show-overlay')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('new-show-overlay')) closeNewShowSheet();
+});
 function goToSwitchEvent() { 
   closeEventMenu(); 
   switchTab('home'); 
