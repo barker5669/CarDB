@@ -62,6 +62,19 @@ const DB = {
       return data;
     },
     async remove(id) {
+      // Best-effort: gather every photo path under this event before
+      // the cascade obliterates the sighting_photos rows, then remove
+      // the storage objects. The cascade is what makes the rows go
+      // away — Storage isn't FK'd into the DB.
+      try {
+        const { data } = await SB.from('sightings')
+          .select('id, sighting_photos(storage_path)')
+          .eq('event_id', id);
+        const paths = (data || [])
+          .flatMap(s => (s.sighting_photos || []).map(sp => sp.storage_path))
+          .filter(Boolean);
+        if (paths.length) await SB.storage.from('photos').remove(paths);
+      } catch (e) { console.warn('events.remove storage cleanup:', e); }
       const { error } = await SB.from('events').delete().eq('id', id);
       if (error) throw error;
     },
@@ -162,6 +175,14 @@ const DB = {
       return data;
     },
     async remove(id) {
+      // Cleanup attached photo objects before deleting the parent row.
+      try {
+        const { data } = await SB.from('sighting_photos')
+          .select('storage_path')
+          .eq('sighting_id', id);
+        const paths = (data || []).map(p => p.storage_path).filter(Boolean);
+        if (paths.length) await SB.storage.from('photos').remove(paths);
+      } catch (e) { console.warn('sightings.remove storage cleanup:', e); }
       const { error } = await SB.from('sightings').delete().eq('id', id);
       if (error) throw error;
     },
@@ -223,6 +244,14 @@ const DB = {
       return data;
     },
     async remove(id) {
+      // Cleanup all attached photos in Storage before cascade.
+      try {
+        const { data } = await SB.from('my_car_photos')
+          .select('storage_path')
+          .eq('my_car_id', id);
+        const paths = (data || []).map(p => p.storage_path).filter(Boolean);
+        if (paths.length) await SB.storage.from('photos').remove(paths);
+      } catch (e) { console.warn('myCars.remove storage cleanup:', e); }
       const { error } = await SB.from('my_cars').delete().eq('id', id);
       if (error) throw error;
     },

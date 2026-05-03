@@ -1148,10 +1148,7 @@ async function changeCount(delta) {
   }
   data.sightings.pop();
   if (!data.sightings.length) delete sp[S.modalKey];
-  // Best-effort cleanup of orphaned photo files in Storage.
-  for (const p of (last.photos || [])) {
-    if (p.path) DB.storage.removePhoto(p.path).catch(()=>{});
-  }
+  // (Storage cleanup is handled inside DB.sightings.remove.)
   save(); renderList(); buildEraTabs(); refreshModalSightings(); renderEventList();
   showSnack('Removed last sighting');
 }
@@ -1200,9 +1197,7 @@ async function deleteSighting(sgId) {
   }
   data.sightings = data.sightings.filter(s => String(s.id) !== String(sgId));
   if (!data.sightings.length) delete sp[S.modalKey];
-  for (const p of (sg.photos || [])) {
-    if (p.path) DB.storage.removePhoto(p.path).catch(()=>{});
-  }
+  // (Storage cleanup is handled inside DB.sightings.remove.)
   save(); renderList(); buildEraTabs(); refreshModalSightings(); renderEventList();
   showSnack('Sighting removed');
 }
