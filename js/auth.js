@@ -80,7 +80,13 @@ async function handleAuthSubmit(e) {
 // ─── Sign out ────────────────────────────────────────────────────────
 
 async function doSignOut() {
-  if (!confirm('Sign out of Car Bingo?')) return;
+  const ok = await confirmSheet({
+    title:        'Sign out of Car Bingo?',
+    body:         "You'll need a new sign-in link to come back.",
+    confirmLabel: 'Sign out',
+    danger:       true,
+  });
+  if (!ok) return;
   await sbSignOut();
   // onAuthChange will fire SIGNED_OUT and route back to the auth screen.
 }
@@ -88,18 +94,23 @@ async function doSignOut() {
 // ─── Settings: account row ───────────────────────────────────────────
 
 async function showAccountInfo() {
-  const newName = prompt('Your display name:', currentDisplayName());
-  if (newName === null) return;
-  const trimmed = newName.trim();
-  if (!trimmed) return;
+  const data = await openFormSheet({
+    title:       'Your account',
+    submitLabel: 'Save',
+    fields: [
+      { id:'display_name', label:'Display name', required:true, placeholder:'How others see you' },
+    ],
+    initial: { display_name: currentDisplayName() },
+  });
+  if (!data) return;
   try {
-    await sbUpdateDisplayName(trimmed);
-    if (CURRENT_PROFILE) CURRENT_PROFILE.display_name = trimmed;
+    await sbUpdateDisplayName(data.display_name);
+    if (CURRENT_PROFILE) CURRENT_PROFILE.display_name = data.display_name;
     refreshAccountRow();
-    if (typeof showSnack === 'function') showSnack('✓ Name updated');
+    showSnack('✓ Name updated');
   } catch (err) {
     console.error(err);
-    alert('Could not update name. Please try again.');
+    showSnack('⚠️ Could not update name');
   }
 }
 

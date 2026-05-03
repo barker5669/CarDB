@@ -99,17 +99,29 @@ async function renderUpcoming() {
 }
 
 async function openAddUpcoming() {
-  const name = prompt('Event name (e.g. "Goodwood Revival"):');
-  if (!name || !name.trim()) return;
-  const dateStr = prompt('Date (YYYY-MM-DD):');
-  if (!dateStr) return;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) { alert('Please use YYYY-MM-DD format.'); return; }
-  const location = prompt('Location (optional):',     '') || null;
-  const url      = prompt('Website URL (optional):',   '') || null;
-  const notes    = prompt('Notes (optional):',         '') || null;
+  const data = await openFormSheet({
+    title:       'Add an event',
+    submitLabel: 'Add event',
+    fields: [
+      { id:'name',     label:'Event name', required:true, placeholder:'e.g. Goodwood Revival' },
+      { id:'date',     label:'Date',       required:true, type:'date' },
+      { id:'location', label:'Location',   placeholder:'e.g. Chichester' },
+      { id:'url',      label:'Website',    type:'url',    placeholder:'https://…' },
+      { id:'notes',    label:'Notes',      type:'textarea', placeholder:'Optional' },
+    ],
+  });
+  if (!data) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date)) {
+    showSnack('Pick a valid date');
+    return;
+  }
   try {
     const row = await DB.upcoming.create({
-      name: name.trim(), event_date: dateStr, location, url, notes,
+      name:       data.name,
+      event_date: data.date,
+      location:   data.location,
+      url:        data.url,
+      notes:      data.notes,
     });
     await DB.upcoming.setAttending(row.id, true);
     showSnack('📅 Event added!');
@@ -131,7 +143,12 @@ async function toggleUpcomingRSVP(id, currentlyGoing) {
 }
 
 async function confirmDeleteUpcoming(id) {
-  if (!confirm('Delete this upcoming event?')) return;
+  const ok = await confirmSheet({
+    title:        'Delete this upcoming event?',
+    confirmLabel: 'Delete',
+    danger:       true,
+  });
+  if (!ok) return;
   try {
     await DB.upcoming.remove(id);
     showSnack('Deleted');

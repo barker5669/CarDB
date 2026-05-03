@@ -313,6 +313,26 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 .picker-add-btn:active{transform:scale(0.86)}
 .picker-done{width:9px;height:9px;border-radius:50%;background:var(--grn);flex-shrink:0;margin-right:4px}
 
+/* GENERIC FORM SHEET */
+.form-sheet{padding:0 18px 14px}
+.form-fields{display:flex;flex-direction:column;gap:12px;padding:6px 2px 18px;max-height:55vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.form-fields::-webkit-scrollbar{display:none}
+.form-field-wrap{display:flex;flex-direction:column;gap:5px}
+.form-field-wrap label{font-size:0.72rem;font-weight:800;color:var(--dim);letter-spacing:0.5px;text-transform:uppercase;padding:0 2px}
+.form-field-wrap input,
+.form-field-wrap textarea{width:100%;background:var(--bg2);border:1.5px solid var(--bdr);color:var(--ink);font-family:var(--ff);font-size:1rem;font-weight:600;padding:13px 15px;border-radius:var(--R);outline:none;-webkit-appearance:none;resize:vertical}
+.form-field-wrap input:focus,
+.form-field-wrap textarea:focus{border-color:var(--gold)}
+.form-field-wrap input::placeholder,
+.form-field-wrap textarea::placeholder{color:var(--dim2);font-weight:400}
+.form-field-wrap input.form-field-err,
+.form-field-wrap textarea.form-field-err{border-color:var(--red2)}
+.form-action{padding:6px 0 calc(var(--sb) + 6px)}
+
+/* CONFIRM SHEET */
+.confirm-body{font-size:0.92rem;color:var(--ink2);font-weight:500;line-height:1.55;text-align:center;padding:0 6px 12px}
+.confirm-ok-danger{background:var(--red);color:var(--ink)}
+
 /* UPCOMING EVENTS TAB */
 #s-upcoming{background:var(--bg)}
 .upcoming-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px calc(var(--sb) + 14px)}
@@ -970,6 +990,32 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
   </div>
 </div>
 
+<!-- GENERIC FORM SHEET -->
+<div class="sheet-overlay" id="form-overlay">
+  <div class="picker-sheet form-sheet">
+    <div class="picker-handle"></div>
+    <div class="picker-hdr">
+      <h2 id="form-title">Form</h2>
+      <button class="picker-cancel form-cancel" type="button">Cancel</button>
+    </div>
+    <div class="form-fields" id="form-fields"></div>
+    <div class="form-action">
+      <button class="primary-btn" id="form-submit-btn" type="button">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM SHEET -->
+<div class="sheet-overlay" id="confirm-overlay">
+  <div class="action-sheet">
+    <div class="picker-handle" style="margin-bottom:4px"></div>
+    <div class="action-sheet-title" id="confirm-title">Are you sure?</div>
+    <div class="confirm-body" id="confirm-body"></div>
+    <button class="action-btn" id="confirm-ok" type="button">Confirm</button>
+    <button class="action-btn action-btn-cancel confirm-cancel" type="button">Cancel</button>
+  </div>
+</div>
+
 <div class="bingo-toast" id="bingo-toast">🏆<br>BINGO!</div>
 <div class="snackbar" id="snackbar"></div>
 <input type="file" id="camInput"        accept="image/*" capture="environment" onchange="handlePhoto(event)">
@@ -987,6 +1033,7 @@ if ('serviceWorker' in navigator) {
 <script src="js/auth.js"></script>
 <script src="js/db.js"></script>
 <script src="js/photos.js"></script>
+<script src="js/forms.js"></script>
 <script src="js/mycars.js"></script>
 <script src="js/upcoming.js"></script>
 <script src="js/app.js"></script>

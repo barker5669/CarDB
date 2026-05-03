@@ -1721,15 +1721,19 @@ function exportData() {
   }
 }
 
-function confirmClearData() {
-  const confirmed = confirm('This will delete ALL events, sightings and photos. This cannot be undone.\n\nAre you sure?');
-  if (!confirmed) return;
-  const confirmed2 = confirm('Last chance — really delete everything?');
-  if (!confirmed2) return;
+async function confirmClearData() {
+  const ok = await confirmSheet({
+    title:        'Clear local cache?',
+    body:         "This empties this device's offline cache. Your data on the server is untouched and will reload next time you sign in.",
+    confirmLabel: 'Clear cache',
+    danger:       true,
+  });
+  if (!ok) return;
   localStorage.clear();
-  S.spotted = {};
-  S.event = '';
-  S.board = null;
-  showSnack('🗑️ All data cleared');
+  S.spotted  = {};
+  S.event    = '';
+  S.eventId  = null;
+  S.board    = null;
+  showSnack('🗑️ Local cache cleared');
   switchTab('home');
 }

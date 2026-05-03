@@ -142,17 +142,36 @@ async function showMyCarDetail(carId) {
     </div>`;
 }
 
+const _MC_CAR_FIELDS = [
+  { id:'name',  label:'Name',          required:true,  placeholder:"e.g. FIL's MGB" },
+  { id:'make',  label:'Make',          placeholder:'e.g. MG' },
+  { id:'model', label:'Model',         placeholder:'e.g. MGB' },
+  { id:'year',  label:'Year',          type:'number',  inputmode:'numeric', placeholder:'1972' },
+  { id:'reg',   label:'Registration',  placeholder:'Optional' },
+  { id:'notes', label:'Notes',         type:'textarea', placeholder:'Anything you want to remember' },
+];
+
+function _yearOrNull(s) {
+  const n = parseInt(s, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
 async function openAddMyCar() {
-  const name = prompt('Name (e.g. "FIL\'s MGB"):');
-  if (!name || !name.trim()) return;
-  const make    = prompt('Make (e.g. "MG"):',   '') || null;
-  const model   = prompt('Model (e.g. "MGB"):', '') || null;
-  const yearStr = prompt('Year (e.g. "1972"):', '') || null;
-  const year    = yearStr ? parseInt(yearStr, 10) : null;
-  const reg     = prompt('Registration (optional):', '') || null;
-  const notes   = prompt('Notes (optional):',         '') || null;
+  const data = await openFormSheet({
+    title:       'Add a car',
+    submitLabel: 'Add car',
+    fields:      _MC_CAR_FIELDS,
+  });
+  if (!data) return;
   try {
-    await DB.myCars.create({ name: name.trim(), make, model, year, registration: reg, notes });
+    await DB.myCars.create({
+      name:         data.name,
+      make:         data.make,
+      model:        data.model,
+      year:         _yearOrNull(data.year),
+      registration: data.reg,
+      notes:        data.notes,
+    });
     _myCars = null;
     showSnack('🚗 Car added!');
     await renderMyCarsList();
@@ -165,21 +184,28 @@ async function openAddMyCar() {
 async function openEditMyCar(carId) {
   const car = (_myCars || []).find(c => c.id === carId);
   if (!car) return;
-  const name = prompt('Name:', car.name);
-  if (name === null || !name.trim()) return;
-  const make    = prompt('Make:',         car.make         || '');
-  const model   = prompt('Model:',        car.model        || '');
-  const yearStr = prompt('Year:',         car.year ? String(car.year) : '');
-  const reg     = prompt('Registration:', car.registration || '');
-  const notes   = prompt('Notes:',        car.notes        || '');
+  const data = await openFormSheet({
+    title:       'Edit car',
+    submitLabel: 'Save',
+    fields:      _MC_CAR_FIELDS,
+    initial: {
+      name:  car.name,
+      make:  car.make  || '',
+      model: car.model || '',
+      year:  car.year ? String(car.year) : '',
+      reg:   car.registration || '',
+      notes: car.notes || '',
+    },
+  });
+  if (!data) return;
   try {
     await DB.myCars.update(carId, {
-      name: name.trim(),
-      make:         make    || null,
-      model:        model   || null,
-      year:         yearStr ? parseInt(yearStr, 10) : null,
-      registration: reg     || null,
-      notes:        notes   || null,
+      name:         data.name,
+      make:         data.make,
+      model:        data.model,
+      year:         _yearOrNull(data.year),
+      registration: data.reg,
+      notes:        data.notes,
     });
     _myCars = null;
     showSnack('Saved');
@@ -191,7 +217,13 @@ async function openEditMyCar(carId) {
 }
 
 async function confirmDeleteMyCar(carId) {
-  if (!confirm('Delete this car and all its photos and log entries?')) return;
+  const ok = await confirmSheet({
+    title:        'Delete this car?',
+    body:         'All photos and log entries for it will be deleted too.',
+    confirmLabel: 'Delete',
+    danger:       true,
+  });
+  if (!ok) return;
   try {
     await DB.myCars.remove(carId);
     _myCars = null;
@@ -205,21 +237,29 @@ async function confirmDeleteMyCar(carId) {
 
 async function openAddMyCarLog() {
   if (!_myCarsActive) return;
-  const kind = prompt(`Kind — one of: ${MC_LOG_KINDS.join(', ')}`, 'note');
-  if (kind === null) return;
-  if (!MC_LOG_KINDS.includes(kind)) {
-    alert(`Use one of: ${MC_LOG_KINDS.join(', ')}`);
+  const data = await openFormSheet({
+    title:       'New log entry',
+    submitLabel: 'Save entry',
+    fields: [
+      { id:'kind',  label:`Kind — ${MC_LOG_KINDS.join(' / ')}`, required:true, placeholder:'note' },
+      { id:'title', label:'Title', required:true, placeholder:'e.g. Annual service' },
+      { id:'date',  label:'Date',  type:'date' },
+      { id:'body',  label:'Notes', type:'textarea', placeholder:'Optional details' },
+    ],
+    initial: { kind: 'note', date: new Date().toISOString().slice(0, 10) },
+  });
+  if (!data) return;
+  if (!MC_LOG_KINDS.includes(data.kind)) {
+    showSnack(`Kind must be one of: ${MC_LOG_KINDS.join(', ')}`);
     return;
   }
-  const title = prompt('Title:');
-  if (!title || !title.trim()) return;
-  const body = prompt('Notes (optional):', '') || null;
   try {
     await DB.myCarLog.create({
       my_car_id:  _myCarsActive,
-      entry_kind: kind,
-      title:      title.trim(),
-      body,
+      entry_kind: data.kind,
+      title:      data.title,
+      body:       data.body,
+      entry_date: data.date || undefined,
     });
     showSnack('Logged');
     await showMyCarDetail(_myCarsActive);
@@ -230,7 +270,12 @@ async function openAddMyCarLog() {
 }
 
 async function deleteMyCarLog(logId) {
-  if (!confirm('Delete this log entry?')) return;
+  const ok = await confirmSheet({
+    title:        'Delete this log entry?',
+    confirmLabel: 'Delete',
+    danger:       true,
+  });
+  if (!ok) return;
   try {
     await DB.myCarLog.remove(logId);
     showSnack('Deleted');
