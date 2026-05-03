@@ -313,6 +313,36 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 .picker-add-btn:active{transform:scale(0.86)}
 .picker-done{width:9px;height:9px;border-radius:50%;background:var(--grn);flex-shrink:0;margin-right:4px}
 
+/* UPCOMING EVENTS TAB */
+#s-upcoming{background:var(--bg)}
+.upcoming-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px calc(var(--sb) + 14px)}
+.upcoming-scroll::-webkit-scrollbar{display:none}
+.up-empty{text-align:center;padding:48px 24px}
+.up-empty-icon{font-size:3.5rem;margin-bottom:14px}
+.up-empty h3{font-family:var(--fh);font-size:1.5rem;font-weight:900;color:var(--ink);margin-bottom:8px}
+.up-empty p{font-size:0.92rem;color:var(--dim);margin-bottom:18px;line-height:1.55}
+.up-error{padding:18px;background:rgba(180,48,36,0.08);border:1px solid rgba(180,48,36,0.3);border-radius:var(--R);color:#f06858;font-weight:700;text-align:center}
+.up-month{margin-bottom:16px}
+.up-month-hdr{font-size:0.7rem;font-weight:800;letter-spacing:3px;color:var(--gold);text-transform:uppercase;padding:0 2px 9px}
+.up-row{display:flex;align-items:stretch;background:var(--card);border:1px solid var(--bdr);border-radius:var(--R);margin-bottom:8px;overflow:hidden}
+.up-date{width:64px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0;background:var(--bg2);border-right:1px solid var(--bdr)}
+.up-date-d{font-family:var(--fh);font-size:1.6rem;font-weight:900;color:var(--gold);line-height:1}
+.up-date-w{font-size:0.7rem;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1.5px;margin-top:2px}
+.up-info{flex:1;padding:10px 14px;min-width:0;display:flex;flex-direction:column;gap:3px;justify-content:center}
+.up-name{font-size:1rem;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.up-loc{font-size:0.82rem;color:var(--ink2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.up-link{font-size:0.78rem;color:var(--goldl);font-weight:600;text-decoration:none;width:fit-content}
+.up-link:active{opacity:0.7}
+.up-notes{font-size:0.82rem;color:var(--dim);font-weight:500;line-height:1.4;margin-top:2px}
+.up-others{font-size:0.74rem;color:var(--dim);font-weight:600;font-style:italic}
+.up-actions{display:flex;flex-direction:column;justify-content:center;align-items:flex-end;gap:6px;padding:10px 12px;flex-shrink:0}
+.up-rsvp{background:var(--card2);border:1px solid var(--bdr2);color:var(--dim);font-family:var(--ff);font-size:0.78rem;font-weight:800;padding:7px 12px;border-radius:18px;cursor:pointer;-webkit-appearance:none;white-space:nowrap}
+.up-rsvp:active{opacity:0.7}
+.up-rsvp-on{background:var(--grn);border-color:var(--grn);color:var(--ink)}
+.up-del{background:transparent;border:none;color:var(--dim2);font-size:0.85rem;cursor:pointer;-webkit-appearance:none;padding:4px 8px;border-radius:6px}
+.up-del:active{color:var(--red2);background:rgba(180,48,36,0.15)}
+.up-add-wrap{margin-top:14px}
+
 /* MY CARS TAB */
 #s-mycars{background:var(--bg)}
 .mycars-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px calc(var(--sb) + 14px)}
@@ -586,6 +616,16 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
         <span class="home-shortcut-arrow">›</span>
       </button>
 
+      <!-- Upcoming events shortcut -->
+      <button class="home-shortcut" onclick="showUpcoming()">
+        <span class="home-shortcut-icon">📅</span>
+        <div class="home-shortcut-body">
+          <div class="home-shortcut-name">Upcoming Events</div>
+          <div class="home-shortcut-sub">Shows you're planning to attend</div>
+        </div>
+        <span class="home-shortcut-arrow">›</span>
+      </button>
+
       <!-- Active show (shown when S.event is set) -->
       <div id="home-active-show" style="display:none">
         <div class="home-section-lbl">Your Current Show</div>
@@ -767,6 +807,21 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
     <nav class="bottom-nav" id="nav-garage-bar"></nav>
   </div>
 
+  <!-- UPCOMING EVENTS TAB -->
+  <div class="screen" id="s-upcoming">
+    <div class="page-hdr">
+      <button class="hdr-icon-btn" onclick="switchTab('home')" title="Back to Home">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="page-hdr-text">
+        <div class="page-hdr-title">Upcoming</div>
+      </div>
+      <button class="hdr-cta-btn" onclick="openAddUpcoming()">＋ Add</button>
+    </div>
+    <div class="upcoming-scroll" id="upcoming-body"></div>
+    <nav class="bottom-nav" id="nav-upcoming-bar"></nav>
+  </div>
+
   <!-- MY CARS TAB -->
   <div class="screen" id="s-mycars">
     <div class="page-hdr">
@@ -933,6 +988,7 @@ if ('serviceWorker' in navigator) {
 <script src="js/db.js"></script>
 <script src="js/photos.js"></script>
 <script src="js/mycars.js"></script>
+<script src="js/upcoming.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
