@@ -102,10 +102,20 @@ let S = {
   spotted: {},
 };
 
+// PERSONAL_EVENT is declared later but the const is in the module scope —
+// safe to reference from a function called at user-interaction time.
 function currentSpotted() {
-  if (!S.event) return {};
-  if (!S.spotted[S.event]) S.spotted[S.event] = {};
-  return S.spotted[S.event];
+  const ev = S.event || PERSONAL_EVENT;
+  if (!S.spotted[ev]) S.spotted[ev] = {};
+  return S.spotted[ev];
+}
+
+// Surfaces the actual error message from Supabase (not just a vague
+// "Could not save"). Logs full err to console for proper inspection.
+function showErr(prefix, err) {
+  console.error(prefix, err);
+  const detail = err?.message || err?.error_description || err?.hint || (typeof err === 'string' ? err : 'Unknown error');
+  showSnack(`⚠️ ${prefix}: ${detail}`);
 }
 
 function allSpotted() {
@@ -500,8 +510,7 @@ async function resumeEvent(name) {
     save();
     launch();
   } catch (err) {
-    console.error('resumeEvent:', err);
-    showSnack('⚠️ Could not load event — check connection');
+    showErr('Could not load event', err);
   }
 }
 
@@ -529,8 +538,7 @@ async function startEvent() {
     closeNewShowSheet();
     launch();
   } catch (err) {
-    console.error('startEvent:', err);
-    showSnack('⚠️ Could not start show — check connection');
+    showErr('Could not start show', err);
   }
 }
 
@@ -910,8 +918,7 @@ async function quickAddSighting(car) {
       location:   S.loc || null,
     });
   } catch (err) {
-    console.error('quickAddSighting:', err);
-    showSnack('⚠️ Could not save sighting');
+    showErr('Could not save sighting', err);
     return;
   }
   const sp = currentSpotted();
@@ -1197,8 +1204,7 @@ async function changeCount(delta) {
   const last = data.sightings[data.sightings.length - 1];
   try { await Queue.sightingDelete(last.id); }
   catch (err) {
-    console.error('changeCount(-):', err);
-    showSnack('⚠️ Could not remove sighting');
+    showErr('Could not remove sighting', err);
     return;
   }
   data.sightings.pop();
@@ -1224,8 +1230,7 @@ async function addSighting() {
       location:   S.loc || null,
     });
   } catch (err) {
-    console.error('addSighting:', err);
-    showSnack('⚠️ Could not save sighting');
+    showErr('Could not save sighting', err);
     return;
   }
   const sp = currentSpotted();
@@ -1246,8 +1251,7 @@ async function deleteSighting(sgId) {
   if (!sg) return;
   try { await Queue.sightingDelete(sg.id); }
   catch (err) {
-    console.error('deleteSighting:', err);
-    showSnack('⚠️ Could not delete sighting');
+    showErr('Could not delete sighting', err);
     return;
   }
   data.sightings = data.sightings.filter(s => String(s.id) !== String(sgId));
@@ -1279,8 +1283,7 @@ async function handlePhoto(e) {
     save(); refreshModalSightings(); renderList(); renderEventList();
     showSnack(photo._pending ? '📷 Photo saved (will sync when online)' : '📷 Photo saved!');
   } catch (err) {
-    console.error('handlePhoto:', err);
-    showSnack('⚠️ Could not process photo');
+    showErr('Photo upload failed', err);
   } finally {
     if (S._prevEvent !== undefined) { S.event = S._prevEvent; S._prevEvent = undefined; }
   }
@@ -1573,8 +1576,7 @@ async function attachWaitingPhoto(key) {
     renderList(); renderEventList(); renderGarage();
     showSnack(photo._pending ? '📷 Photo saved (will sync when online)' : '📷 Photo attached!');
   } catch (err) {
-    console.error('attachWaitingPhoto:', err);
-    showSnack('⚠️ Could not save photo');
+    showErr('Could not save photo', err);
   }
 }
 
@@ -1762,6 +1764,15 @@ function renderGarageAddPicker() {
       if (car) addCarToPersonalCollection(car);
     });
   });
+  // Tapping anywhere on a non-added row also adds — small + button is
+  // too easy to miss for FIL.
+  document.getElementById('garage-add-list').querySelectorAll('.picker-row:not(.added)').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.closest('.picker-add-btn')) return;  // let the + handler fire
+      const car = CAR_DB.find(c => c.name === el.dataset.name);
+      if (car) addCarToPersonalCollection(car);
+    });
+  });
   // Tap row opens modal for cars already in collection
   document.getElementById('garage-add-list').querySelectorAll('.picker-row.added').forEach(el => {
     el.addEventListener('click', () => {
@@ -1785,8 +1796,7 @@ async function addCarToPersonalCollection(car) {
       location:   loc || null,
     });
   } catch (err) {
-    console.error('addCarToPersonalCollection:', err);
-    showSnack('⚠️ Could not save');
+    showErr('Could not add to collection', err);
     return;
   }
   if (!S.spotted[PERSONAL_EVENT]) S.spotted[PERSONAL_EVENT] = {};
