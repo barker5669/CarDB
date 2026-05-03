@@ -22,14 +22,26 @@ function saveImgCache() {
 }
 Object.assign(imgCache, loadImgCache());
 
-// Uses Wikipedia REST summary API — returns a real thumbnail.source CDN URL.
-// Much more reliable than pageimages API; ~95% of articles have a thumbnail here.
+// Hybrid image fetcher:
+//   • If WIKI_PAGES value starts with 'http' → use it directly (Wikimedia Commons, etc.)
+//   • Otherwise → treat as Wikipedia article slug and hit the REST summary API
+//   • Falls back to auto-slugging the car name if no entry exists
+//   • Results cached in localStorage so each device only fetches once
 async function fetchWikiImg(carName) {
   if (imgCache[carName] !== undefined) return imgCache[carName];
-  const page = WIKI_PAGES[carName];
-  if (!page) { imgCache[carName] = null; return null; }
+
+  const mapped = WIKI_PAGES[carName] || carName.replace(/ /g, '_');
+
+  // Direct URL — bypass API entirely
+  if (mapped.startsWith('http')) {
+    imgCache[carName] = mapped;
+    saveImgCache();
+    return mapped;
+  }
+
+  // Wikipedia REST summary — returns a guaranteed CDN thumbnail for ~95% of articles
   try {
-    const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(page)}`;
+    const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(mapped)}`;
     const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
     if (!r.ok) throw new Error(r.status);
     const data = await r.json();
