@@ -39,22 +39,27 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 .screen{display:none;flex-direction:column;height:100%;overflow:hidden}
 .screen.active{display:flex}
 
-/* PIN */
-#s-pin{background:radial-gradient(ellipse at 50% 35%,#1e3826,var(--bg) 68%);align-items:center;justify-content:center;gap:18px;padding:40px 28px calc(var(--sb) + 24px)}
-.pin-emblem{font-size:4rem;line-height:1}
-.pin-title{font-family:var(--fh);font-size:2.4rem;font-weight:900;color:var(--ink)}
-.pin-title em{font-style:italic;color:var(--gold)}
-.pin-hint{font-size:0.95rem;font-weight:600;color:var(--dim)}
-.pin-dots{display:flex;gap:18px}
-.pin-dot{width:15px;height:15px;border-radius:50%;border:2px solid var(--bdr2);transition:background 0.15s}
-.pin-dot.filled{background:var(--gold);border-color:var(--gold)}
-.pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:276px}
-.pin-key{background:var(--card);border:1px solid var(--bdr);border-radius:var(--R);color:var(--ink);font-family:var(--fh);font-size:1.65rem;font-weight:700;height:62px;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-appearance:none}
-.pin-key:active{background:var(--card2);transform:scale(0.93)}
-.pin-key.pin-del{font-family:var(--ff);font-size:1.2rem;color:var(--dim)}
-.pin-key.pin-zero{grid-column:2}
-.pin-error{font-size:0.88rem;font-weight:700;color:#ff8080;min-height:20px}
-@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+/* AUTH */
+#s-auth{background:radial-gradient(ellipse at 50% 35%,#1e3826,var(--bg) 68%);align-items:center;justify-content:center;gap:18px;padding:40px 28px calc(var(--sb) + 24px);text-align:center}
+.auth-emblem{font-size:4rem;line-height:1}
+.auth-title{font-family:var(--fh);font-size:2.4rem;font-weight:900;color:var(--ink)}
+.auth-title em{font-style:italic;color:var(--gold)}
+.auth-view{width:100%;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.auth-hint{font-size:1rem;font-weight:700;color:var(--ink2)}
+.auth-sub{font-size:0.88rem;font-weight:500;color:var(--dim);line-height:1.5}
+.auth-sub-soft{color:var(--dim2)}
+.auth-sub strong{color:var(--ink)}
+.auth-form{width:100%;display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.auth-input{width:100%;background:var(--bg2);border:1.5px solid var(--bdr);color:var(--ink);font-family:var(--ff);font-size:1.05rem;font-weight:600;padding:15px 16px;border-radius:var(--R);outline:none;-webkit-appearance:none;text-align:center}
+.auth-input:focus{border-color:var(--gold)}
+.auth-input::placeholder{color:var(--dim2);font-weight:400}
+.auth-submit-btn{width:100%;background:var(--red);border:none;color:var(--ink);font-family:var(--ff);font-size:1.05rem;font-weight:800;padding:16px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none;display:flex;align-items:center;justify-content:center;gap:8px}
+.auth-submit-btn:active{opacity:0.85;transform:scale(0.98)}
+.auth-submit-btn:disabled{opacity:0.55;cursor:not-allowed}
+.auth-error{font-size:0.86rem;font-weight:700;color:#ff8080;min-height:20px}
+.auth-big-emoji{font-size:3.5rem;line-height:1;margin-bottom:4px}
+.auth-back-btn{background:transparent;border:1px solid var(--bdr);color:var(--dim);font-family:var(--ff);font-size:0.86rem;font-weight:700;padding:10px 18px;border-radius:20px;cursor:pointer;-webkit-appearance:none;margin-top:8px}
+.auth-back-btn:active{opacity:0.7}
 
 /* NAV — 5 tabs */
 .bottom-nav{height:var(--nav-h);background:var(--bg2);border-top:1px solid var(--bdr);display:flex;align-items:flex-start;padding-top:7px;flex-shrink:0;z-index:50}
@@ -449,29 +454,39 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 </head>
 <body>
 
-<!-- PIN GATE -->
-<div class="screen active" id="s-pin">
-  <div class="pin-emblem">🏎</div>
-  <div class="pin-title">Car <em>Bingo</em></div>
-  <div class="pin-hint">Enter your PIN</div>
-  <div class="pin-dots">
-    <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
-    <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+<!-- AUTH GATE -->
+<div class="screen active" id="s-auth">
+  <div class="auth-emblem">🏎</div>
+  <div class="auth-title">Car <em>Bingo</em></div>
+
+  <div class="auth-view" id="auth-email-view">
+    <div class="auth-hint">Sign in to continue</div>
+    <form class="auth-form" id="auth-form" onsubmit="handleAuthSubmit(event)">
+      <input
+        class="auth-input"
+        type="email"
+        inputmode="email"
+        autocomplete="email"
+        autocapitalize="none"
+        autocorrect="off"
+        spellcheck="false"
+        id="auth-email-input"
+        placeholder="your@email.com"
+        required
+      />
+      <button class="auth-submit-btn" type="submit">Send sign-in link</button>
+    </form>
+    <div class="auth-sub">A one-tap link will arrive in your inbox. No password needed.</div>
+    <div class="auth-error" id="auth-error"></div>
   </div>
-  <div class="pin-keypad">
-    <button class="pin-key" data-digit="1">1</button>
-    <button class="pin-key" data-digit="2">2</button>
-    <button class="pin-key" data-digit="3">3</button>
-    <button class="pin-key" data-digit="4">4</button>
-    <button class="pin-key" data-digit="5">5</button>
-    <button class="pin-key" data-digit="6">6</button>
-    <button class="pin-key" data-digit="7">7</button>
-    <button class="pin-key" data-digit="8">8</button>
-    <button class="pin-key" data-digit="9">9</button>
-    <button class="pin-key pin-del" id="pin-del-btn">⌫</button>
-    <button class="pin-key pin-zero" data-digit="0">0</button>
+
+  <div class="auth-view" id="auth-check-view" style="display:none">
+    <div class="auth-big-emoji">📬</div>
+    <div class="auth-hint">Check your email</div>
+    <div class="auth-sub">We've sent a sign-in link to<br><strong id="auth-sent-to"></strong></div>
+    <div class="auth-sub auth-sub-soft">Open it on this device. You'll be signed in automatically.</div>
+    <button class="auth-back-btn" type="button" onclick="authReset()">Use a different email</button>
   </div>
-  <div class="pin-error" id="pin-error"></div>
 </div>
 
 <!-- MAIN APP -->
@@ -559,9 +574,6 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
         <div id="past-list"></div>
       </div>
 
-      <div id="sb-status-note" class="sb-status" style="display:none">
-        <strong>Cloud sync not set up.</strong> Your shows are saved on this device. To sync across devices, add your Supabase credentials to <code>js/supabase.js</code>.
-      </div>
     </div>
     <!-- Home tab nav -->
     <nav class="bottom-nav" id="nav-home-bar"></nav>
@@ -697,9 +709,14 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
     </div>
     <div class="settings-scroll">
       <div class="settings-group-lbl">Account</div>
-      <button class="settings-row" onclick="showChangePinInfo()">
-        <span class="sr-icon">🔐</span>
-        <div class="sr-body"><div class="sr-label">Change PIN</div><div class="sr-sub">Update your 4-digit access PIN</div></div>
+      <button class="settings-row" id="sr-account-info" onclick="showAccountInfo()">
+        <span class="sr-icon">👤</span>
+        <div class="sr-body"><div class="sr-label" id="sr-account-name">Signed in</div><div class="sr-sub" id="sr-account-email">—</div></div>
+        <span class="sr-arrow">›</span>
+      </button>
+      <button class="settings-row sr-danger" onclick="doSignOut()">
+        <span class="sr-icon">🚪</span>
+        <div class="sr-body"><div class="sr-label">Sign Out</div><div class="sr-sub">You'll need a new sign-in link to return</div></div>
         <span class="sr-arrow">›</span>
       </button>
       <div class="settings-group-lbl">App</div>
@@ -824,8 +841,10 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
 }
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/cars.js"></script>
 <script src="js/supabase.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

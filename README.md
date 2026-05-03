@@ -1,131 +1,93 @@
 # 🏎️ Car Bingo
 
-A classic car spotting app for shows and events. PIN-protected, with optional Supabase sync.
+A classic car spotting & bingo app for car shows. Two-user (you + a co-spotter), authenticated, photos backed up to the cloud.
+
+Frontend lives on GitHub Pages. Backend (auth, data, photos) is Supabase.
+
+---
 
 ## Setup
 
-### 1. Deploy to GitHub Pages
+### 1. Apply the database schema
+
+Open the Supabase Dashboard → **SQL Editor → New Query**, paste the
+contents of [`schema.sql`](schema.sql), and run.
+
+This creates all tables, RLS policies, and triggers. It is destructive
+(drops any existing schema first) and is meant to be run on a fresh
+project.
+
+### 2. Create the photos Storage bucket
+
+Dashboard → **Storage → New Bucket**
+
+- Name: `photos`
+- Public bucket: **on** (URLs are unguessable; this lets `<img src>`
+  work without minting signed URLs for every render)
+
+The Storage RLS policies in `schema.sql` restrict uploads to a
+per-user folder (`<user_id>/...`), so users can only write under their
+own prefix.
+
+### 3. Add the GitHub Pages URL to the Auth allow-list
+
+Dashboard → **Authentication → URL Configuration**
+
+- Site URL: `https://<you>.github.io/CarDB/` (or your custom domain)
+- Redirect URLs: add the same URL
+
+This is what the magic-link emails redirect back to.
+
+### 4. Create users
+
+Dashboard → **Authentication → Users → Add User** for each person.
+A profile row is created automatically by the `on_auth_user_created`
+trigger.
+
+### 5. Deploy the frontend
 
 ```bash
-git init
-git add .
-git commit -m "Initial deploy"
-git remote add origin https://github.com/YOUR_USERNAME/car-bingo.git
-git push -u origin main
+git push origin main
 ```
 
-Then in your GitHub repo: **Settings → Pages → Source: main branch / root**
-
-Your app will be live at: `https://YOUR_USERNAME.github.io/car-bingo/`
+GitHub Pages serves the static frontend from `main`. The
+[deploy workflow](.github/workflows/deploy.yml) handles publishing,
+and the [keep-warm workflow](.github/workflows/keep-warm.yml) pings
+Supabase daily to prevent the free-tier inactivity pause.
 
 ---
 
-### 2. Change the PIN
+## Sign-in flow
 
-The default PIN is `2407`. To change it:
+The app uses **Supabase magic links** — no passwords. First use:
 
-1. Open `index.html`
-2. Find the line `const PIN_HASH = 'MjQwNw==';`
-3. Generate your new hash in your browser console:
-   ```js
-   btoa('your-new-pin')
-   ```
-4. Replace the hash value and push to GitHub
+1. Open the app URL on the device
+2. Type your email
+3. Tap "Send sign-in link"
+4. Open the email and tap the link on the same device
+5. You're in, and the session persists indefinitely (auto-refreshed)
 
----
-
-### 3. Set up Supabase (optional — enables sync across devices)
-
-#### Create tables
-
-In your Supabase project → **SQL Editor**, run:
-
-```sql
--- Events
-create table events (
-  id           bigserial primary key,
-  name         text not null unique,
-  location     text,
-  date         text,
-  created_at   timestamptz default now()
-);
-
--- Sightings
-create table sightings (
-  id           bigserial primary key,
-  event_name   text not null references events(name) on delete cascade,
-  car_name     text not null,
-  car_era      text,
-  car_make     text,
-  car_rarity   text,
-  count        int default 1,
-  spotted_at   timestamptz default now(),
-  unique(event_name, car_name)
-);
-
--- Cars (optional — populated by the app on first load)
-create table cars (
-  name       text primary key,
-  make       text,
-  model      text,
-  era        text,
-  country    text,
-  rarity     text,
-  years      text,
-  produced   text,
-  surviving  text,
-  value      text,
-  desc       text,
-  hagerty    text,
-  wiki       text,
-  flag       text
-);
-
--- Row Level Security (allow public read/write — app is PIN-protected)
-alter table events   enable row level security;
-alter table sightings enable row level security;
-alter table cars     enable row level security;
-
-create policy "public access" on events    for all using (true) with check (true);
-create policy "public access" on sightings for all using (true) with check (true);
-create policy "public access" on cars      for all using (true) with check (true);
-```
-
-#### Wire up the app
-
-1. Go to your Supabase project → **Settings → API**
-2. Copy your **Project URL** and **anon public key**
-3. Open `js/supabase.js` and replace:
-   ```js
-   const SUPABASE_URL  = 'YOUR_SUPABASE_URL';
-   const SUPABASE_ANON = 'YOUR_SUPABASE_ANON_KEY';
-   ```
-4. Commit and push
-
-The app will now sync spotted cars and events to Supabase automatically. It falls back to localStorage if Supabase is unavailable.
+Add the app to the iPhone home screen via Safari's Share sheet for the
+best experience (full-screen, durable storage).
 
 ---
 
-## File Structure
+## File layout
 
 ```
-car-bingo/
-├── index.html        ← App shell, PIN gate, all CSS
+CarDB/
+├── index.html           ← App shell + all CSS (extracted in a later phase)
+├── schema.sql           ← Run-once DB schema for Supabase
+├── manifest.json        ← PWA manifest
+├── sw.js                ← Service worker (offline asset cache)
+├── icons/               ← PWA icons
 ├── js/
-│   ├── cars.js       ← 500 cars database + Wikipedia image map
-│   ├── supabase.js   ← Supabase client and DB helpers
-│   └── app.js        ← All app logic
-└── README.md
+│   ├── cars.js          ← Car catalogue + Wikipedia image map
+│   ├── supabase.js      ← Supabase client + auth helpers
+│   ├── auth.js          ← Login/sign-out flow
+│   └── app.js           ← Main app logic (being progressively rewired
+│                          to the per-user data layer)
+└── .github/workflows/
+    ├── deploy.yml       ← GitHub Pages deploy on push
+    └── keep-warm.yml    ← Daily Supabase ping
 ```
-
-## Features
-
-- 500 classic cars across 5 eras (Pre-War → 1990s)
-- Filter by make, country, era, rarity
-- Log sightings with photo capture
-- Garage view — all cars spotted across all events
-- Hagerty valuation links
-- Wikipedia images for every car
-- PIN-protected (shared family access)
-- Supabase sync — spot on one device, see it on all
-- Works offline (localStorage fallback)

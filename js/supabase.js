@@ -1,149 +1,77 @@
 // ══════════════════════════════════════════════════════════════════════
-// SUPABASE CONFIG — replace these with your actual project values
+// SUPABASE CLIENT — Auth + DB access
+//
+// The supabase-js library is loaded via CDN in index.html and exposes
+// the global `supabase` namespace (with createClient on it).
 // ══════════════════════════════════════════════════════════════════════
+
 const SUPABASE_URL  = 'https://itjdpmxqsxodrqmwfoyf.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_iiFm7jpE-pweUlSCFYdtyw_ImNM1L-I';
-// ══════════════════════════════════════════════════════════════════════
-// CLIENT — lazy-initialised, works whether Supabase is configured or not
-// ══════════════════════════════════════════════════════════════════════
-let _sb = null;
-function sb() {
-  if (!_sb) {
-    if (SUPABASE_URL === 'YOUR_SUPABASE_URL') return null; // not yet configured
-    if (typeof window === 'undefined' || !window.supabase) return null; // SDK not loaded
-    try { _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON); }
-    catch(e) { console.warn('Supabase init failed:', e); return null; }
-  }
-  return _sb;
+
+// Single shared client instance. PKCE + autoRefresh + persistSession is
+// the modern browser-app default; detectSessionInUrl handles the
+// magic-link redirect callback automatically.
+const SB = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: {
+    persistSession:     true,
+    autoRefreshToken:   true,
+    detectSessionInUrl: true,
+    flowType:           'pkce',
+  },
+});
+
+// ─── Session ─────────────────────────────────────────────────────────
+
+async function sbGetSession() {
+  const { data: { session } } = await SB.auth.getSession();
+  return session;
 }
 
-function sbReady() { return !!sb(); }
-
-// ══════════════════════════════════════════════════════════════════════
-// EVENTS  — name, location, date
-// ══════════════════════════════════════════════════════════════════════
-
-async function sbGetEvents() {
-  if (!sbReady()) return [];
-  const { data, error } = await sb()
-    .from('events')
-    .select('*')
-    .order('date', { ascending: false });
-  if (error) { console.warn('sbGetEvents:', error); return []; }
-  return data;
+async function sbGetUserId() {
+  const session = await sbGetSession();
+  return session?.user?.id || null;
 }
 
-async function sbUpsertEvent(ev) {
-  // ev = { name, location, date }
-  if (!sbReady()) return null;
-  const { data, error } = await sb()
-    .from('events')
-    .upsert({ name: ev.name, location: ev.location, date: ev.date }, { onConflict: 'name' })
-    .select()
-    .single();
-  if (error) { console.warn('sbUpsertEvent:', error); return null; }
-  return data;
+async function sbGetEmail() {
+  const session = await sbGetSession();
+  return session?.user?.email || null;
 }
 
-// ══════════════════════════════════════════════════════════════════════
-// SIGHTINGS  — one row per car spotted per event
-// ══════════════════════════════════════════════════════════════════════
-
-async function sbGetSightings(eventName) {
-  if (!sbReady()) return [];
-  const { data, error } = await sb()
-    .from('sightings')
-    .select('*')
-    .eq('event_name', eventName)
-    .order('spotted_at', { ascending: true });
-  if (error) { console.warn('sbGetSightings:', error); return []; }
-  return data;
+function sbOnAuthChange(cb) {
+  return SB.auth.onAuthStateChange((event, session) => cb(event, session));
 }
 
-async function sbGetAllSightings() {
-  if (!sbReady()) return [];
-  const { data, error } = await sb()
-    .from('sightings')
-    .select('*')
-    .order('spotted_at', { ascending: false });
-  if (error) { console.warn('sbGetAllSightings:', error); return []; }
-  return data;
-}
+// ─── Magic-link sign-in ──────────────────────────────────────────────
 
-async function sbAddSighting(sighting) {
-  // sighting = { event_name, car_name, car_era, car_make, car_rarity, count, spotted_at }
-  if (!sbReady()) return null;
-  const { data, error } = await sb()
-    .from('sightings')
-    .upsert(sighting, { onConflict: 'event_name,car_name' })
-    .select()
-    .single();
-  if (error) { console.warn('sbAddSighting:', error); return null; }
-  return data;
-}
-
-async function sbUpdateSightingCount(eventName, carName, count) {
-  if (!sbReady()) return;
-  const { error } = await sb()
-    .from('sightings')
-    .update({ count, spotted_at: new Date().toISOString() })
-    .eq('event_name', eventName)
-    .eq('car_name', carName);
-  if (error) console.warn('sbUpdateSightingCount:', error);
-}
-
-async function sbDeleteSighting(eventName, carName) {
-  if (!sbReady()) return;
-  const { error } = await sb()
-    .from('sightings')
-    .delete()
-    .eq('event_name', eventName)
-    .eq('car_name', carName);
-  if (error) console.warn('sbDeleteSighting:', error);
-}
-
-// ══════════════════════════════════════════════════════════════════════
-// CARS  — seed from CAR_DB if table is empty (run once)
-// ══════════════════════════════════════════════════════════════════════
-
-async function sbSeedCarsIfEmpty() {
-  if (!sbReady()) return;
-  const { count } = await sb().from('cars').select('*', { count: 'exact', head: true });
-  if (count > 0) return; // already seeded
-  console.log('Seeding cars table...');
-  // Batch in chunks of 100
-  for (let i = 0; i < CAR_DB.length; i += 100) {
-    const chunk = CAR_DB.slice(i, i + 100).map(c => ({
-      name: c.name, make: c.make, model: c.model,
-      era: c.era, country: c.country, rarity: c.rarity,
-      years: c.years, produced: c.produced, surviving: c.surviving,
-      value: c.value, "desc": c.desc, hagerty: c.hagerty || null,
-      wiki: WIKI_PAGES[c.name] || null, flag: c.flag
-    }));
-    const { error } = await sb().from('cars').insert(chunk);
-    if (error) console.warn('sbSeedCars chunk error:', error);
-  }
-  console.log('Cars seeded.');
-}
-
-// ══════════════════════════════════════════════════════════════════════
-// SYNC HELPER — merge Supabase sightings into local S.spotted format
-// ══════════════════════════════════════════════════════════════════════
-
-function sightingsToSpotted(sightings) {
-  const spotted = {};
-  sightings.forEach(row => {
-    const key = `fil-${row.car_era}-${row.car_name}`;
-    spotted[key] = {
-      event:    row.event_name,
-      ts:       row.spotted_at,
-      sightings: Array.from({ length: row.count }, (_, i) => ({
-        id:     `${key}-${i}`,
-        event:  row.event_name,
-        ts:     row.spotted_at,
-        photos: []
-      }))
-    };
+async function sbSendMagicLink(email) {
+  // Redirect back to the same path the user is on. Supabase's allow-list
+  // for redirect URLs is configured in the dashboard.
+  const redirectTo = window.location.origin + window.location.pathname;
+  const { error } = await SB.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: redirectTo },
   });
-  return spotted;
+  if (error) throw error;
+}
+
+async function sbSignOut() {
+  const { error } = await SB.auth.signOut();
+  if (error) console.warn('sbSignOut:', error);
+}
+
+// ─── Profile ─────────────────────────────────────────────────────────
+
+async function sbGetProfile() {
+  const userId = await sbGetUserId();
+  if (!userId) return null;
+  const { data, error } = await SB.from('profiles').select('*').eq('id', userId).single();
+  if (error) { console.warn('sbGetProfile:', error); return null; }
+  return data;
+}
+
+async function sbUpdateDisplayName(name) {
+  const userId = await sbGetUserId();
+  if (!userId) return;
+  const { error } = await SB.from('profiles').update({ display_name: name }).eq('id', userId);
+  if (error) throw error;
 }

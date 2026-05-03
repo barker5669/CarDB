@@ -281,12 +281,9 @@ async function initSetup() {
   }
   const localEvents = store.events ? Object.keys(store.events) : [];
   let allEvents = [...localEvents];
-  if (sbReady()) {
-    try {
-      const sbEvs = await loadAllEventsFromSupabase();
-      sbEvs.forEach(e => { if (!allEvents.includes(e)) allEvents.push(e); });
-    } catch(e) { console.warn('initSetup:', e); }
-  }
+  // Cross-device event list will be re-introduced by the Phase-3 db
+  // layer; for now allEvents is just whatever is in this device's
+  // localStorage cache.
   const pastEl = document.getElementById('past-events');
   const listEl = document.getElementById('past-list');
   if (allEvents.length && pastEl && listEl) {
@@ -320,15 +317,7 @@ async function resumeEvent(name) {
     S.boardEras = [...ERAS]; S.boardCarCount = 12;
     S.board = buildBoard(name, 0, S.boardEras, S.boardCarCount);
   }
-  if (sbReady()) {
-    try {
-      const sb = await loadFromSupabase(name);
-      if (sb) {
-        if (!S.spotted[name]) S.spotted[name] = {};
-        Object.entries(sb).forEach(([k,v]) => { if (!S.spotted[name][k]) S.spotted[name][k] = v; });
-      }
-    } catch(e) {}
-  }
+  // Cross-device sighting hydration is handled by the Phase-3 db layer.
   S.era = (S.boardEras || ERAS)[0];
   launch();
 }
@@ -359,8 +348,8 @@ async function startEvent() {
 }
 
 function launch() {
-  // Activate main app shell
-  document.getElementById('s-pin')?.classList.remove('active');
+  // Activate main app shell (auth-gated; bootAuth handles the auth screen)
+  document.getElementById('s-auth')?.classList.remove('active');
   document.getElementById('s-app')?.classList.add('active');
   updateHomeCard();
   // Update headers
@@ -450,10 +439,6 @@ function updateHomeCard() {
     activeDiv.style.display = 'none';
     if (newLbl) newLbl.textContent = 'Start a New Show';
   }
-  // Show Supabase status note if not configured
-  const sbNote = document.getElementById('sb-status-note');
-  const isConfigured = typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL !== 'YOUR_SUPABASE_URL';
-  if (sbNote) sbNote.style.display = isConfigured ? 'none' : 'block';
 }
 
 function showGoLive() {
@@ -1050,21 +1035,8 @@ function checkBingo() {
   }
 }
 
-// ══════════════════════════════════════════════
-// SUPABASE COMPAT
-// ══════════════════════════════════════════════
-async function loadAllEventsFromSupabase() {
-  if (!sbReady()) return [];
-  try { const evs = await sbGetEvents(); return evs.map(e => e.name); } catch(e) { return []; }
-}
-async function loadFromSupabase(eventName) {
-  if (!sbReady()) return null;
-  try {
-    const sightings = await sbGetSightings(eventName);
-    if (!sightings.length) return null;
-    return sightingsToSpotted(sightings);
-  } catch(e) { return null; }
-}
+// (Legacy supabase compat helpers removed; replaced by the per-user db
+//  layer in the Phase-3 sync rewrite.)
 
 
 // ══════════════════════════════════════════════
@@ -1217,24 +1189,9 @@ function attachWaitingPhoto(key) {
 // ══════════════════════════════════════════════
 // BOOT
 // ══════════════════════════════════════════════
-(async () => {
-  // Wire up PIN keypad
-  document.querySelectorAll('.pin-key[data-digit]').forEach(btn => {
-    btn.addEventListener('click', () => pinPress(parseInt(btn.dataset.digit)));
-  });
-  const delBtn = document.getElementById('pin-del-btn');
-  if (delBtn) delBtn.addEventListener('click', pinBackspace);
-
-  // Auto-bypass PIN if session is recent (within 24 hours)
-  const lastUnlock = parseInt(localStorage.getItem('ccb-session') || '0');
-  if (Date.now() - lastUnlock < 24 * 60 * 60 * 1000) {
-    document.getElementById('s-pin')?.classList.remove('active');
-    document.getElementById('s-app')?.classList.add('active');
-    buildNav('home');
-  }
-
-  await initSetup();
-})();
+// Auth gates the app. bootAuth() (in auth.js) routes between the
+// auth screen and the main app, and runs initSetup() after sign-in.
+(async () => { await bootAuth(); })();
 
 // ══════════════════════════════════════════════
 // EVENT MENU — switch / new event
@@ -1428,76 +1385,11 @@ async function detectLocation() {
 }
 
 // ══════════════════════════════════════════════
-// PIN GATE
-// ══════════════════════════════════════════════
-const PIN_KEY     = 'ccb-pin-v1';
-const DEFAULT_PIN = '2407';
-let pinBuffer = '';
-
-function getPin() {
-  return localStorage.getItem(PIN_KEY) || DEFAULT_PIN;
-}
-
-function pinPress(digit) {
-  if (pinBuffer.length >= 4) return;
-  pinBuffer += digit;
-  updatePinDots();
-  if (pinBuffer.length === 4) {
-    setTimeout(() => checkPin(), 120);
-  }
-}
-
-function pinBackspace() {
-  pinBuffer = pinBuffer.slice(0, -1);
-  updatePinDots();
-  document.getElementById('pin-error').textContent = '';
-}
-
-function updatePinDots() {
-  for (let i = 0; i < 4; i++) {
-    const dot = document.getElementById('pd' + i);
-    if (dot) dot.classList.toggle('filled', i < pinBuffer.length);
-  }
-}
-
-function checkPin() {
-  if (pinBuffer === getPin()) {
-    localStorage.setItem('ccb-session', Date.now().toString());
-    document.getElementById('s-pin').classList.remove('active');
-    document.getElementById('s-app').classList.add('active');
-    buildNav('home');
-    pinBuffer = '';
-    updatePinDots();
-  } else {
-    const errEl = document.getElementById('pin-error');
-    errEl.textContent = 'Incorrect PIN — please try again';
-    errEl.style.animation = 'none';
-    void errEl.offsetWidth;
-    errEl.style.animation = 'shake 0.3s';
-    pinBuffer = '';
-    updatePinDots();
-  }
-}
-
-// ══════════════════════════════════════════════
 // SETTINGS SCREEN
 // ══════════════════════════════════════════════
-function openSettings() { switchTab('settings'); }
-
-function closeSettings() { switchTab('home'); }
-
-function openSetupGarage() { switchTab('garage'); }
-
-function showChangePinInfo() {
-  const newPin = prompt('Enter a new 4-digit PIN:');
-  if (newPin === null) return;
-  if (!/^\d{4}$/.test(newPin)) {
-    alert('PIN must be exactly 4 digits.');
-    return;
-  }
-  localStorage.setItem(PIN_KEY, newPin);
-  showSnack('✓ PIN updated');
-}
+function openSettings()     { switchTab('settings'); }
+function closeSettings()    { switchTab('home'); }
+function openSetupGarage()  { switchTab('garage'); }
 
 function showInstallInfo() {
   showSnack('Tap Share ⬆ then "Add to Home Screen"');
