@@ -8,6 +8,12 @@ function allMakes()     { return [...new Set(CAR_DB.map(c=>c.make))].sort(); }
 function allCountries() { return [...new Set(CAR_DB.map(c=>c.country))].sort(); }
 const RARITY_LABELS = {common:'Common',rare:'Rare',epic:'Epic',legendary:'Legendary'};
 
+// Photo entry shape:
+//   Phase 4+: { path, url, ts } — Storage path + public URL
+//   Legacy:   { dataUrl, ts }   — base64 in localStorage (no live data;
+//             tolerated only so a half-rolled-out client doesn't NPE)
+function photoUrl(p) { return p?.url || p?.dataUrl || null; }
+
 // ══════════════════════════════════════════════
 // IMAGE CACHE — Wikipedia REST API + localStorage
 // ══════════════════════════════════════════════
@@ -506,7 +512,7 @@ function bingoCardHTML(car, era) {
   const data = sp[key];
   const count = data ? data.sightings.length : 0;
   const imgSrc = imgCache[car.name];
-  const sightingPhoto = data?.sightings?.find(sg => sg.photos?.length > 0)?.photos[0]?.dataUrl;
+  const sightingPhoto = photoUrl(data?.sightings?.find(sg => sg.photos?.length > 0)?.photos[0]);
   const displaySrc = sightingPhoto || imgSrc;
   const imgHTML = displaySrc ? `<img src="${displaySrc}" alt="${car.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : '';
   return `<div class="car-card ${car.rarity}${count>0?' spotted':''}" data-name="${car.name.replace(/"/g,'&quot;')}">
@@ -680,7 +686,7 @@ function evSeenCardHTML(car, key) {
   const sp   = currentSpotted();
   const data = sp[key];
   const count = data?.sightings?.length || 0;
-  const sightingPhoto = data?.sightings?.find(sg => sg.photos?.length>0)?.photos[0]?.dataUrl;
+  const sightingPhoto = photoUrl(data?.sightings?.find(sg => sg.photos?.length>0)?.photos[0]);
   const imgSrc = sightingPhoto || imgCache[car.name];
   const metaStr = data?.sightings?.[0]?.ts || '';
   return `<div class="ev-seen-card ${car.rarity}" data-name="${car.name.replace(/"/g,'&quot;')}" data-key="${key}">
@@ -701,7 +707,7 @@ function evUnseenCardHTML(car) {
   </div>`;
 }
 
-function quickAddSighting(car) {
+async function quickAddSighting(car) {
   const key = `fil-${car.era}-${car.name}`;
   const ts  = new Date().toLocaleString('en-GB');
   const id  = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
@@ -710,6 +716,13 @@ function quickAddSighting(car) {
   sp[key].sightings.push({ id, event:S.event, loc:S.loc, ts, photos:[] });
   save(); renderEventList(); renderList(); buildEraTabs(); updateScore();
   showSnack(`🎯 ${car.name} spotted!`);
+  // Photo-first flow: a Blob is already waiting from the camera FAB.
+  // Attach it directly instead of re-prompting for the camera.
+  if (_photoWaiting) {
+    closePicker();
+    await attachWaitingPhoto(key);
+    return;
+  }
   S.modalKey = key; S.pendingSightingId = id;
   document.getElementById('camInput').click();
 }
@@ -842,7 +855,7 @@ function garageCarHTML(car, entry, isSeen) {
       <div class="gcar-arrow">›</div></div>`;
   }
   const merged = allSpotted();
-  const sightingPhoto = Object.entries(merged).filter(([k])=>k===`fil-${car.era}-${car.name}`).flatMap(([,d])=>d.sightings||[]).find(sg=>sg.photos?.length>0)?.photos[0]?.dataUrl;
+  const sightingPhoto = photoUrl(Object.entries(merged).filter(([k])=>k===`fil-${car.era}-${car.name}`).flatMap(([,d])=>d.sightings||[]).find(sg=>sg.photos?.length>0)?.photos[0]);
   const imgSrc = sightingPhoto || imgCache[car.name];
   const key    = entry.firstKey;
   const evList = [...new Set(entry.seenAt.map(s=>s.event))].join(', ');
@@ -861,7 +874,7 @@ function openModal(car, key) {
   S.modalKey = key; S.modalCar = car;
   const sp = currentSpotted();
   const data = sp[key];
-  const sightingPhoto = data?.sightings?.find(sg=>sg.photos?.length>0)?.photos[0]?.dataUrl;
+  const sightingPhoto = photoUrl(data?.sightings?.find(sg=>sg.photos?.length>0)?.photos[0]);
   const wikiImg = imgCache[car.name];
   const heroSrc = sightingPhoto || wikiImg;
   const hero = document.getElementById('modal-hero');
@@ -924,14 +937,21 @@ function refreshModalSightings() {
   if (!count) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'block';
   list.innerHTML = data.sightings.map((sg, i) => {
-    const photosHTML = (sg.photos||[]).map(p => `<img class="s-thumb" src="${p.dataUrl}" onclick="openLightbox('${p.dataUrl.replace(/'/g,"\\'")}','${sg.event} · ${sg.ts.replace(/'/g,"\\'")}')">`,).join('');
+    const photosHTML = (sg.photos||[]).map(p => {
+      const src = photoUrl(p);
+      if (!src) return '';
+      const safeSrc = src.replace(/'/g,"\\'");
+      const safeTs  = (sg.ts||'').replace(/'/g,"\\'");
+      const safeEv  = (sg.event||'').replace(/'/g,"\\'");
+      return `<img class="s-thumb" src="${src}" onclick="openLightbox('${safeSrc}','${safeEv} · ${safeTs}')">`;
+    }).join('');
     return `<div class="sighting-entry">
       <div class="sighting-top"><div class="sighting-meta"><div class="sighting-num">Sighting #${i+1}</div><div class="sighting-time">${sg.ts}</div><div class="sighting-ev">${sg.event}${sg.loc?' · '+sg.loc:''}</div></div><button class="sighting-del" onclick="deleteSighting('${sg.id}')">✕</button></div>
       ${photosHTML?`<div class="sighting-photos">${photosHTML}</div>`:''}
       <button class="add-photo-btn" onclick="triggerPhoto('${sg.id}')">📷  Add a Photo</button>
     </div>`;
   }).join('');
-  const firstPhoto = data.sightings.find(sg=>sg.photos?.length>0)?.photos[0]?.dataUrl;
+  const firstPhoto = photoUrl(data.sightings.find(sg=>sg.photos?.length>0)?.photos[0]);
   if (firstPhoto) {
     const hero = document.getElementById('modal-hero');
     const existing = hero.querySelector('img');
@@ -980,13 +1000,15 @@ function deleteSighting(sgId) {
   showSnack('Sighting removed');
 }
 function triggerPhoto(sgId) { S.pendingSightingId = sgId; document.getElementById('camInput').click(); }
-function handlePhoto(e) {
+
+async function handlePhoto(e) {
   const file = e.target.files[0];
   const sgId = S.pendingSightingId;
   S.pendingSightingId = null; e.target.value = '';
   if (!file || !S.modalKey) { showSnack('✓ Sighting saved'); return; }
-  const r = new FileReader();
-  r.onload = ev => {
+  showSnack('📤 Saving photo…');
+  try {
+    const { path, url } = await Photos.captureAndUpload(file, { kind: 'sightings' });
     const sp   = currentSpotted();
     const data = sp[S.modalKey];
     if (!data) return;
@@ -994,13 +1016,16 @@ function handlePhoto(e) {
     if (!sg) sg = data.sightings[data.sightings.length-1];
     if (!sg) return;
     if (!sg.photos) sg.photos = [];
-    sg.photos.push({ dataUrl:ev.target.result, ts:new Date().toLocaleString('en-GB') });
+    sg.photos.push({ path, url, ts: new Date().toLocaleString('en-GB') });
     save(); refreshModalSightings(); renderList(); renderEventList();
     showSnack('📷 Photo saved!');
+  } catch (err) {
+    console.error('handlePhoto:', err);
+    showSnack('⚠️ Photo upload failed — check connection and try again');
+  } finally {
     // Restore event context if we were doing a personal collection add
     if (S._prevEvent !== undefined) { S.event = S._prevEvent; S._prevEvent = undefined; }
-  };
-  r.readAsDataURL(file);
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -1107,83 +1132,117 @@ function clearGarageFilters() {
 
 // ══════════════════════════════════════════════
 // PHOTO-FIRST CAMERA FLOW
+//
+// User taps the camera FAB before having picked a car. Capture flow:
+//   1. handlePhotoFirst() downscales the file → keeps Blob in memory
+//      and shows a preview via object URL (no upload yet — the user
+//      may still choose "discard").
+//   2. They pick "Current Show" or "My Collection" → camAttachTo*()
+//      stashes the Blob in _photoWaiting and opens the picker.
+//   3. They pick a car → quickAddSighting / addCarToPersonalCollection
+//      sees _photoWaiting is set and routes through attachWaitingPhoto
+//      instead of re-prompting for the camera.
 // ══════════════════════════════════════════════
-let _pendingPhotoDataUrl = null;
+let _pendingPhotoBlob    = null;
+let _pendingPhotoPreview = null;  // object URL for the preview <img>
+let _photoWaiting        = null;  // Blob waiting to be uploaded once a car is picked
+let _photoTarget         = null;  // 'event' | 'collection'
 
 function triggerPhotoFirst() {
   document.getElementById('camInputFirst').click();
 }
 
-function handlePhotoFirst(e) {
+async function handlePhotoFirst(e) {
   const file = e.target.files[0];
   e.target.value = '';
   if (!file) return;
-  const r = new FileReader();
-  r.onload = ev => {
-    _pendingPhotoDataUrl = ev.target.result;
-    // Show attach sheet
+  try {
+    const blob = await Photos.downscale(file);
+    if (_pendingPhotoPreview) URL.revokeObjectURL(_pendingPhotoPreview);
+    _pendingPhotoBlob    = blob;
+    _pendingPhotoPreview = URL.createObjectURL(blob);
     const preview = document.getElementById('cam-preview-img');
-    if (preview) { preview.src = _pendingPhotoDataUrl; preview.classList.add('loaded'); }
+    if (preview) { preview.src = _pendingPhotoPreview; preview.classList.add('loaded'); }
     const showName = document.getElementById('cam-attach-show-name');
     if (showName) showName.textContent = S.event || 'No active show';
     const evBtn = document.getElementById('cam-attach-event-btn');
-    if (evBtn) evBtn.disabled = !S.event;
-    if (evBtn) evBtn.style.opacity = S.event ? '' : '0.4';
+    if (evBtn) { evBtn.disabled = !S.event; evBtn.style.opacity = S.event ? '' : '0.4'; }
     document.getElementById('cam-attach-overlay').classList.add('open');
-  };
-  r.readAsDataURL(file);
+  } catch (err) {
+    console.error('handlePhotoFirst:', err);
+    showSnack('⚠️ Could not process photo');
+  }
+}
+
+function _clearPendingPhoto() {
+  if (_pendingPhotoPreview) URL.revokeObjectURL(_pendingPhotoPreview);
+  _pendingPhotoBlob    = null;
+  _pendingPhotoPreview = null;
 }
 
 function camAttachDiscard() {
-  _pendingPhotoDataUrl = null;
+  _clearPendingPhoto();
   document.getElementById('cam-attach-overlay').classList.remove('open');
   showSnack('Photo discarded');
 }
 
 function camAttachToEvent() {
-  if (!S.event || !_pendingPhotoDataUrl) { camAttachDiscard(); return; }
+  if (!S.event || !_pendingPhotoBlob) { camAttachDiscard(); return; }
   document.getElementById('cam-attach-overlay').classList.remove('open');
-  // Open picker with photo waiting
-  _photoWaiting = _pendingPhotoDataUrl;
-  _pendingPhotoDataUrl = null;
-  _photoTarget = 'event';
+  _photoWaiting = _pendingPhotoBlob;
+  _photoTarget  = 'event';
+  _pendingPhotoBlob = null;       // ownership transferred
+  if (_pendingPhotoPreview) { URL.revokeObjectURL(_pendingPhotoPreview); _pendingPhotoPreview = null; }
   openPicker();
   showSnack('Find the car to attach the photo to');
 }
 
 function camAttachToCollection() {
-  if (!_pendingPhotoDataUrl) { camAttachDiscard(); return; }
+  if (!_pendingPhotoBlob) { camAttachDiscard(); return; }
   document.getElementById('cam-attach-overlay').classList.remove('open');
-  _photoWaiting = _pendingPhotoDataUrl;
-  _pendingPhotoDataUrl = null;
-  _photoTarget = 'collection';
+  _photoWaiting = _pendingPhotoBlob;
+  _photoTarget  = 'collection';
+  _pendingPhotoBlob = null;
+  if (_pendingPhotoPreview) { URL.revokeObjectURL(_pendingPhotoPreview); _pendingPhotoPreview = null; }
   openGarageAdd();
   showSnack('Find the car to attach the photo to');
 }
 
-let _photoWaiting = null;
-let _photoTarget  = null; // 'event' | 'collection'
-
-// Called after user selects a car in picker/garage-add when _photoWaiting is set
-function attachWaitingPhoto(key) {
+// Called after user selects a car in picker/garage-add when _photoWaiting is set.
+async function attachWaitingPhoto(key) {
   if (!_photoWaiting) return;
-  const sp = _photoTarget === 'collection'
+  const blob   = _photoWaiting;
+  const target = _photoTarget;
+  _photoWaiting = null;
+  _photoTarget  = null;
+
+  const sp = target === 'collection'
     ? (S.spotted[PERSONAL_EVENT] = S.spotted[PERSONAL_EVENT] || {})
     : currentSpotted();
   if (!sp[key]) {
-    // Create a sighting if none exists
     const ts = new Date().toLocaleString('en-GB');
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
-    sp[key] = { event: _photoTarget==='collection'?PERSONAL_EVENT:S.event, loc:S.loc, ts, sightings:[{ id, event:S.event||PERSONAL_EVENT, loc:S.loc, ts, photos:[] }] };
+    sp[key] = {
+      event: target==='collection'?PERSONAL_EVENT:S.event,
+      loc:   S.loc,
+      ts,
+      sightings: [{ id, event: S.event||PERSONAL_EVENT, loc: S.loc, ts, photos: [] }],
+    };
   }
   const sighting = sp[key].sightings[sp[key].sightings.length - 1];
   if (!sighting.photos) sighting.photos = [];
-  sighting.photos.push({ dataUrl: _photoWaiting, ts: new Date().toLocaleString('en-GB') });
-  _photoWaiting = null;
-  _photoTarget  = null;
-  save();
-  renderList(); renderEventList(); renderGarage();
-  showSnack('📷 Photo attached!');
+
+  showSnack('📤 Saving photo…');
+  try {
+    const { path, url } = await DB.storage.uploadPhoto(blob, { kind: 'sightings' });
+    sighting.photos.push({ path, url, ts: new Date().toLocaleString('en-GB') });
+    save();
+    renderList(); renderEventList(); renderGarage();
+    showSnack('📷 Photo attached!');
+  } catch (err) {
+    console.error('attachWaitingPhoto:', err);
+    showSnack('⚠️ Photo upload failed — try again');
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -1304,7 +1363,7 @@ function renderGarageAddPicker() {
   });
 }
 
-function addCarToPersonalCollection(car) {
+async function addCarToPersonalCollection(car) {
   const key = `fil-${car.era}-${car.name}`;
   const loc = document.getElementById('garage-add-loc').value.trim();
   const ts  = new Date().toLocaleString('en-GB');
@@ -1318,6 +1377,12 @@ function addCarToPersonalCollection(car) {
   renderGarageAddPicker();
   renderGarage();
   showSnack(`🚗 ${car.name} added to collection!`);
+  // Photo-first flow: attach the waiting photo and skip the camera prompt.
+  if (_photoWaiting) {
+    closeGarageAdd();
+    await attachWaitingPhoto(key);
+    return;
+  }
   // Temporarily switch context to PERSONAL_EVENT so handlePhoto saves correctly
   S.modalKey = key;
   S.pendingSightingId = id;
