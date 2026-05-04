@@ -15,6 +15,78 @@ let _mcLogFilter  = 'all';  // 'all' | one of MC_LOG_KINDS
 const MC_LOG_KINDS = ['service','mod','drive','note','photo'];
 const MC_LOG_LABEL = { service:'🔧 Service', mod:'⚙️ Mod', drive:'🛣️ Drive', note:'📝 Note', photo:'📷 Photo' };
 
+// ─── Local-only photo wiring ────────────────────────────────────────
+//
+// Photos stay on-device per the £0 design constraint. Each car owns a
+// LocalPhotos bucket keyed `mc-${carId}`; entries carry meta
+// { log_entry_id } so we can clean up when the entry is deleted.
+// Legacy photos that are still in Supabase Storage (uploaded before
+// this change) keep rendering until they age out — we merge them into
+// the same list at render time.
+
+const _MC_HERO_KEY = 'cb-mycar-hero-v1';
+function _mcHeroLoad() {
+  try { return JSON.parse(localStorage.getItem(_MC_HERO_KEY) || '{}') || {}; }
+  catch { return {}; }
+}
+function _mcHeroSave(map) {
+  try { localStorage.setItem(_MC_HERO_KEY, JSON.stringify(map)); }
+  catch (e) { console.warn('mycar hero save:', e); }
+}
+function _setMcHero(carId, photoId) {
+  const map = _mcHeroLoad();
+  if (photoId == null) delete map[carId];
+  else                 map[carId] = photoId;
+  _mcHeroSave(map);
+}
+
+function _mcOwnerId(carId) { return `mc-${carId}`; }
+
+function _mcPhotosFor(car) {
+  const dbPhotos = (car.my_car_photos || []).map(p => ({
+    id:           p.id,
+    path:         p.storage_path,
+    ts:           p.taken_at,
+    log_entry_id: p.log_entry_id,
+    _legacy:      true,
+  }));
+  const local = (typeof LocalPhotos !== 'undefined') ? LocalPhotos.list(_mcOwnerId(car.id)) : [];
+  return [...dbPhotos, ...local];
+}
+
+function _mcHeroFor(car, photos) {
+  const heroId = _mcHeroLoad()[car.id];
+  if (heroId != null) {
+    const found = photos.find(p => String(p.id) === String(heroId));
+    if (found) return found;
+  }
+  if (car.hero_photo_id != null) {
+    const found = photos.find(p => p._legacy && String(p.id) === String(car.hero_photo_id));
+    if (found) return found;
+  }
+  return photos[0] || null;
+}
+
+function _mcPhotoUrl(p) {
+  if (!p) return null;
+  if (typeof PhotoCache !== 'undefined') {
+    const cached = PhotoCache.getUrlSync(p.path);
+    if (cached) return cached;
+  }
+  if (p._legacy) return DB.storage.publicUrl(p.path);
+  return null;
+}
+
+// Re-render the my-car page when a fresh batch of blob URLs is ready
+// (LocalPhotos warm completes asynchronously after a cold load).
+window.addEventListener('localphotos:warmed', () => {
+  try {
+    if (S.tab !== 'mycars') return;
+    if (_myCarsActive != null) showMyCarDetail(_myCarsActive);
+    else                       renderMyCarsList();
+  } catch {}
+});
+
 async function _loadMyCars(force = false) {
   if (!force && _myCars) return _myCars;
   try { _myCars = await DB.myCars.list(); }
@@ -50,9 +122,9 @@ async function renderMyCarsList() {
   body.innerHTML = `
     <div class="mc-list">
       ${cars.map(c => {
-        const photos  = c.my_car_photos || [];
-        const heroPhoto = photos[0];
-        const heroUrl = heroPhoto ? DB.storage.publicUrl(heroPhoto.storage_path) : null;
+        const photos = _mcPhotosFor(c);
+        const heroPhoto = _mcHeroFor(c, photos);
+        const heroUrl = _mcPhotoUrl(heroPhoto);
         const meta = [c.year, c.make, c.model].filter(Boolean).join(' · ') || '—';
         return `<button class="mc-card" onclick="showMyCarDetail(${c.id})">
           <div class="mc-card-thumb">${heroUrl
@@ -84,12 +156,9 @@ async function showMyCarDetail(carId) {
   try { logEntries = await DB.myCarLog.list(carId); }
   catch (err) { console.warn('myCarLog list:', err); }
 
-  const photos    = car.my_car_photos || [];
-  // Hero priority: explicit hero_photo_id → newest photo → none.
-  const heroPhoto = (car.hero_photo_id && photos.find(p => p.id === car.hero_photo_id)) || photos[0];
-  const heroUrl   = heroPhoto
-    ? ((typeof PhotoCache !== 'undefined' && PhotoCache.getUrlSync(heroPhoto.storage_path)) || DB.storage.publicUrl(heroPhoto.storage_path))
-    : null;
+  const photos    = _mcPhotosFor(car);
+  const heroPhoto = _mcHeroFor(car, photos);
+  const heroUrl   = _mcPhotoUrl(heroPhoto);
   const meta      = [car.year, car.make, car.model].filter(Boolean).join(' · ') || '—';
 
   const body = document.getElementById('mycars-body');
@@ -117,12 +186,12 @@ async function showMyCarDetail(carId) {
         <div class="mc-section-hdr">Photos (${photos.length})</div>
         ${photos.length
           ? `<div class="mc-photo-grid">${photos.map(p => {
-              const url = (typeof PhotoCache !== 'undefined' && PhotoCache.getUrlSync(p.storage_path))
-                || DB.storage.publicUrl(p.storage_path);
-              const isCover = (heroPhoto && p.id === heroPhoto.id);
+              const url = _mcPhotoUrl(p) || '';
+              const isCover = (heroPhoto && String(p.id) === String(heroPhoto.id));
+              const idArg = (typeof p.id === 'number') ? p.id : `'${escapeJsSq(p.id)}'`;
               return `<div class="mc-photo ${isCover?'is-cover':''}">
                 <img src="${escapeAttr(url)}" alt="" loading="lazy" onclick="openLightbox('${escapeJsSq(url)}','${escapeJsSq(car.name)}')">
-                <button class="mc-cover-toggle" type="button" onclick="setMyCarCover(${car.id}, ${p.id})" title="${isCover?'Cover photo':'Set as cover'}">${isCover?'★':'☆'}</button>
+                <button class="mc-cover-toggle" type="button" onclick="setMyCarCover(${car.id}, ${idArg})" title="${isCover?'Cover photo':'Set as cover'}">${isCover?'★':'☆'}</button>
               </div>`;
             }).join('')}</div>`
           : `<div class="mc-section-empty">No photos yet — tap "Add photo".</div>`}
@@ -340,16 +409,15 @@ async function handleMyCarEntryPhoto(e) {
   e.target.value = '';
   if (!file || !_mceState) return;
   try {
-    const blob = await Photos.downscale(file);
     if (_mceState.previewUrl) URL.revokeObjectURL(_mceState.previewUrl);
-    _mceState.blob       = blob;
-    _mceState.previewUrl = URL.createObjectURL(blob);
+    _mceState.blob       = file;
+    _mceState.previewUrl = URL.createObjectURL(file);
     const img = document.getElementById('mce-photo-img');
     const preview = document.getElementById('mce-photo-preview');
     if (img)     img.src = _mceState.previewUrl;
     if (preview) preview.style.display = '';
   } catch (err) {
-    showErr('Could not process photo', err);
+    showErr('Could not load photo', err);
   }
 }
 
@@ -376,7 +444,7 @@ async function saveMyCarEntry() {
     return;
   }
   if (!MC_LOG_KINDS.includes(kind)) { showSnack('Pick a kind'); return; }
-  showSnack('📤 Saving…');
+  showSnack('💾 Saving…');
   try {
     const entry = await DB.myCarLog.create({
       my_car_id:  carId,
@@ -386,12 +454,9 @@ async function saveMyCarEntry() {
       entry_date: date,
     });
     if (blob) {
-      const { path } = await DB.storage.uploadPhoto(blob, { kind: 'my-car-log' });
-      await DB.myCarPhotos.attach({
-        my_car_id:    carId,
-        log_entry_id: entry.id,
-        storage_path: path,
-      });
+      // Photo stays on this device only. Linked to the log entry via
+      // meta so deletion of the entry can find and remove it.
+      await LocalPhotos.add(_mcOwnerId(carId), blob, { log_entry_id: entry.id });
     }
     _myCars = null;
     closeMyCarEntry();
@@ -416,19 +481,29 @@ async function deleteMyCarLog(logId) {
   });
   if (!ok) return;
   try {
-    // Best-effort: clean up any photo Storage objects linked to this
-    // entry first. The DB row's log_entry_id has on-delete-set-null,
-    // not cascade — without explicit removal the photo would be
-    // orphaned (unlinked but still in Storage and in my_car_photos).
-    const { data: photos } = await SB.from('my_car_photos')
-      .select('id, storage_path')
-      .eq('log_entry_id', logId);
-    for (const p of (photos || [])) {
-      try {
-        await SB.from('my_car_photos').delete().eq('id', p.id);
-        if (p.storage_path) await DB.storage.removePhoto(p.storage_path);
-      } catch (e) { console.warn('photo cleanup:', e); }
+    // Local photos linked to this entry — drop them and their blobs.
+    if (typeof LocalPhotos !== 'undefined' && _myCarsActive != null) {
+      const owner = _mcOwnerId(_myCarsActive);
+      const local = LocalPhotos.list(owner);
+      for (const p of local) {
+        if (String(p.log_entry_id) === String(logId)) {
+          LocalPhotos.removeEntry(owner, p.id, { withBlob: true });
+        }
+      }
     }
+    // Legacy DB-stored photos (uploaded before the local-only switch).
+    // Best-effort cleanup; cascade deletion isn't on log_entry_id.
+    try {
+      const { data: photos } = await SB.from('my_car_photos')
+        .select('id, storage_path')
+        .eq('log_entry_id', logId);
+      for (const p of (photos || [])) {
+        try {
+          await SB.from('my_car_photos').delete().eq('id', p.id);
+          if (p.storage_path) await DB.storage.removePhoto(p.storage_path);
+        } catch (e) { console.warn('legacy photo cleanup:', e); }
+      }
+    } catch (e) { console.warn('legacy photo lookup:', e); }
     await DB.myCarLog.remove(logId);
     _myCars = null;
     showSnack('Deleted');
@@ -446,14 +521,18 @@ function setMcLogFilter(kind) {
 }
 
 async function setMyCarCover(carId, photoId) {
-  try {
-    await DB.myCars.update(carId, { hero_photo_id: photoId });
-    _myCars = null;
-    showSnack('✓ Cover updated');
-    await showMyCarDetail(carId);
-  } catch (err) {
-    showErr('Could not update cover', err);
+  // Cover is a per-device preference (different devices have different
+  // local photos), so it's local-only too.
+  _setMcHero(carId, photoId);
+  // For legacy numeric photo ids, also update the DB so devices that
+  // haven't migrated yet pick the same hero. Best-effort.
+  if (typeof photoId === 'number') {
+    try { await DB.myCars.update(carId, { hero_photo_id: photoId }); }
+    catch (e) { console.warn('mycars hero DB update:', e); }
   }
+  _myCars = null;
+  showSnack('✓ Cover updated');
+  await showMyCarDetail(carId);
 }
 
 function triggerMyCarPhoto() {
@@ -466,13 +545,12 @@ async function handleMyCarPhoto(e) {
   e.target.value = '';
   if (!file || !_myCarsActive) return;
   try {
-    const blob = await Photos.downscale(file);
     openMyCarEntry(_myCarsActive, {
       presetKind:  'photo',
       presetTitle: 'Photo',
-      preBlob:     blob,
+      preBlob:     file,
     });
   } catch (err) {
-    showErr('Could not process photo', err);
+    showErr('Could not load photo', err);
   }
 }

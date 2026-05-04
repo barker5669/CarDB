@@ -1880,19 +1880,17 @@ function camAttachToCollection() {
   showSnack('Find the car to attach the photo to');
 }
 
-// "Save for later" — uploads the photo to Storage now (so it's backed
-// up in the cloud) and adds a PhotoBin entry. The user can come back
-// to the Sort Photos screen any time and assign each pending photo
-// to a car.
+// "Save for later" — stashes the photo on-device only (no upload).
+// The user can come back to the Sort Photos screen any time and
+// assign each pending photo to a car.
 async function camAttachToLater() {
   if (!_pendingPhotoBlob) { camAttachDiscard(); return; }
   document.getElementById('cam-attach-overlay').classList.remove('open');
   const blob = _pendingPhotoBlob;
   _clearPendingPhoto();
-  showSnack('📤 Saving for later…');
+  showSnack('💾 Saving for later…');
   try {
-    const { path } = await DB.storage.uploadPhoto(blob, { kind: 'sortbin' });
-    await PhotoBin.add({ storage_path: path });
+    await PhotoBin.add({ blob, location: S.loc || null });
     refreshHomeShortcuts();
     showSnack('💾 Saved — sort it from Home later');
   } catch (err) {
@@ -1924,36 +1922,30 @@ async function attachWaitingPhoto(key) {
   const sighting = sp[key].sightings[sp[key].sightings.length - 1];
   if (!sighting.photos) sighting.photos = [];
 
-  showSnack('📤 Saving photo…');
+  showSnack('💾 Saving photo…');
   try {
     let photo;
-    if (sortPath) {
-      // Sort flow — the photo is already in Storage; just link it.
-      const photoRow = await DB.sightingPhotos.attach({
-        sighting_id:  sighting.id,
-        storage_path: sortPath,
-      });
+    if (sortBinId) {
+      // Sort-bin flow — the binned blob is already in PhotoCache; just
+      // move the LocalPhotos entry from the bin owner to the sighting.
+      const moved = PhotoBin.moveToOwner(sortBinId, sighting.id);
+      if (!moved) throw new Error('Bin entry vanished');
       photo = {
-        id:   photoRow.id,
-        path: sortPath,
-        url:  DB.storage.publicUrl(sortPath),
-        ts:   photoRow.taken_at,
+        id:   moved.id,
+        path: moved.path,
+        ts:   moved.ts,
+        url:  (typeof PhotoCache !== 'undefined') ? PhotoCache.getUrlSync(moved.path) : null,
       };
-      if (sortBinId) {
-        // The Storage object is now linked to the sighting_photos row;
-        // skip removing it from Storage when clearing the bin entry.
-        PhotoBin.markAssigned(sortBinId).catch(() => {});
-        refreshHomeShortcuts();
-      }
+      refreshHomeShortcuts();
     } else {
-      // Normal flow — upload + attach.
-      photo = await Queue.sightingPhotoAttach(blob, sighting.id, { kind: 'sightings' });
+      // Normal flow — straight-from-camera blob into LocalPhotos.
+      photo = await LocalPhotos.add(sighting.id, blob);
     }
     sighting.photos.push(photo);
     save();
     renderList(); renderEventList(); renderGarage();
     if (typeof renderPhotoSort === 'function') renderPhotoSort();
-    showSnack(photo._pending ? '📷 Photo saved (will sync when online)' : '📷 Photo attached!');
+    showSnack('📷 Photo attached!');
   } catch (err) {
     showErr('Could not save photo', err);
   }
@@ -1985,8 +1977,9 @@ function renderPhotoSort() {
   body.innerHTML = `
     <div class="sort-grid">
       ${pending.map(p => {
-        const url = (typeof PhotoCache !== 'undefined' && PhotoCache.getUrlSync(p.storage_path))
-          || DB.storage.publicUrl(p.storage_path);
+        const url = p.url
+          || (typeof PhotoCache !== 'undefined' ? PhotoCache.getUrlSync(p.path) : null)
+          || '';
         const when = p.ts ? new Date(p.ts).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
         return `<button class="sort-card" onclick="openSortAttach('${escapeJsSq(p.id)}')">
           <img src="${escapeAttr(url)}" alt="" loading="lazy">
@@ -2003,17 +1996,10 @@ function renderPhotoSort() {
 async function openSortAttach(id) {
   const item = PhotoBin.list().find(p => String(p.id) === String(id));
   if (!item) { showSnack('Photo not found'); return; }
-  // Try the local cache first; fall back to Storage if needed.
+  // The blob is already on-device in PhotoCache.
   let blob = null;
   if (typeof PhotoCache !== 'undefined') {
-    blob = await PhotoCache.getBlob(item.storage_path);
-  }
-  if (!blob) {
-    try {
-      const url = DB.storage.publicUrl(item.storage_path);
-      const r = await fetch(url);
-      if (r.ok) blob = await r.blob();
-    } catch (e) { console.warn('openSortAttach fetch:', e); }
+    blob = await PhotoCache.getBlob(item.path);
   }
   if (!blob) {
     showSnack('⚠️ Could not load this photo');
@@ -2024,9 +2010,9 @@ async function openSortAttach(id) {
   if (_pendingPhotoPreview) URL.revokeObjectURL(_pendingPhotoPreview);
   _pendingPhotoBlob    = blob;
   _pendingPhotoPreview = URL.createObjectURL(blob);
-  // Track the path so attachWaitingPhoto can link it directly without
-  // re-uploading, and clean up the PhotoBin entry on success.
-  _photoWaitingPath = item.storage_path;
+  // Track the bin id so attachWaitingPhoto can move the LocalPhotos
+  // entry from the bin owner to the new sighting owner.
+  _photoWaitingPath = item.path;
   _pendingSortBinId = item.id;
 
   const preview = document.getElementById('cam-preview-img');
@@ -2041,7 +2027,7 @@ async function openSortAttach(id) {
 async function confirmClearPhotoBin() {
   const ok = await confirmSheet({
     title:        'Discard all unsorted photos?',
-    body:         "Photos you haven't assigned to a car yet will be deleted from the bin and from cloud storage.",
+    body:         "Photos you haven't assigned to a car yet will be deleted from this device.",
     confirmLabel: 'Discard all',
     danger:       true,
   });
@@ -2223,6 +2209,17 @@ function _renderEventSummary(sightings, profileById) {
 (async () => {
   _setupConnectivity();
   _setupVisibilityRefresh();
+  // Local photos are warmed asynchronously; re-render visible UI
+  // when fresh blob URLs are ready so thumbnails fill in.
+  window.addEventListener('localphotos:warmed', () => {
+    try {
+      if (S.tab === 'bingo')  renderList?.();
+      if (S.tab === 'event')  renderEventList?.();
+      if (S.tab === 'garage') renderGarage?.();
+      if (S.tab === 'sort')   renderPhotoSort?.();
+      refreshModalSightings?.();
+    } catch {}
+  });
   await bootAuth();
 })();
 

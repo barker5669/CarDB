@@ -40,8 +40,10 @@ function _lpSave(map) {
 
 const LocalPhotos = {
   // Save a freshly-captured blob and return a photo entry the caller
-  // can push into S.spotted[...].sightings[i].photos.
-  async add(sightingId, blob) {
+  // can push into S.spotted[...].sightings[i].photos. `meta` is merged
+  // into the entry and persisted (e.g. { location } for sortbin items,
+  // { log_entry_id } for my-car log photos).
+  async add(ownerId, blob, meta = {}) {
     const id   = `lp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     const path = id;  // synthetic path; PhotoCache key
     if (typeof PhotoCache !== 'undefined') {
@@ -49,13 +51,45 @@ const LocalPhotos = {
       catch (e) { console.warn('LocalPhotos.add PhotoCache.save:', e); }
     }
     const map = _lpLoad();
-    if (!map[sightingId]) map[sightingId] = [];
-    const entry = { id, path, ts: new Date().toISOString() };
-    map[sightingId].push(entry);
+    if (!map[ownerId]) map[ownerId] = [];
+    const entry = { id, path, ts: new Date().toISOString(), ...meta };
+    map[ownerId].push(entry);
     _lpSave(map);
     const url = (typeof PhotoCache !== 'undefined' && PhotoCache.getUrlSync(path))
       || URL.createObjectURL(blob);
     return { ...entry, url };
+  },
+
+  // Reassign an existing entry (and its blob) from one owner to another
+  // without touching PhotoCache. Used by the sort-bin → sighting attach
+  // flow: the binned blob is reused as the sighting's photo.
+  move(fromOwner, photoId, toOwner) {
+    const map = _lpLoad();
+    const arr = map[fromOwner] || [];
+    const idx = arr.findIndex(p => p.id === photoId);
+    if (idx < 0) return null;
+    const entry = arr[idx];
+    arr.splice(idx, 1);
+    if (!arr.length) delete map[fromOwner];
+    if (!map[toOwner]) map[toOwner] = [];
+    map[toOwner].push(entry);
+    _lpSave(map);
+    return entry;
+  },
+
+  // Remove just the entry from one owner. Pass { withBlob: true } to
+  // also drop the PhotoCache blob — only safe when no other owner
+  // references the same path.
+  removeEntry(ownerId, photoId, { withBlob = false } = {}) {
+    const map = _lpLoad();
+    if (!map[ownerId]) return;
+    const removed = map[ownerId].find(p => p.id === photoId);
+    map[ownerId] = map[ownerId].filter(p => p.id !== photoId);
+    if (!map[ownerId].length) delete map[ownerId];
+    _lpSave(map);
+    if (withBlob && removed && typeof PhotoCache !== 'undefined') {
+      PhotoCache.remove(removed.path).catch(() => {});
+    }
   },
 
   list(sightingId) {
@@ -69,7 +103,9 @@ const LocalPhotos = {
       const cold = items.filter(p => !PhotoCache.getUrlSync(p.path));
       if (cold.length) {
         PhotoCache.warmAll(cold.map(p => p.path), { fetchMissing: false })
-          .then(() => { try { refreshModalSightings?.(); renderList?.(); renderEventList?.(); } catch {} })
+          .then(() => {
+            try { window.dispatchEvent(new CustomEvent('localphotos:warmed', { detail: { ownerId } })); } catch {}
+          })
           .catch(() => {});
       }
     }
@@ -89,23 +125,12 @@ const LocalPhotos = {
     _lpSave(map);
   },
 
-  remove(sightingId, photoId) {
+  // Drop everything for an owner (when a sighting / car / log entry
+  // is deleted).
+  removeAll(ownerId) {
     const map = _lpLoad();
-    if (!map[sightingId]) return;
-    const removed = map[sightingId].find(p => p.id === photoId);
-    map[sightingId] = map[sightingId].filter(p => p.id !== photoId);
-    if (!map[sightingId].length) delete map[sightingId];
-    _lpSave(map);
-    if (removed && typeof PhotoCache !== 'undefined') {
-      PhotoCache.remove(removed.path).catch(() => {});
-    }
-  },
-
-  // Drop everything for a sighting (when it's deleted).
-  removeAll(sightingId) {
-    const map = _lpLoad();
-    const list = map[sightingId] || [];
-    delete map[sightingId];
+    const list = map[ownerId] || [];
+    delete map[ownerId];
     _lpSave(map);
     if (typeof PhotoCache !== 'undefined') {
       list.forEach(p => PhotoCache.remove(p.path).catch(() => {}));

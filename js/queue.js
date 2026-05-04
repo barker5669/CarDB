@@ -1,19 +1,21 @@
 // ══════════════════════════════════════════════════════════════════════
-// QUEUE — offline mutation queue for sightings + sighting photos
+// QUEUE — offline mutation queue for sightings (text only)
 //
-// What FIL sees: he taps "spotted" or "add photo" and it just works,
-// even if Wi-Fi blinks. Behind the scenes, Queue tries the live DB
-// call first; on a network failure (or while navigator.onLine is
-// false) it stashes an envelope in localStorage, blobs in IndexedDB,
-// and synthesises an optimistic row so the UI can render immediately.
+// What FIL sees: he taps "spotted" and it just works, even if Wi-Fi
+// blinks. Behind the scenes, Queue tries the live DB call first; on a
+// network failure (or while navigator.onLine is false) it stashes an
+// envelope in localStorage and synthesises an optimistic row so the
+// UI can render immediately.
 //
 // On `online` and on visibilitychange→visible, Queue.drain() replays
 // envelopes oldest-first. Temp ids issued offline (local-...) are
-// swapped for real DB ids via tempMap, which photo.attach envelopes
-// resolve through when they land.
+// swapped for real DB ids via tempMap; LocalPhotos entries saved
+// against the temp id get rekeyed during drain so photos follow the
+// sighting to its real id.
 //
-// Other mutations (events, my_cars, upcoming) are not queued — they
-// surface errors directly. The hot path for FIL is sightings + photos.
+// Photos are NOT queued — they're local-only (LocalPhotos / PhotoCache
+// in IndexedDB), so there's nothing to sync. Legacy 'photo.attach'
+// envelopes from older sessions get silently drained.
 // ══════════════════════════════════════════════════════════════════════
 
 const _Q_KEY          = 'cb-mutation-queue-v1';
@@ -177,14 +179,6 @@ const Queue = {
       _qSave();
       _setIndicator();
     }
-  },
-
-  // Photos are local-only (zero-cost design — we don't pay for cloud
-  // storage). This wrapper just forwards to LocalPhotos so existing
-  // call sites don't need to know the difference. The blob stays on
-  // device in IndexedDB; only sighting metadata syncs to Supabase.
-  async sightingPhotoAttach(blob, sightingId) {
-    return LocalPhotos.add(sightingId, blob);
   },
 
   pendingCount() { _qLoad(); return _qState.length; },
