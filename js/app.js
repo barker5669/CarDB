@@ -10,7 +10,18 @@ const RARITY_LABELS = {common:'Common',rare:'Rare',epic:'Epic',legendary:'Legend
 //   Phase 4+: { path, url, ts } — Storage path + public URL
 //   Legacy:   { dataUrl, ts }   — base64 in localStorage (no live data;
 //             tolerated only so a half-rolled-out client doesn't NPE)
-function photoUrl(p) { return p?.url || p?.dataUrl || null; }
+//
+// Renders prefer a locally-cached blob: URL when available (offline-
+// resilient at car shows). PhotoCache.warmAll() populates the in-
+// memory map; until then we fall back to the public URL.
+function photoUrl(p) {
+  if (!p) return null;
+  if (p.path && typeof PhotoCache !== 'undefined') {
+    const cached = PhotoCache.getUrlSync(p.path);
+    if (cached) return cached;
+  }
+  return p.url || p.dataUrl || null;
+}
 
 function escapeHtml(s) {
   return String(s ?? '')
@@ -267,7 +278,8 @@ function dehydrateBoard(boardArr) {
 // a new event is created; existing events keep their own settings.
 // ══════════════════════════════════════════════
 const BINGO_DEFAULTS_KEY = 'cb-bingo-defaults-v1';
-const BINGO_DEFAULTS_FALLBACK = { eras: ERAS.slice(), carCount: 16 };
+// 9 = a classic 3×3 bingo card. Lines + diagonals all detectable.
+const BINGO_DEFAULTS_FALLBACK = { eras: ERAS.slice(), carCount: 9 };
 
 function loadBingoDefaults() {
   try {
@@ -542,6 +554,7 @@ async function hydrateSightingsFromDB() {
   }
 
   const spotted = {};
+  const allPaths = [];
   for (const s of rows) {
     const eventName = s.event_id != null
       ? (eventsById[s.event_id] || `Event #${s.event_id}`)
@@ -551,12 +564,15 @@ async function hydrateSightingsFromDB() {
     if (!spotted[eventName][key]) {
       spotted[eventName][key] = { event: eventName, loc: s.location || '', ts: s.spotted_at, sightings: [] };
     }
-    const photos = (s.sighting_photos || []).map(sp => ({
-      id:   sp.id,
-      path: sp.storage_path,
-      url:  DB.storage.publicUrl(sp.storage_path),
-      ts:   sp.taken_at,
-    }));
+    const photos = (s.sighting_photos || []).map(sp => {
+      if (sp.storage_path) allPaths.push(sp.storage_path);
+      return {
+        id:   sp.id,
+        path: sp.storage_path,
+        url:  DB.storage.publicUrl(sp.storage_path),
+        ts:   sp.taken_at,
+      };
+    });
     spotted[eventName][key].sightings.push({
       id:    s.id,
       event: eventName,
@@ -566,6 +582,15 @@ async function hydrateSightingsFromDB() {
     });
   }
   S.spotted = spotted;
+  // Warm the photo cache in the background so renders prefer local
+  // blobs over network URLs. Don't await — it can take a while if the
+  // user has dozens of photos and we don't want to block hydrate.
+  if (typeof PhotoCache !== 'undefined' && allPaths.length) {
+    PhotoCache.warmAll(allPaths).then(() => {
+      // Re-render any visible list once blobs are in memory.
+      try { renderList?.(); renderEventList?.(); renderGarage?.(); } catch {}
+    });
+  }
 }
 
 // Loads the user's board for an event from DB; if none exists, generates

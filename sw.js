@@ -1,5 +1,25 @@
-// Car Bingo Service Worker v1
-const CACHE = 'carbingo-v45';
+// Car Bingo Service Worker v2
+//
+// Key behaviours:
+//
+// - Non-GET requests (POST/PUT/DELETE etc.) NEVER touch the cache.
+//   Previously the supabase auth POST would fall through to a cached
+//   GET response on network blips — which corrupted login flows.
+//
+// - HTML navigations are network-first: stale auth/UI code shouldn't
+//   linger on FIL's phone. Falls back to cache only if offline.
+//
+// - JS / CSS / fonts are stale-while-revalidate: instant load from
+//   cache for speed, refreshed in the background so the next reload
+//   gets the new build. Critical for upgrade gap recovery.
+//
+// - Supabase / Wikipedia / Nominatim API calls are network-first
+//   with a cache fallback for offline (only useful for prior reads).
+//
+// - Storage API responses for photos in the 'photos' bucket are
+//   cache-first when present so a slow connection doesn't blank the
+//   bingo card.
+const CACHE = 'carbingo-v47';
 const ASSETS = [
   '/',
   '/index.html',
@@ -10,6 +30,7 @@ const ASSETS = [
   '/js/db.js',
   '/js/forms.js',
   '/js/mycars.js',
+  '/js/photocache.js',
   '/js/photos.js',
   '/js/queue.js',
   '/js/supabase.js',
@@ -31,24 +52,82 @@ self.addEventListener('activate', e => {
   );
 });
 
-self.addEventListener('fetch', e => {
-  // Network-first for API calls, cache-first for assets
-  const url = new URL(e.request.url);
-  if (url.hostname.includes('supabase') || url.hostname.includes('nominatim') || url.hostname.includes('wikipedia')) {
-    // Always network for data APIs
-    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-    return;
+self.addEventListener('message', (e) => {
+  // Page can ask the SW to nuke its cache as a recovery action.
+  if (e.data && e.data.type === 'CB_RESET_CACHE') {
+    e.waitUntil(
+      caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
+        .then(() => e.source && e.source.postMessage({ type: 'CB_RESET_CACHE_DONE' }))
+    );
   }
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(res => {
-        if (res && res.status === 200 && res.type !== 'opaque') {
+});
+
+function _isApi(url) {
+  return url.hostname.includes('supabase')
+      || url.hostname.includes('nominatim')
+      || url.hostname.includes('wikipedia');
+}
+
+function _isPhotoStorage(url) {
+  return url.hostname.includes('supabase') && url.pathname.includes('/storage/v1/object/public/photos/');
+}
+
+function _isHtmlNav(req, url) {
+  return req.mode === 'navigate' || req.headers.get('accept')?.includes('text/html');
+}
+
+self.addEventListener('fetch', e => {
+  const req = e.request;
+  const url = new URL(req.url);
+
+  // Non-GET: never cache, never fall back. Let it reach the network.
+  if (req.method !== 'GET') return;
+
+  // Photos in the public bucket: cache-first (poor signal at shows).
+  if (_isPhotoStorage(url)) {
+    e.respondWith(
+      caches.match(req).then(cached => cached || fetch(req).then(res => {
+        if (res && res.status === 200) {
           const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
+          caches.open(CACHE).then(c => c.put(req, clone));
         }
         return res;
-      });
+      }).catch(() => cached))
+    );
+    return;
+  }
+
+  // Other API calls: network-first, fallback to cache on offline.
+  if (_isApi(url)) {
+    e.respondWith(fetch(req).catch(() => caches.match(req)));
+    return;
+  }
+
+  // HTML navigations: network-first so new auth/UI code lands fast.
+  if (_isHtmlNav(req, url)) {
+    e.respondWith(
+      fetch(req).then(res => {
+        if (res && res.status === 200 && res.type !== 'opaque') {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(req, clone));
+        }
+        return res;
+      }).catch(() => caches.match(req).then(c => c || caches.match('/index.html')))
+    );
+    return;
+  }
+
+  // Other GETs (JS, CSS, fonts): stale-while-revalidate.
+  e.respondWith(
+    caches.match(req).then(cached => {
+      const fetchPromise = fetch(req).then(res => {
+        if (res && res.status === 200 && res.type !== 'opaque') {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(req, clone));
+        }
+        return res;
+      }).catch(() => cached);
+      return cached || fetchPromise;
     })
   );
 });

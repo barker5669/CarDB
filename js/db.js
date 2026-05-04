@@ -378,6 +378,11 @@ const DB = {
         contentType:  file.type || 'image/jpeg',
       });
       if (error) throw error;
+      // Stash a local copy of the blob so flaky show-venue Wi-Fi never
+      // blanks the photo on the next render. Best-effort.
+      if (typeof PhotoCache !== 'undefined') {
+        PhotoCache.save(path, file).catch(() => {});
+      }
       return { path, url: publicUrl(path) };
     },
 
@@ -385,6 +390,7 @@ const DB = {
       if (!path) return;
       const { error } = await SB.storage.from('photos').remove([path]);
       if (error) console.warn('removePhoto:', error);
+      if (typeof PhotoCache !== 'undefined') PhotoCache.remove(path).catch(() => {});
     },
   },
 

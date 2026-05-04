@@ -152,6 +152,44 @@ async function handleAuthSetPasswordSubmit(e) {
   }
 }
 
+// ─── Recovery: nuke local state and reload ──────────────────────────
+//
+// The "Trouble signing in?" button on the sign-in view. Wipes the
+// service worker cache, supabase localStorage, and any IndexedDB stores
+// the app uses, then reloads. This is the in-app equivalent of "open
+// in private tab" — useful when iOS Safari has corrupted persistent
+// state (the v45 → v46 SW swap should make this rarer, but still
+// possible).
+async function resetAuthCache() {
+  try {
+    if (typeof SB !== 'undefined') { try { await SB.auth.signOut(); } catch {} }
+    try { localStorage.clear(); } catch {}
+    try { sessionStorage.clear(); } catch {}
+    if (navigator.serviceWorker?.controller) {
+      try {
+        navigator.serviceWorker.controller.postMessage({ type: 'CB_RESET_CACHE' });
+      } catch {}
+    }
+    if (typeof indexedDB !== 'undefined') {
+      try {
+        const dbs = await indexedDB.databases?.();
+        for (const d of (dbs || [])) {
+          if (d.name) indexedDB.deleteDatabase(d.name);
+        }
+      } catch {}
+    }
+    if (navigator.serviceWorker) {
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const r of regs) await r.unregister();
+      } catch {}
+    }
+  } finally {
+    // Hard reload bypassing browser cache.
+    location.replace(location.pathname + '?reset=' + Date.now());
+  }
+}
+
 // ─── Sign out ───────────────────────────────────────────────────────
 
 async function doSignOut() {
