@@ -219,12 +219,9 @@
     <div id="bingo-live" style="display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0">
       <div class="era-scroller" id="era-scroller"></div>
       <div class="score-strip">
-        <span class="score-txt" id="score-txt">0 spotted</span>
-        <div class="rarity-dots">
-          <div class="rdot"><span style="background:var(--common)"></span>Common</div>
-          <div class="rdot"><span style="background:var(--rare)"></span>Rare</div>
-          <div class="rdot"><span style="background:var(--epic)"></span>Epic</div>
-          <div class="rdot"><span style="background:var(--legend)"></span>Legendary</div>
+        <div class="bingo-progress">
+          <div class="bingo-progress-fill" id="bingo-progress-fill"></div>
+          <div class="bingo-progress-text" id="score-txt">0 of 9 spotted</div>
         </div>
       </div>
       <div class="car-list" id="car-list"></div>

@@ -873,7 +873,8 @@ function bingoCarouselCardHTML(car, idx) {
     : '';
   const pendCls = isPending ? ' pending' : '';
   const spotCls = spotted   ? ' spotted' : '';
-  return `<div class="bingo-card ${car.rarity}${spotCls}${pendCls}" data-name="${escapeAttr(car.name)}" data-idx="${idx}">
+  const flashCls = (S.justSpotted === key) ? ' just-spotted' : '';
+  return `<div class="bingo-card ${car.rarity}${spotCls}${pendCls}${flashCls}" data-name="${escapeAttr(car.name)}" data-idx="${idx}">
     <div class="bingo-card-img">
       ${imgHTML}<div class="bingo-card-flag" style="${displaySrc?'display:none':''}">${car.flag}</div>
       <div class="bingo-card-era">${escapeHtml(car.era)}</div>
@@ -895,6 +896,7 @@ function bingoCellHTML(car, idx) {
   const count = data ? data.sightings.length : 0;
   const spotted = count > 0;
   const isPending = (data?.sightings || []).some(s => String(s.id || '').startsWith('local-'));
+  const justSpotted = S.justSpotted === key;
   const sightingPhoto = photoUrl(data?.sightings?.find(sg => sg.photos?.length > 0)?.photos[0]);
   const wikiPic = imgCache[car.name];
   const displaySrc = sightingPhoto || wikiPic;
@@ -904,9 +906,10 @@ function bingoCellHTML(car, idx) {
   const stamp = spotted
     ? `<div class="bingo-stamp">✓${count > 1 ? ` ×${count}` : ''}</div>`
     : '';
-  const pendCls = isPending ? ' pending' : '';
-  const spotCls = spotted   ? ' spotted' : '';
-  return `<div class="bingo-cell ${car.rarity}${spotCls}${pendCls}" data-name="${escapeAttr(car.name)}" data-idx="${idx}">
+  const pendCls = isPending    ? ' pending'      : '';
+  const spotCls = spotted      ? ' spotted'      : '';
+  const flashCls = justSpotted ? ' just-spotted' : '';
+  return `<div class="bingo-cell ${car.rarity}${spotCls}${pendCls}${flashCls}" data-name="${escapeAttr(car.name)}" data-idx="${idx}">
     <div class="bingo-cell-img">
       ${imgHTML}<div class="bingo-cell-flag" style="${displaySrc?'display:none':''}">${car.flag}</div>
       <div class="bingo-cell-era">${escapeHtml(car.era)}</div>
@@ -923,7 +926,9 @@ function updateScore() {
   const sp = currentSpotted();
   const spotted = unique.filter(c => sp[cellKey(c.era, c.name)]).length;
   const el = document.getElementById('score-txt');
-  if (el) el.textContent = `${spotted} / ${total} spotted`;
+  if (el) el.textContent = total ? `${spotted} of ${total} spotted` : '';
+  const fill = document.getElementById('bingo-progress-fill');
+  if (fill) fill.style.width = (total ? Math.round(spotted / total * 100) : 0) + '%';
 }
 
 // ══════════════════════════════════════════════
@@ -1142,8 +1147,10 @@ async function quickAddSighting(car) {
     return;
   }
   const sp = currentSpotted();
+  const wasFirst = !sp[key];
   if (!sp[key]) sp[key] = { event:S.event, loc:S.loc, ts:row.spotted_at, sightings:[] };
   sp[key].sightings.push({ id:row.id, event:S.event, loc:S.loc, ts:row.spotted_at, photos:[] });
+  if (wasFirst) _flashJustSpotted(key);
   save(); renderEventList(); renderList(); buildEraTabs(); updateScore();
   checkBingo();
   S.pendingSightingId = row.id;
@@ -1483,8 +1490,10 @@ async function addSighting() {
     return;
   }
   const sp = currentSpotted();
+  const wasFirst = !sp[key];
   if (!sp[key]) sp[key] = { event:S.event, loc:S.loc, ts:row.spotted_at, sightings:[] };
   sp[key].sightings.push({ id:row.id, event:S.event, loc:S.loc, ts:row.spotted_at, photos:[] });
+  if (wasFirst) _flashJustSpotted(key);
   save(); renderList(); buildEraTabs(); refreshModalSightings(); renderEventList();
   checkBingo();
   S.pendingSightingId = row.id;
@@ -1611,6 +1620,20 @@ function fireBingoToast(html, size = 'small') {
   t._tmr = setTimeout(() => t.classList.remove('show'), ms);
 }
 
+// Marks a key for the cell-spot flash animation. The bingo render
+// reads S.justSpotted and tags the matching cell with .just-spotted;
+// the CSS keyframe runs and we clear the flag after a beat so future
+// renders don't replay the animation.
+function _flashJustSpotted(key) {
+  S.justSpotted = key;
+  setTimeout(() => {
+    if (S.justSpotted === key) {
+      S.justSpotted = null;
+      try { renderList?.(); } catch {}
+    }
+  }, 900);
+}
+
 function checkBingo() {
   if (!Array.isArray(S.board)) return;
   S._fired = S._fired || {};
@@ -1624,13 +1647,37 @@ function checkBingo() {
   if (allComplete && !S._fired.boardWin) {
     S._fired.boardWin = true;
     fireBingoToast('🏆<br>FULL BOARD!<br><span style="font-size:0.7em">Every car spotted</span>', 'big');
+    fireConfetti();
     return;
   }
   if (lines.length > 0 && !S._fired[`line:${fk}`]) {
     S._fired[`line:${fk}`] = true;
     bingoShown = true;
     fireBingoToast('🎯<br>BINGO!<br><span style="font-size:0.7em">3 in a row</span>', 'small');
+    fireConfetti({ count: 18 });
     return;
+  }
+}
+
+// ══════════════════════════════════════════════
+// CONFETTI — emoji-particle burst for milestones.
+// Cheap and cheerful: a handful of DOM elements that float down with
+// CSS animation and self-clean. No SVG canvas, no audio, no library.
+// ══════════════════════════════════════════════
+function fireConfetti({ count = 36 } = {}) {
+  const root = document.body;
+  if (!root) return;
+  const emojis = ['🎉','🏆','⭐','🎊','🚗','🏁','✨'];
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'confetti';
+    p.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    p.style.left            = (Math.random() * 100) + '%';
+    p.style.fontSize        = (1.2 + Math.random() * 1.6) + 'rem';
+    p.style.animationDuration = (1.6 + Math.random() * 1.4) + 's';
+    p.style.animationDelay    = (Math.random() * 0.4) + 's';
+    root.appendChild(p);
+    setTimeout(() => p.remove(), 4500);
   }
 }
 
