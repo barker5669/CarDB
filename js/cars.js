@@ -1781,7 +1781,7 @@ const WIKI_PAGES = {
   'MGB GT':                          'MG_MGB',
   'MG Metro 6R4':                    'MG_Metro_6R4',
   'MG Maestro Turbo':                'MG_Maestro',
-  'Mini Cooper S Mk1':               'Mini_(marque)',
+  'Mini Cooper S Mk1':               'Mini_Cooper',
   'MINI Cooper S R53':               'Mini_Cooper',
   'Triumph TR2':                     'Triumph_TR2',
   'Triumph TR3':                     'Triumph_TR3',
