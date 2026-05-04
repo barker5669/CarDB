@@ -141,6 +141,20 @@ function showErr(prefix, err) {
   showSnack(`⚠️ ${prefix}: ${detail}`);
 }
 
+// Promise.race wrapper: any DB call wrapped in this rejects after `ms`
+// instead of leaving the user staring at a loading spinner. Use at the
+// call sites of any operation that, when it hangs on flaky show-Wi-Fi,
+// would leave the UI looking like nothing is happening.
+function _raceTimeout(promise, label, ms = 10000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(
+      () => reject(new Error(`${label} timed out — check your connection and try again`)),
+      ms
+    )),
+  ]);
+}
+
 function allSpotted() {
   const merged = {};
   Object.entries(S.spotted).forEach(([evName, evData]) => {
@@ -464,7 +478,7 @@ async function renderPastEvents() {
   let events = [];
   let dbFailed = false;
   try {
-    const all = await _eventsList();
+    const all = await _raceTimeout(_eventsList(), 'Past shows', 8000);
     const me = currentUserId();
     events = (all || []).filter(e =>
       Array.isArray(e.event_attendees) &&
@@ -654,7 +668,7 @@ async function _loadOrCreateBoard(eventRow) {
 
 async function resumeEvent(name) {
   try {
-    const eventRow = await _findEventByName(name);
+    const eventRow = await _raceTimeout(_findEventByName(name), 'Resume show', 10000);
     if (!eventRow) { showSnack('Event not found'); return; }
     S.event   = eventRow.name;
     S.eventId = eventRow.id;
@@ -2128,7 +2142,7 @@ async function openEventSummary() {
   body.innerHTML = '<div class="es-loading">Loading…</div>';
   overlay.classList.add('open');
   try {
-    const { sightings, profileById } = await _fetchEventSummary(S.eventId);
+    const { sightings, profileById } = await _raceTimeout(_fetchEventSummary(S.eventId), 'Event summary', 10000);
     body.innerHTML = _renderEventSummary(sightings, profileById);
   } catch (err) {
     console.error('openEventSummary:', err);

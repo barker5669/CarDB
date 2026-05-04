@@ -34,10 +34,11 @@ async function renderUpcoming() {
   if (!body) return;
 
   let events;
-  try { events = await DB.upcoming.list(); }
+  try { events = await _raceTimeout(DB.upcoming.list(), 'Upcoming events', 8000); }
   catch (err) {
     console.error('renderUpcoming:', err);
-    body.innerHTML = `<div class="up-error">⚠️ Could not load events. Check your connection.</div>`;
+    const detail = err?.message || String(err);
+    body.innerHTML = `<div class="up-error">⚠️ ${escapeHtml(detail)}</div>`;
     return;
   }
   await _loadProfilesIndex();
@@ -115,15 +116,17 @@ async function openAddUpcoming() {
     showSnack('Pick a valid date');
     return;
   }
+  showSnack('💾 Saving…');
   try {
-    const row = await DB.upcoming.create({
+    const row = await _raceTimeout(DB.upcoming.create({
       name:       data.name,
       event_date: data.date,
       location:   data.location,
       url:        data.url,
       notes:      data.notes,
-    });
-    await DB.upcoming.setAttending(row.id, true);
+    }), 'Add event', 10000);
+    try { await _raceTimeout(DB.upcoming.setAttending(row.id, true), 'RSVP', 8000); }
+    catch (e) { console.warn('RSVP after create:', e); }
     showSnack('📅 Event added!');
     await renderUpcoming();
   } catch (err) {
@@ -133,7 +136,7 @@ async function openAddUpcoming() {
 
 async function toggleUpcomingRSVP(id, currentlyGoing) {
   try {
-    await DB.upcoming.setAttending(id, !currentlyGoing);
+    await _raceTimeout(DB.upcoming.setAttending(id, !currentlyGoing), 'RSVP', 8000);
     await renderUpcoming();
   } catch (err) {
     showErr('Could not update RSVP', err);
