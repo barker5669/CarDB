@@ -648,3 +648,59 @@ body{font-family:var(--ff);background:var(--bg);color:var(--ink);display:flex;fl
 /* Tiny secondary auth link — for the "Trouble signing in" reset */
 .auth-back-btn-tiny{font-size:0.74rem;font-weight:600;padding:6px 12px;color:var(--dim2);border:none;background:transparent;margin-top:0}
 .auth-back-btn-tiny:active{color:var(--dim)}
+
+/* HOME — Photos to sort banner (only shown when count > 0) */
+.home-sort-banner{display:flex;align-items:center;gap:12px;width:100%;background:linear-gradient(135deg,rgba(40,90,140,0.18),var(--card));border:1px solid var(--rare);border-radius:var(--R);padding:13px 15px;margin-bottom:14px;cursor:pointer;-webkit-appearance:none;appearance:none;text-align:left;color:var(--ink)}
+.home-sort-banner:active{opacity:0.85;transform:scale(0.99)}
+.home-sort-banner-icon{font-size:1.6rem;flex-shrink:0}
+.home-sort-banner-body{flex:1;min-width:0}
+.home-sort-banner-name{font-size:1rem;font-weight:800;color:var(--ink)}
+.home-sort-banner-sub{font-size:0.78rem;color:#8fb4d9;font-weight:600;margin-top:2px}
+.home-sort-banner-arrow{font-size:1.4rem;color:#8fb4d9;flex-shrink:0}
+
+/* SORT PHOTOS TAB */
+#s-sort{background:var(--bg)}
+.sort-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px calc(var(--sb) + 14px)}
+.sort-scroll::-webkit-scrollbar{display:none}
+.sort-empty{text-align:center;padding:48px 24px}
+.sort-empty-icon{font-size:3.5rem;margin-bottom:14px}
+.sort-empty h3{font-family:var(--fh);font-size:1.5rem;font-weight:900;color:var(--ink);margin-bottom:10px}
+.sort-empty p{font-size:0.92rem;color:var(--dim);line-height:1.55}
+.sort-empty strong{color:var(--ink2)}
+.sort-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px}
+.sort-card{background:var(--card);border:1px solid var(--bdr);border-radius:var(--R);overflow:hidden;cursor:pointer;-webkit-appearance:none;appearance:none;padding:0;display:flex;flex-direction:column;text-align:left;color:var(--ink)}
+.sort-card:active{transform:scale(0.97)}
+.sort-card img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:var(--bg2)}
+.sort-card-meta{display:flex;justify-content:space-between;align-items:center;padding:9px 10px;font-size:0.74rem}
+.sort-card-time{color:var(--dim);font-weight:600}
+.sort-card-arrow{color:var(--gold);font-weight:800}
+.sort-clear-btn{width:100%;background:transparent;border:1px solid var(--bdr);color:var(--dim);font-family:var(--ff);font-size:0.85rem;font-weight:700;padding:13px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none;appearance:none}
+.sort-clear-btn:active{color:var(--red2);border-color:var(--red);opacity:0.85}
+
+/* Bingo view toggle — small pill on header */
+.hdr-view-toggle{padding:9px 12px;font-size:1rem;font-weight:900;letter-spacing:0;color:var(--ink2)}
+
+/* Bingo carousel — one big card per swipe */
+.bingo-carousel{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:14px;padding:14px 14px calc(var(--sb) + 14px);-webkit-overflow-scrolling:touch}
+.bingo-carousel::-webkit-scrollbar{display:none}
+.bingo-card{flex:0 0 calc(100% - 28px);scroll-snap-align:center;background:var(--card);border:1px solid var(--bdr);border-radius:var(--RL);overflow:hidden;cursor:pointer;display:flex;flex-direction:column;-webkit-appearance:none;appearance:none;position:relative;transition:transform 0.12s}
+.bingo-card:active{transform:scale(0.98)}
+.bingo-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;z-index:2}
+.bingo-card.common::before   {background:var(--common)}
+.bingo-card.rare::before     {background:var(--rare)}
+.bingo-card.epic::before     {background:var(--epic)}
+.bingo-card.legendary::before{background:var(--legend)}
+.bingo-card-img{width:100%;aspect-ratio:4/3;background:var(--bg2);position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.bingo-card-img img{width:100%;height:100%;object-fit:cover;display:block}
+.bingo-card-flag{font-size:5rem;line-height:1;color:var(--dim2)}
+.bingo-card-era{position:absolute;top:10px;left:10px;background:rgba(0,0,0,0.65);color:var(--ink);font-size:0.7rem;font-weight:800;padding:4px 10px;border-radius:8px;letter-spacing:0.5px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:1}
+.bingo-card.spotted{box-shadow:0 0 0 2px var(--gold);border-color:var(--gold)}
+.bingo-card.spotted .bingo-card-img::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,0.5) 100%);pointer-events:none}
+.bingo-card-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px}
+.bingo-card-rarity{align-self:flex-start;margin-bottom:2px}
+.bingo-card-name{font-family:var(--fh);font-size:1.4rem;font-weight:900;color:var(--ink);line-height:1.15}
+.bingo-card.spotted .bingo-card-name{color:var(--gold)}
+.bingo-card-meta{font-size:0.85rem;color:var(--ink2);font-weight:600}
+.bingo-card .bingo-stamp{position:absolute;top:14px;right:14px;background:var(--gold);color:var(--bg);font-family:var(--fh);font-size:0.92rem;font-weight:900;padding:5px 11px;border-radius:8px;letter-spacing:0.5px;box-shadow:0 3px 12px rgba(0,0,0,0.5);transform:rotate(8deg);z-index:3}
+.bingo-card.pending{opacity:0.78}
+.bingo-card.pending::after{content:'syncing…';position:absolute;top:14px;left:18px;background:rgba(40,90,140,0.85);color:var(--ink);font-size:0.66rem;font-weight:800;padding:3px 9px;border-radius:8px;letter-spacing:0.4px;z-index:3}

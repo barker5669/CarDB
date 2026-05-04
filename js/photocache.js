@@ -88,6 +88,11 @@ async function PhotoCache_getUrl(path) {
   } catch { return null; }
 }
 
+async function PhotoCache_getBlob(path) {
+  if (!path) return null;
+  try { return await _idbGet(path); } catch { return null; }
+}
+
 async function PhotoCache_remove(path) {
   if (!path) return;
   try { await _idbDel(path); } catch {}
@@ -134,6 +139,7 @@ window.PhotoCache = {
   save:        PhotoCache_save,
   getUrlSync:  PhotoCache_getUrlSync,
   getUrl:      PhotoCache_getUrl,
+  getBlob:     PhotoCache_getBlob,
   remove:      PhotoCache_remove,
   warmAll:     PhotoCache_warmAll,
 };

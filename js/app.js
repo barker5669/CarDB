@@ -118,6 +118,7 @@ let S = {
   rolls: 0,
   tab: 'bingo',
   era: 'Pre-War',
+  bingoView: 'grid',  // 'grid' | 'carousel'
   modalKey: null,
   modalCar: null,
   pendingSightingId: null,
@@ -440,6 +441,7 @@ async function initSetup() {
   // Refresh from server so we see anything FIL added on his device.
   await hydrateSightingsFromDB();
   await renderPastEvents();
+  refreshHomeShortcuts();
 }
 
 function _renderPastEventsSkeleton() {
@@ -692,7 +694,7 @@ function launch() {
 // ══════════════════════════════════════════════
 function switchTab(tab) {
   S.tab = tab;
-  const tabs = ['home','bingo','event','garage','mycars','upcoming','settings'];
+  const tabs = ['home','bingo','event','garage','mycars','upcoming','sort','settings'];
   tabs.forEach(t => {
     const el = document.getElementById('s-' + t);
     if (el) el.classList.toggle('active', t === tab);
@@ -701,8 +703,9 @@ function switchTab(tab) {
   if (tab === 'bingo')    { updateBingoState(); }
   if (tab === 'event')    { buildEvFilters(); renderEventList(); }
   if (tab === 'garage')   { buildGarageFilters(); renderGarage(); }
-  if (tab === 'home')     { updateHomeCard(); renderPastEvents(); }
+  if (tab === 'home')     { updateHomeCard(); renderPastEvents(); refreshHomeShortcuts(); }
   if (tab === 'mycars')   { /* renderMyCarsList is called explicitly by showMyCars */ }
+  if (tab === 'sort')     { renderPhotoSort(); }
   if (tab === 'settings') { /* static */ }
 }
 
@@ -727,7 +730,7 @@ function buildNav(activeTab) {
 
   const html = tabBtn(NAV_TABS[0]) + tabBtn(NAV_TABS[1]) + camBtn + tabBtn(NAV_TABS[2]) + tabBtn(NAV_TABS[3]);
 
-  ['home','bingo','event','garage','mycars','upcoming','settings'].forEach(id => {
+  ['home','bingo','event','garage','mycars','upcoming','sort','settings'].forEach(id => {
     const bar = document.getElementById('nav-' + id + '-bar');
     if (bar) bar.innerHTML = html;
   });
@@ -798,9 +801,33 @@ function buildEraTabs() {
   if (eraScroller) { eraScroller.innerHTML = ''; eraScroller.style.display = 'none'; }
 }
 
+function _loadBingoView() {
+  try {
+    const v = localStorage.getItem('cb-bingo-view-v1');
+    if (v === 'carousel' || v === 'grid') return v;
+  } catch {}
+  return 'grid';
+}
+function _saveBingoView(v) {
+  try { localStorage.setItem('cb-bingo-view-v1', v); } catch {}
+}
+
+function toggleBingoView() {
+  S.bingoView = (S.bingoView === 'grid') ? 'carousel' : 'grid';
+  _saveBingoView(S.bingoView);
+  _refreshViewToggleBtn();
+  renderList();
+}
+function _refreshViewToggleBtn() {
+  const icon = document.getElementById('view-toggle-icon');
+  if (icon) icon.textContent = S.bingoView === 'carousel' ? '▦' : '◫';
+}
+
 function renderList() {
   const list = document.getElementById('car-list');
   if (!list) return;
+  if (!S.bingoView) S.bingoView = _loadBingoView();
+  _refreshViewToggleBtn();
   const cars = Array.isArray(S.board) ? S.board : [];
   const unique = [...new Map(cars.map(c => [c.name, c])).values()];
   if (!unique.length) {
@@ -808,18 +835,56 @@ function renderList() {
     updateScore();
     return;
   }
-  // Flat 3-column grid mixing eras. Order is the buildBoard output so
-  // line detection (rows / cols / diagonals) stays meaningful.
-  const cells = unique.map((car, i) => bingoCellHTML(car, i)).join('');
-  list.innerHTML = `<div class="bingo-grid">${cells}</div>`;
-  // Delegated click — survives the re-renders from preloadEraImages.
+  if (S.bingoView === 'carousel') {
+    const cells = unique.map((car, i) => bingoCarouselCardHTML(car, i)).join('');
+    list.innerHTML = `<div class="bingo-carousel">${cells}</div>`;
+  } else {
+    // Flat 3-column grid mixing eras. Order is the buildBoard output so
+    // line detection (rows / cols / diagonals) stays meaningful.
+    const cells = unique.map((car, i) => bingoCellHTML(car, i)).join('');
+    list.innerHTML = `<div class="bingo-grid">${cells}</div>`;
+  }
+  // Delegated click — survives re-renders from preloadEraImages, and
+  // handles both views with one selector.
   list.onclick = (e) => {
-    const cell = e.target.closest('.bingo-cell[data-name]');
+    const cell = e.target.closest('.bingo-cell[data-name],.bingo-card[data-name]');
     if (!cell) return;
     const car = unique.find(c => c.name === cell.dataset.name);
     if (car) openModal(car, cellKey(car.era, car.name));
   };
   updateScore();
+}
+
+function bingoCarouselCardHTML(car, idx) {
+  const key   = cellKey(car.era, car.name);
+  const sp    = currentSpotted();
+  const data  = sp[key];
+  const count = data ? data.sightings.length : 0;
+  const spotted = count > 0;
+  const isPending = (data?.sightings || []).some(s => String(s.id || '').startsWith('local-'));
+  const sightingPhoto = photoUrl(data?.sightings?.find(sg => sg.photos?.length > 0)?.photos[0]);
+  const wikiPic = imgCache[car.name];
+  const displaySrc = sightingPhoto || wikiPic;
+  const imgHTML = displaySrc
+    ? `<img src="${escapeAttr(displaySrc)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+    : '';
+  const stamp = spotted
+    ? `<div class="bingo-stamp">✓${count > 1 ? ` ×${count}` : ''}</div>`
+    : '';
+  const pendCls = isPending ? ' pending' : '';
+  const spotCls = spotted   ? ' spotted' : '';
+  return `<div class="bingo-card ${car.rarity}${spotCls}${pendCls}" data-name="${escapeAttr(car.name)}" data-idx="${idx}">
+    <div class="bingo-card-img">
+      ${imgHTML}<div class="bingo-card-flag" style="${displaySrc?'display:none':''}">${car.flag}</div>
+      <div class="bingo-card-era">${escapeHtml(car.era)}</div>
+      ${stamp}
+    </div>
+    <div class="bingo-card-body">
+      <div class="bingo-card-rarity rarity-badge ${car.rarity}">${RARITY_LABELS[car.rarity]||''}</div>
+      <div class="bingo-card-name">${escapeHtml(car.name)}</div>
+      <div class="bingo-card-meta">${escapeHtml([car.years, car.country].filter(Boolean).join(' · '))}</div>
+    </div>
+  </div>`;
 }
 
 function bingoCellHTML(car, idx) {
@@ -1663,6 +1728,8 @@ let _pendingPhotoBlob    = null;
 let _pendingPhotoPreview = null;  // object URL for the preview <img>
 let _photoWaiting        = null;  // Blob waiting to be uploaded once a car is picked
 let _photoTarget         = null;  // 'event' | 'collection'
+let _photoWaitingPath    = null;  // existing Storage path (when sorting from PhotoBin)
+let _pendingSortBinId    = null;  // PhotoBin id whose photo is currently being sorted
 
 function triggerPhotoFirst() {
   document.getElementById('camInputFirst').click();
@@ -1724,16 +1791,39 @@ function camAttachToCollection() {
   showSnack('Find the car to attach the photo to');
 }
 
-// Called after user selects a car in picker/garage-add when _photoWaiting is set.
-// The caller is expected to have already created the sighting via
-// quickAddSighting / addCarToPersonalCollection — this function only
-// uploads the waiting Blob and links it to the most recent sighting.
+// "Save for later" — uploads the photo to Storage now (so it's backed
+// up in the cloud) and adds a PhotoBin entry. The user can come back
+// to the Sort Photos screen any time and assign each pending photo
+// to a car.
+async function camAttachToLater() {
+  if (!_pendingPhotoBlob) { camAttachDiscard(); return; }
+  document.getElementById('cam-attach-overlay').classList.remove('open');
+  const blob = _pendingPhotoBlob;
+  _clearPendingPhoto();
+  showSnack('📤 Saving for later…');
+  try {
+    const { path } = await DB.storage.uploadPhoto(blob, { kind: 'sortbin' });
+    PhotoBin.add({ storage_path: path });
+    refreshHomeShortcuts();
+    showSnack('💾 Saved — sort it from Home later');
+  } catch (err) {
+    showErr('Could not save photo', err);
+  }
+}
+
+// Called after user selects a car in picker/garage-add when _photoWaiting
+// (a Blob) or _photoWaitingPath (a Storage path from the sort bin) is
+// set. Creates the photo row linked to the latest sighting on this key.
 async function attachWaitingPhoto(key) {
-  if (!_photoWaiting) return;
-  const blob   = _photoWaiting;
-  const target = _photoTarget;
-  _photoWaiting = null;
-  _photoTarget  = null;
+  if (!_photoWaiting && !_photoWaitingPath) return;
+  const blob       = _photoWaiting;
+  const sortPath   = _photoWaitingPath;
+  const sortBinId  = _pendingSortBinId;
+  const target     = _photoTarget;
+  _photoWaiting     = null;
+  _photoWaitingPath = null;
+  _pendingSortBinId = null;
+  _photoTarget      = null;
 
   const sp = target === 'collection'
     ? (S.spotted[PERSONAL_EVENT] = S.spotted[PERSONAL_EVENT] || {})
@@ -1747,14 +1837,140 @@ async function attachWaitingPhoto(key) {
 
   showSnack('📤 Saving photo…');
   try {
-    const photo = await Queue.sightingPhotoAttach(blob, sighting.id, { kind: 'sightings' });
+    let photo;
+    if (sortPath) {
+      // Sort flow — the photo is already in Storage; just link it.
+      const photoRow = await DB.sightingPhotos.attach({
+        sighting_id:  sighting.id,
+        storage_path: sortPath,
+      });
+      photo = {
+        id:   photoRow.id,
+        path: sortPath,
+        url:  DB.storage.publicUrl(sortPath),
+        ts:   photoRow.taken_at,
+      };
+      if (sortBinId) {
+        PhotoBin.remove(sortBinId);
+        refreshHomeShortcuts();
+      }
+    } else {
+      // Normal flow — upload + attach.
+      photo = await Queue.sightingPhotoAttach(blob, sighting.id, { kind: 'sightings' });
+    }
     sighting.photos.push(photo);
     save();
     renderList(); renderEventList(); renderGarage();
+    if (typeof renderPhotoSort === 'function') renderPhotoSort();
     showSnack(photo._pending ? '📷 Photo saved (will sync when online)' : '📷 Photo attached!');
   } catch (err) {
     showErr('Could not save photo', err);
   }
+}
+
+// ══════════════════════════════════════════════
+// PHOTO SORT — unassigned photos screen
+// ══════════════════════════════════════════════
+function showPhotoSort() {
+  switchTab('sort');
+  renderPhotoSort();
+}
+
+function renderPhotoSort() {
+  const body = document.getElementById('sort-body');
+  if (!body) return;
+  const pending = PhotoBin.list();
+  const sub = document.getElementById('sort-hdr-sub');
+  if (sub) sub.textContent = pending.length === 1 ? '1 photo' : `${pending.length} photos`;
+  if (!pending.length) {
+    body.innerHTML = `
+      <div class="sort-empty">
+        <div class="sort-empty-icon">📸</div>
+        <h3>Nothing to sort</h3>
+        <p>When you tap the camera button at a show, choose <strong>"Save for later"</strong> and your photos collect here.<br>Then come back when you have a moment and assign each one to the right car.</p>
+      </div>`;
+    return;
+  }
+  body.innerHTML = `
+    <div class="sort-grid">
+      ${pending.map(p => {
+        const url = (typeof PhotoCache !== 'undefined' && PhotoCache.getUrlSync(p.storage_path))
+          || DB.storage.publicUrl(p.storage_path);
+        const when = p.ts ? new Date(p.ts).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+        return `<button class="sort-card" onclick="openSortAttach('${escapeJsSq(p.id)}')">
+          <img src="${escapeAttr(url)}" alt="" loading="lazy">
+          <div class="sort-card-meta">
+            <span class="sort-card-time">${escapeHtml(when)}</span>
+            <span class="sort-card-arrow">Sort →</span>
+          </div>
+        </button>`;
+      }).join('')}
+    </div>
+    <button class="sort-clear-btn" onclick="confirmClearPhotoBin()">Discard all unsorted</button>`;
+}
+
+async function openSortAttach(id) {
+  const item = PhotoBin.get(id);
+  if (!item) { showSnack('Photo not found'); return; }
+  // Try the local cache first; fall back to Storage if needed.
+  let blob = null;
+  if (typeof PhotoCache !== 'undefined') {
+    blob = await PhotoCache.getBlob(item.storage_path);
+  }
+  if (!blob) {
+    try {
+      const url = DB.storage.publicUrl(item.storage_path);
+      const r = await fetch(url);
+      if (r.ok) blob = await r.blob();
+    } catch (e) { console.warn('openSortAttach fetch:', e); }
+  }
+  if (!blob) {
+    showSnack('⚠️ Could not load this photo');
+    return;
+  }
+  // Re-use the cam-attach-overlay so the user gets the same routing
+  // (Current Show / My Collection) as the photo-FAB flow.
+  if (_pendingPhotoPreview) URL.revokeObjectURL(_pendingPhotoPreview);
+  _pendingPhotoBlob    = blob;
+  _pendingPhotoPreview = URL.createObjectURL(blob);
+  // Track the path so attachWaitingPhoto can link it directly without
+  // re-uploading, and clean up the PhotoBin entry on success.
+  _photoWaitingPath = item.storage_path;
+  _pendingSortBinId = item.id;
+
+  const preview = document.getElementById('cam-preview-img');
+  if (preview) { preview.src = _pendingPhotoPreview; preview.classList.add('loaded'); }
+  const showName = document.getElementById('cam-attach-show-name');
+  if (showName) showName.textContent = S.event || 'No active show';
+  const evBtn = document.getElementById('cam-attach-event-btn');
+  if (evBtn) { evBtn.disabled = !S.event; evBtn.style.opacity = S.event ? '' : '0.4'; }
+  document.getElementById('cam-attach-overlay').classList.add('open');
+}
+
+async function confirmClearPhotoBin() {
+  const ok = await confirmSheet({
+    title:        'Discard all unsorted photos?',
+    body:         "Photos you haven't assigned to a car yet will be deleted from the bin and from cloud storage.",
+    confirmLabel: 'Discard all',
+    danger:       true,
+  });
+  if (!ok) return;
+  const items = PhotoBin.list();
+  for (const it of items) {
+    try { await DB.storage.removePhoto(it.storage_path); } catch {}
+  }
+  PhotoBin.clear();
+  refreshHomeShortcuts();
+  renderPhotoSort();
+  showSnack('Bin cleared');
+}
+
+function refreshHomeShortcuts() {
+  const banner = document.getElementById('home-sort-banner');
+  const sub    = document.getElementById('home-sort-sub');
+  const n = (typeof PhotoBin !== 'undefined') ? PhotoBin.count() : 0;
+  if (banner) banner.style.display = n > 0 ? '' : 'none';
+  if (sub)    sub.textContent = n === 1 ? '1 photo waiting' : `${n} photos waiting`;
 }
 
 // ══════════════════════════════════════════════

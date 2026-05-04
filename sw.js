@@ -19,7 +19,7 @@
 // - Storage API responses for photos in the 'photos' bucket are
 //   cache-first when present so a slow connection doesn't blank the
 //   bingo card.
-const CACHE = 'carbingo-v48';
+const CACHE = 'carbingo-v49';
 const ASSETS = [
   '/',
   '/index.html',
@@ -30,6 +30,7 @@ const ASSETS = [
   '/js/db.js',
   '/js/forms.js',
   '/js/mycars.js',
+  '/js/photobin.js',
   '/js/photocache.js',
   '/js/photos.js',
   '/js/queue.js',

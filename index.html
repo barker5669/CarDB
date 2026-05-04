@@ -146,6 +146,16 @@
         </div>
       </div>
 
+      <!-- Photos to sort banner — shown only when there are pending photos -->
+      <button class="home-sort-banner" id="home-sort-banner" style="display:none" onclick="showPhotoSort()">
+        <span class="home-sort-banner-icon">📸</span>
+        <div class="home-sort-banner-body">
+          <div class="home-sort-banner-name">Photos to sort</div>
+          <div class="home-sort-banner-sub" id="home-sort-sub">0 photos</div>
+        </div>
+        <span class="home-sort-banner-arrow">›</span>
+      </button>
+
       <!-- Two-column shortcuts -->
       <div class="home-shortcut-row">
         <button class="home-tile" onclick="showMyCars()">
@@ -196,6 +206,7 @@
         <div class="page-hdr-title">Bingo Card</div>
         <div class="page-hdr-sub" id="bingo-ev-sub"></div>
       </div>
+      <button class="hdr-pill-btn hdr-view-toggle" id="view-toggle-btn" onclick="toggleBingoView()" title="Toggle view"><span id="view-toggle-icon">▦</span></button>
       <button class="hdr-pill-btn" id="reroll-btn" onclick="rerollBoard()">🎲 3 left</button>
     </div>
     <!-- no-event state OR live board -->
@@ -306,6 +317,21 @@
     </div>
     <div class="garage-body" id="garage-body"></div>
     <nav class="bottom-nav" id="nav-garage-bar"></nav>
+  </div>
+
+  <!-- SORT PHOTOS TAB -->
+  <div class="screen" id="s-sort">
+    <div class="page-hdr">
+      <button class="hdr-icon-btn" onclick="switchTab('home')" title="Back to Home">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="page-hdr-text">
+        <div class="page-hdr-title">Sort Photos</div>
+        <div class="page-hdr-sub" id="sort-hdr-sub"></div>
+      </div>
+    </div>
+    <div class="sort-scroll" id="sort-body"></div>
+    <nav class="bottom-nav" id="nav-sort-bar"></nav>
   </div>
 
   <!-- UPCOMING EVENTS TAB -->
@@ -461,6 +487,7 @@
       🏁 Current Show — <span id="cam-attach-show-name">No show</span>
     </button>
     <button class="action-btn" onclick="camAttachToCollection()">📖 My Collection (not at a show)</button>
+    <button class="action-btn" onclick="camAttachToLater()">💾 Save for later (sort it after)</button>
     <button class="action-btn action-btn-cancel" onclick="camAttachDiscard()">Discard photo</button>
   </div>
 </div>
@@ -641,6 +668,7 @@ if ('serviceWorker' in navigator) {
 <script src="js/auth.js"></script>
 <script src="js/db.js"></script>
 <script src="js/photocache.js"></script>
+<script src="js/photobin.js"></script>
 <script src="js/queue.js"></script>
 <script src="js/photos.js"></script>
 <script src="js/forms.js"></script>
