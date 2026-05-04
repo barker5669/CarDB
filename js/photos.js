@@ -15,19 +15,45 @@ const PHOTO_DEFAULTS = { maxEdge: 1280, quality: 0.82 };
 
 async function downscalePhoto(file, opts = {}) {
   const { maxEdge, quality } = { ...PHOTO_DEFAULTS, ...opts };
-  // imageOrientation: 'from-image' applies EXIF rotation automatically.
-  // Without this, portrait iPhone photos render sideways.
-  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-  const ratio  = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
-  const w = Math.max(1, Math.round(bitmap.width  * ratio));
-  const h = Math.max(1, Math.round(bitmap.height * ratio));
-  const canvas = document.createElement('canvas');
-  canvas.width = w; canvas.height = h;
-  canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
-  bitmap.close?.();
-  const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', quality));
-  if (!blob) throw new Error('Photo encoding failed');
-  return blob;
+  // Decode the file. createImageBitmap is the fast path, but iOS Safari
+  // before 17 throws on the imageOrientation option, and several mobile
+  // browsers fail outright on HEIC or large iPhone-camera files. Fall
+  // back to <img> + ObjectURL — that path delegates decoding to the OS,
+  // which on iOS handles HEIC natively.
+  let drawSrc, width, height, urlToRevoke = null;
+  try {
+    drawSrc = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    width = drawSrc.width; height = drawSrc.height;
+  } catch {
+    try {
+      drawSrc = await createImageBitmap(file);
+      width = drawSrc.width; height = drawSrc.height;
+    } catch {
+      urlToRevoke = URL.createObjectURL(file);
+      drawSrc = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload  = () => resolve(img);
+        img.onerror = () => reject(new Error('Could not decode photo (' + (file.type || 'unknown type') + ')'));
+        img.src = urlToRevoke;
+      });
+      width = drawSrc.naturalWidth; height = drawSrc.naturalHeight;
+    }
+  }
+
+  try {
+    const ratio = Math.min(1, maxEdge / Math.max(width, height));
+    const w = Math.max(1, Math.round(width  * ratio));
+    const h = Math.max(1, Math.round(height * ratio));
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(drawSrc, 0, 0, w, h);
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', quality));
+    if (!blob) throw new Error('Photo encoding failed');
+    return blob;
+  } finally {
+    if (drawSrc && drawSrc.close) drawSrc.close();
+    if (urlToRevoke) URL.revokeObjectURL(urlToRevoke);
+  }
 }
 
 // Downscale + upload. Returns { path, url, blob }.
