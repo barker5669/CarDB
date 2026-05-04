@@ -15,6 +15,12 @@ const SUPABASE_ANON = 'sb_publishable_iiFm7jpE-pweUlSCFYdtyw_ImNM1L-I';
 // We only ever have one auth client in this app and don't fire
 // concurrent auth ops, so a tiny FIFO-serialised mutex is a safe
 // drop-in replacement that never deadlocks.
+//
+// The inner callback is also timeout-bounded: a token refresh stuck on
+// a flaky-show-Wi-Fi fetch was holding the lock indefinitely, queueing
+// every subsequent SB operation forever (symptom: tap a car, nothing
+// happens, only sign-out fixes it). 20s is generous for any real
+// auth/refresh round-trip; past that the request is dead anyway.
 const _authLockQueue = [];
 let   _authLockBusy  = false;
 async function _appAuthLock(_name, _acquireTimeout, fn) {
@@ -22,8 +28,15 @@ async function _appAuthLock(_name, _acquireTimeout, fn) {
     await new Promise(resolve => _authLockQueue.push(resolve));
   }
   _authLockBusy = true;
-  try { return await fn(); }
-  finally {
+  try {
+    return await Promise.race([
+      fn(),
+      new Promise((_, reject) => setTimeout(
+        () => reject(new Error('Auth lock timed out — releasing to avoid deadlock')),
+        20000
+      )),
+    ]);
+  } finally {
     _authLockBusy = false;
     const next = _authLockQueue.shift();
     if (next) next();

@@ -251,7 +251,15 @@ async function bootAuth() {
       return;
     }
 
-    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+    // TOKEN_REFRESHED fires roughly every 50 minutes on its own. Re-running
+    // afterSignIn on every refresh would re-hydrate from DB and rebuild the
+    // nav mid-flow — disruptive while FIL is photographing a car. Just
+    // refresh CURRENT_SESSION and let the rest of the app keep its state.
+    if (event === 'TOKEN_REFRESHED') {
+      return;
+    }
+
+    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
       if (_inPasswordRecovery) return;  // don't navigate away from set-password view
       if (session) {
         if (window.location.search.includes('code=')) {

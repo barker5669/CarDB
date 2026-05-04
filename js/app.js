@@ -1531,14 +1531,29 @@ async function handlePhoto(e) {
   try {
     // The camera was opened synchronously to preserve iOS gesture
     // context, so the sighting row may still be in flight. Wait for it.
+    let row = null;
     if (!sgId && pendingPromise) {
       try {
-        const row = await pendingPromise;
+        row = await pendingPromise;
         sgId = row?.id || null;
       } catch { /* swallowed; the sighting create surfaced its own error toast */ }
     }
     const blob = await Photos.downscale(file);
     const sp   = currentSpotted();
+    // Race-safe: addSighting and handlePhoto await the same promise; whichever
+    // resumes first wins the microtask queue. If we got here before
+    // addSighting populated sp[modalKey], do it ourselves so the photo
+    // never gets dropped with "Sighting not found".
+    if (row && S.modalKey) {
+      if (!sp[S.modalKey]) {
+        sp[S.modalKey] = { event: S.event, loc: S.loc, ts: row.spotted_at, sightings: [] };
+      }
+      if (!sp[S.modalKey].sightings.some(s => String(s.id) === String(row.id))) {
+        sp[S.modalKey].sightings.push({
+          id: row.id, event: S.event, loc: S.loc, ts: row.spotted_at, photos: [],
+        });
+      }
+    }
     const data = sp[S.modalKey];
     if (!data) throw new Error('Sighting not found');
     let sg = sgId ? data.sightings.find(s => String(s.id) === String(sgId)) : null;
