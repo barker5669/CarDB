@@ -359,6 +359,36 @@ const DB = {
     },
   },
 
+  // ─── Unassigned photos ("photos to sort" bin) ─────────────────────
+  // Powered by schema-patch-unassigned-photos.sql. Cross-device,
+  // RLS-locked to the owner. The localStorage PhotoBin uses these
+  // rows as the source of truth; localStorage is a hot cache only.
+  unassigned: {
+    async list() {
+      requireUser();
+      const { data, error } = await SB.from('unassigned_photos')
+        .select('*')
+        .order('taken_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    async create({ storage_path, location }) {
+      const userId = requireUser();
+      const { data, error } = await SB.from('unassigned_photos').insert({
+        user_id: userId, storage_path, location: location ?? null,
+      }).select().single();
+      if (error) throw error;
+      return data;
+    },
+    async remove(id, storage_path) {
+      const { error } = await SB.from('unassigned_photos').delete().eq('id', id);
+      if (error) throw error;
+      if (storage_path) {
+        try { await DB.storage.removePhoto(storage_path); } catch {}
+      }
+    },
+  },
+
   // ─── Storage ──────────────────────────────────────────────────────
   storage: {
     publicUrl,

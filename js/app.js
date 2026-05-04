@@ -1850,7 +1850,7 @@ async function camAttachToLater() {
   showSnack('📤 Saving for later…');
   try {
     const { path } = await DB.storage.uploadPhoto(blob, { kind: 'sortbin' });
-    PhotoBin.add({ storage_path: path });
+    await PhotoBin.add({ storage_path: path });
     refreshHomeShortcuts();
     showSnack('💾 Saved — sort it from Home later');
   } catch (err) {
@@ -1898,7 +1898,9 @@ async function attachWaitingPhoto(key) {
         ts:   photoRow.taken_at,
       };
       if (sortBinId) {
-        PhotoBin.remove(sortBinId);
+        // The Storage object is now linked to the sighting_photos row;
+        // skip removing it from Storage when clearing the bin entry.
+        PhotoBin.markAssigned(sortBinId).catch(() => {});
         refreshHomeShortcuts();
       }
     } else {
@@ -1957,7 +1959,7 @@ function renderPhotoSort() {
 }
 
 async function openSortAttach(id) {
-  const item = PhotoBin.get(id);
+  const item = PhotoBin.list().find(p => String(p.id) === String(id));
   if (!item) { showSnack('Photo not found'); return; }
   // Try the local cache first; fall back to Storage if needed.
   let blob = null;
@@ -2002,11 +2004,7 @@ async function confirmClearPhotoBin() {
     danger:       true,
   });
   if (!ok) return;
-  const items = PhotoBin.list();
-  for (const it of items) {
-    try { await DB.storage.removePhoto(it.storage_path); } catch {}
-  }
-  PhotoBin.clear();
+  await PhotoBin.clear();
   refreshHomeShortcuts();
   renderPhotoSort();
   showSnack('Bin cleared');

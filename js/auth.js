@@ -290,4 +290,9 @@ async function afterSignIn(session) {
   }
   if (typeof buildNav === 'function') buildNav('home');
   if (typeof Queue !== 'undefined') Queue.drain().catch(() => {});
+  if (typeof PhotoBin !== 'undefined') {
+    PhotoBin.sync()
+      .then(() => { if (typeof refreshHomeShortcuts === 'function') refreshHomeShortcuts(); })
+      .catch(() => {});
+  }
 }
