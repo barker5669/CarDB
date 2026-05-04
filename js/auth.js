@@ -200,8 +200,13 @@ async function doSignOut() {
     danger:       true,
   });
   if (!ok) return;
+  // Route immediately — sbSignOut is best-effort and may not synchronously
+  // fire SIGNED_OUT (the auth lock or /logout fetch can hang on flaky Wi-Fi).
+  CURRENT_SESSION = null;
+  CURRENT_PROFILE = null;
+  _inPasswordRecovery = false;
+  showAuthScreen();
   await sbSignOut();
-  // onAuthChange fires SIGNED_OUT and routes back to the auth screen.
 }
 
 // ─── Settings: account row ──────────────────────────────────────────

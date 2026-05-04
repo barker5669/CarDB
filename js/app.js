@@ -462,6 +462,7 @@ async function renderPastEvents() {
   pastEl.style.display = '';
   _renderPastEventsSkeleton();
   let events = [];
+  let dbFailed = false;
   try {
     const all = await _eventsList();
     const me = currentUserId();
@@ -472,9 +473,17 @@ async function renderPastEvents() {
     );
   } catch (err) {
     console.warn('renderPastEvents:', err);
-    pastEl.style.display = 'none';
-    if (welcomeEl) welcomeEl.style.display = !S.event ? 'block' : 'none';
-    return;
+    dbFailed = true;
+  }
+  // Fallback: if the DB call failed but we have local sightings under
+  // event names, show those names so FIL can still resume into a show.
+  // The shapes don't quite match (no event id/date/location), but resume
+  // works by name and the in-app cache will fill in the rest.
+  if (dbFailed) {
+    const localNames = Object.keys(S.spotted || {})
+      .filter(name => name && name !== PERSONAL_EVENT && name !== S.event)
+      .filter(name => Object.keys(S.spotted[name] || {}).length > 0);
+    events = localNames.map(name => ({ id: null, name, location: null, event_date: null, _local: true }));
   }
   if (!events.length) {
     pastEl.style.display = 'none';
@@ -2240,6 +2249,11 @@ async function endCurrentShow() {
   _invalidateEventsCache();
   showSnack('Show ended');
   switchTab('home');
+  // Belt-and-braces: switchTab kicks off renderPastEvents but doesn't
+  // await it; if the fetch fails on first attempt (stuck auth lock,
+  // flaky Wi-Fi), the past-events list is left blank. Re-render after a
+  // short delay so the user sees their show land.
+  setTimeout(() => { renderPastEvents().catch(e => console.warn('post-end re-render:', e)); }, 200);
 }
 
 function openNewShowSheet() {

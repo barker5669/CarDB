@@ -120,8 +120,21 @@ async function sbUpdatePassword(password) {
 }
 
 async function sbSignOut() {
-  const { error } = await SB.auth.signOut();
-  if (error) console.warn('sbSignOut:', error);
+  // Best-effort: kick off the network signOut, but don't let it block the
+  // UI. supabase-js v2's signOut walks the auth lock and POSTs /logout;
+  // either of those can hang on flaky show-Wi-Fi or a corrupted local
+  // session, leaving FIL stuck on a screen that looks like nothing
+  // happened. We always clear our own session state and let the caller
+  // route to the auth screen immediately.
+  try { SB.auth.signOut().catch(e => console.warn('sbSignOut network:', e)); }
+  catch (e) { console.warn('sbSignOut sync:', e); }
+  try {
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith('sb-') || k.includes('supabase')) {
+        localStorage.removeItem(k);
+      }
+    });
+  } catch {}
 }
 
 // ─── Profile ─────────────────────────────────────────────────────────
