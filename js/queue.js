@@ -179,36 +179,12 @@ const Queue = {
     }
   },
 
-  // Returns a photo entry the UI can render. Pending entries get a
-  // local objectURL for display until the upload settles.
-  async sightingPhotoAttach(blob, sightingId, { kind = 'sightings' } = {}) {
-    const realSightingId = _resolveTempId(sightingId);
-
-    // If parent sighting hasn't synced yet, we have to queue regardless.
-    if (_isTempId(realSightingId)) {
-      const blobKey = `pendphoto-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-      await _idbPut(blobKey, blob);
-      _qLoad();
-      _qState.push({ kind: 'photo.attach', sightingId, blobKey, uploadKind: kind, ts: Date.now() });
-      _qSave();
-      _setIndicator();
-      return { id: blobKey, path: null, url: URL.createObjectURL(blob), ts: new Date().toISOString(), _pending: true };
-    }
-
-    try {
-      const { path, url } = await DB.storage.uploadPhoto(blob, { kind });
-      const photoRow = await DB.sightingPhotos.attach({ sighting_id: realSightingId, storage_path: path });
-      return { id: photoRow.id, path, url, ts: photoRow.taken_at };
-    } catch (err) {
-      if (!_isNetErr(err) && navigator.onLine) throw err;
-      const blobKey = `pendphoto-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-      await _idbPut(blobKey, blob);
-      _qLoad();
-      _qState.push({ kind: 'photo.attach', sightingId: realSightingId, blobKey, uploadKind: kind, ts: Date.now() });
-      _qSave();
-      _setIndicator();
-      return { id: blobKey, path: null, url: URL.createObjectURL(blob), ts: new Date().toISOString(), _pending: true };
-    }
+  // Photos are local-only (zero-cost design — we don't pay for cloud
+  // storage). This wrapper just forwards to LocalPhotos so existing
+  // call sites don't need to know the difference. The blob stays on
+  // device in IndexedDB; only sighting metadata syncs to Supabase.
+  async sightingPhotoAttach(blob, sightingId) {
+    return LocalPhotos.add(sightingId, blob);
   },
 
   pendingCount() { _qLoad(); return _qState.length; },
@@ -264,6 +240,12 @@ async function _apply(env) {
       _mapLoad();
       _tempMap[env.tempId] = row.id;
       _mapSave();
+      // Local photos that were attached while the sighting only had a
+      // temp id need to follow it to the real id, so renders can find
+      // them by sighting_id after the next hydrate.
+      if (typeof LocalPhotos !== 'undefined') {
+        try { LocalPhotos.rekey(env.tempId, row.id); } catch (e) { console.warn('LocalPhotos.rekey:', e); }
+      }
       return;
     }
     case 'sighting.delete': {
@@ -271,18 +253,10 @@ async function _apply(env) {
       return;
     }
     case 'photo.attach': {
-      const blob = await _idbGet(env.blobKey);
-      if (!blob) throw new Error('Pending photo blob missing in IDB');
-      const sightingId = _resolveTempId(env.sightingId);
-      if (_isTempId(sightingId)) {
-        // Parent create envelope must run first. Throw a non-net error
-        // so the queue drops this item — but actually we want it to
-        // wait. Solution: shuffle to back of queue.
-        throw Object.assign(new Error('Parent sighting not yet synced'), { _retry: true });
-      }
-      const { path } = await DB.storage.uploadPhoto(blob, { kind: env.uploadKind || 'sightings' });
-      await DB.sightingPhotos.attach({ sighting_id: sightingId, storage_path: path });
-      await _idbDel(env.blobKey);
+      // Legacy envelope from before photos went local-only. Drop the
+      // blob (we no longer upload) and silently move on so the queue
+      // can drain without spamming "failed to sync" toasts.
+      if (env.blobKey) { try { await _idbDel(env.blobKey); } catch {} }
       return;
     }
     default:

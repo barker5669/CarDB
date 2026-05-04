@@ -575,7 +575,9 @@ async function hydrateSightingsFromDB() {
     if (!spotted[eventName][key]) {
       spotted[eventName][key] = { event: eventName, loc: s.location || '', ts: s.spotted_at, sightings: [] };
     }
-    const photos = (s.sighting_photos || []).map(sp => {
+    // Legacy photos that are still in Supabase Storage (from before the
+    // local-only switch). Keep displaying them until they age out.
+    const remotePhotos = (s.sighting_photos || []).map(sp => {
       if (sp.storage_path) allPaths.push(sp.storage_path);
       return {
         id:   sp.id,
@@ -584,12 +586,15 @@ async function hydrateSightingsFromDB() {
         ts:   sp.taken_at,
       };
     });
+    // Local photos taken on this device for this sighting. These never
+    // sync to the cloud — they're the canonical store going forward.
+    const localPhotos = (typeof LocalPhotos !== 'undefined') ? LocalPhotos.list(s.id) : [];
     spotted[eventName][key].sightings.push({
       id:    s.id,
       event: eventName,
       loc:   s.location || '',
       ts:    s.spotted_at,
-      photos,
+      photos: [...remotePhotos, ...localPhotos],
     });
   }
   S.spotted = spotted;
@@ -600,6 +605,13 @@ async function hydrateSightingsFromDB() {
     PhotoCache.warmAll(allPaths).then(() => {
       // Re-render any visible list once blobs are in memory.
       try { renderList?.(); renderEventList?.(); renderGarage?.(); } catch {}
+    });
+  }
+  // Warm local-photo blobs into PhotoCache so renders find them
+  // synchronously after a fresh load.
+  if (typeof LocalPhotos !== 'undefined') {
+    LocalPhotos.warmAll().then(() => {
+      try { renderList?.(); renderEventList?.(); renderGarage?.(); refreshModalSightings?.(); } catch {}
     });
   }
 }
@@ -1461,6 +1473,7 @@ async function changeCount(delta) {
     showErr('Could not remove sighting', err);
     return;
   }
+  if (typeof LocalPhotos !== 'undefined') LocalPhotos.removeAll(last.id);
   data.sightings.pop();
   if (!data.sightings.length) delete sp[S.modalKey];
   // (Storage cleanup is handled inside DB.sightings.remove.)
@@ -1519,6 +1532,7 @@ async function deleteSighting(sgId) {
     showErr('Could not delete sighting', err);
     return;
   }
+  if (typeof LocalPhotos !== 'undefined') LocalPhotos.removeAll(sg.id);
   data.sightings = data.sightings.filter(s => String(s.id) !== String(sgId));
   if (!data.sightings.length) delete sp[S.modalKey];
   // (Storage cleanup is handled inside DB.sightings.remove.)
@@ -1536,7 +1550,7 @@ async function handlePhoto(e) {
   e.target.value = '';
   if (!file || !S.modalKey) { showSnack('✓ Sighting saved'); return; }
 
-  showSnack('📤 Saving photo…');
+  showSnack('💾 Saving photo…');
   try {
     // The camera was opened synchronously to preserve iOS gesture
     // context, so the sighting row may still be in flight. Wait for it.
@@ -1547,7 +1561,6 @@ async function handlePhoto(e) {
         sgId = row?.id || null;
       } catch { /* swallowed; the sighting create surfaced its own error toast */ }
     }
-    const blob = await Photos.downscale(file);
     const sp   = currentSpotted();
     // Race-safe: addSighting and handlePhoto await the same promise; whichever
     // resumes first wins the microtask queue. If we got here before
@@ -1568,13 +1581,15 @@ async function handlePhoto(e) {
     let sg = sgId ? data.sightings.find(s => String(s.id) === String(sgId)) : null;
     if (!sg) sg = data.sightings[data.sightings.length-1];
     if (!sg) throw new Error('No sighting to attach photo to');
-    const photo = await Queue.sightingPhotoAttach(blob, sg.id, { kind: 'sightings' });
+    // Photos are local-only — save the camera blob straight to IDB. No
+    // downscale (which used to fail on iOS HEIC), no upload, no queue.
+    const photo = await LocalPhotos.add(sg.id, file);
     if (!sg.photos) sg.photos = [];
     sg.photos.push(photo);
     save(); refreshModalSightings(); renderList(); renderEventList();
-    showSnack(photo._pending ? '📷 Photo saved (will sync when online)' : '📷 Photo saved!');
+    showSnack('📷 Photo saved!');
   } catch (err) {
-    showErr('Photo upload failed', err);
+    showErr('Photo save failed', err);
   } finally {
     if (S._prevEvent !== undefined) { S.event = S._prevEvent; S._prevEvent = undefined; }
   }
@@ -1811,10 +1826,13 @@ async function handlePhotoFirst(e) {
   e.target.value = '';
   if (!file) return;
   try {
-    const blob = await Photos.downscale(file);
+    // Photos stay local (no upload), and the user wants no shrinking,
+    // so just hold the camera blob directly. Skipping createImageBitmap
+    // also avoids the iOS-Safari decode failure that was killing this
+    // flow on phones.
     if (_pendingPhotoPreview) URL.revokeObjectURL(_pendingPhotoPreview);
-    _pendingPhotoBlob    = blob;
-    _pendingPhotoPreview = URL.createObjectURL(blob);
+    _pendingPhotoBlob    = file;
+    _pendingPhotoPreview = URL.createObjectURL(file);
     const preview = document.getElementById('cam-preview-img');
     if (preview) { preview.src = _pendingPhotoPreview; preview.classList.add('loaded'); }
     const showName = document.getElementById('cam-attach-show-name');
