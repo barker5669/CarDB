@@ -1174,7 +1174,6 @@ async function quickAddSighting(car) {
   if (wasFirst) _flashJustSpotted(key);
   save(); renderEventList(); renderList(); buildEraTabs(); updateScore();
   checkBingo();
-  S.pendingSightingId = row.id;
 }
 
 function openPicker() {
@@ -1348,6 +1347,10 @@ function garageCarHTML(car, entry, isSeen) {
 function openModal(car, key) {
   if (!car || !key) return;
   S.modalKey = key; S.modalCar = car;
+  // Always start with a clean photo-target slot when opening a new
+  // modal — leftover state from a prior sighting would route the next
+  // photo to the wrong sg.id.
+  S.pendingSightingId = null;
   const sp = currentSpotted();
   const data = sp[key];
   const sightingPhoto = photoUrl(data?.sightings?.find(sg=>sg.photos?.length>0)?.photos[0]);
@@ -1518,7 +1521,6 @@ async function addSighting() {
   if (wasFirst) _flashJustSpotted(key);
   save(); renderList(); buildEraTabs(); refreshModalSightings(); renderEventList();
   checkBingo();
-  S.pendingSightingId = row.id;
 }
 
 async function deleteSighting(sgId) {
@@ -2455,7 +2457,6 @@ async function addCarToPersonalCollection(car) {
   if (!sp[key]) sp[key] = { event:PERSONAL_EVENT, loc, ts:row.spotted_at, sightings:[] };
   sp[key].sightings.push({ id:row.id, event:PERSONAL_EVENT, loc, ts:row.spotted_at, photos:[] });
   save(); renderGarageAddPicker(); renderGarage();
-  S.pendingSightingId = row.id;
 }
 
 // ══════════════════════════════════════════════
