@@ -10,6 +10,7 @@
 
 let _myCars       = null;   // cached list
 let _myCarsActive = null;   // currently-viewed car id
+let _mcLogFilter  = 'all';  // 'all' | one of MC_LOG_KINDS
 
 const MC_LOG_KINDS = ['service','mod','drive','note','photo'];
 const MC_LOG_LABEL = { service:'🔧 Service', mod:'⚙️ Mod', drive:'🛣️ Drive', note:'📝 Note', photo:'📷 Photo' };
@@ -84,8 +85,11 @@ async function showMyCarDetail(carId) {
   catch (err) { console.warn('myCarLog list:', err); }
 
   const photos    = car.my_car_photos || [];
-  const heroPhoto = photos[0];
-  const heroUrl   = heroPhoto ? DB.storage.publicUrl(heroPhoto.storage_path) : null;
+  // Hero priority: explicit hero_photo_id → newest photo → none.
+  const heroPhoto = (car.hero_photo_id && photos.find(p => p.id === car.hero_photo_id)) || photos[0];
+  const heroUrl   = heroPhoto
+    ? ((typeof PhotoCache !== 'undefined' && PhotoCache.getUrlSync(heroPhoto.storage_path)) || DB.storage.publicUrl(heroPhoto.storage_path))
+    : null;
   const meta      = [car.year, car.make, car.model].filter(Boolean).join(' · ') || '—';
 
   const body = document.getElementById('mycars-body');
@@ -113,30 +117,48 @@ async function showMyCarDetail(carId) {
         <div class="mc-section-hdr">Photos (${photos.length})</div>
         ${photos.length
           ? `<div class="mc-photo-grid">${photos.map(p => {
-              const url = DB.storage.publicUrl(p.storage_path);
-              return `<div class="mc-photo"><img src="${escapeAttr(url)}" alt="" onclick="openLightbox('${escapeJsSq(url)}','${escapeJsSq(car.name)}')"></div>`;
+              const url = (typeof PhotoCache !== 'undefined' && PhotoCache.getUrlSync(p.storage_path))
+                || DB.storage.publicUrl(p.storage_path);
+              const isCover = (heroPhoto && p.id === heroPhoto.id);
+              return `<div class="mc-photo ${isCover?'is-cover':''}">
+                <img src="${escapeAttr(url)}" alt="" loading="lazy" onclick="openLightbox('${escapeJsSq(url)}','${escapeJsSq(car.name)}')">
+                <button class="mc-cover-toggle" type="button" onclick="setMyCarCover(${car.id}, ${p.id})" title="${isCover?'Cover photo':'Set as cover'}">${isCover?'★':'☆'}</button>
+              </div>`;
             }).join('')}</div>`
           : `<div class="mc-section-empty">No photos yet — tap "Add photo".</div>`}
       </div>
 
       <div class="mc-section">
         <div class="mc-section-hdr">Log (${logEntries.length})</div>
-        ${logEntries.length
-          ? logEntries.map(e => {
-              const linked = (photos || []).find(p => p.log_entry_id === e.id);
-              const linkedUrl = linked ? DB.storage.publicUrl(linked.storage_path) : null;
-              return `<div class="mc-log-entry mc-log-${e.entry_kind}">
-                <div class="mc-log-row">
-                  <span class="mc-log-kind">${MC_LOG_LABEL[e.entry_kind] || e.entry_kind}</span>
-                  <span class="mc-log-date">${escapeHtml(e.entry_date || '')}</span>
-                </div>
-                <div class="mc-log-title">${escapeHtml(e.title)}</div>
-                ${e.body ? `<div class="mc-log-body">${escapeHtml(e.body)}</div>` : ''}
-                ${linkedUrl ? `<img class="mc-log-photo" src="${escapeAttr(linkedUrl)}" alt="" loading="lazy" onclick="openLightbox('${escapeJsSq(linkedUrl)}','${escapeJsSq(e.title)}')">` : ''}
-                <button class="mc-log-del" onclick="deleteMyCarLog(${e.id})" title="Delete entry">✕</button>
-              </div>`;
-            }).join('')
-          : `<div class="mc-section-empty">No entries yet.</div>`}
+        ${logEntries.length ? `
+          <div class="mc-log-filter">
+            ${[['all','All'], ...MC_LOG_KINDS.map(k => [k, MC_LOG_LABEL[k] || k])].map(([v, l]) => {
+              const n = v === 'all' ? logEntries.length : logEntries.filter(e => e.entry_kind === v).length;
+              if (v !== 'all' && n === 0) return '';
+              return `<button class="mc-filter-chip${_mcLogFilter===v?' active':''}" type="button" onclick="setMcLogFilter('${escapeJsSq(v)}')">${escapeHtml(l)} <span class="mc-filter-chip-n">${n}</span></button>`;
+            }).filter(Boolean).join('')}
+          </div>` : ''}
+        ${(() => {
+          const visible = _mcLogFilter === 'all' ? logEntries : logEntries.filter(e => e.entry_kind === _mcLogFilter);
+          if (!logEntries.length) return `<div class="mc-section-empty">No entries yet.</div>`;
+          if (!visible.length)    return `<div class="mc-section-empty">No ${escapeHtml(_mcLogFilter)} entries.</div>`;
+          return visible.map(e => {
+            const linked = (photos || []).find(p => p.log_entry_id === e.id);
+            const linkedUrl = linked
+              ? ((typeof PhotoCache !== 'undefined' && PhotoCache.getUrlSync(linked.storage_path)) || DB.storage.publicUrl(linked.storage_path))
+              : null;
+            return `<div class="mc-log-entry mc-log-${e.entry_kind}">
+              <div class="mc-log-row">
+                <span class="mc-log-kind">${MC_LOG_LABEL[e.entry_kind] || e.entry_kind}</span>
+                <span class="mc-log-date">${escapeHtml(e.entry_date || '')}</span>
+              </div>
+              <div class="mc-log-title">${escapeHtml(e.title)}</div>
+              ${e.body ? `<div class="mc-log-body">${escapeHtml(e.body)}</div>` : ''}
+              ${linkedUrl ? `<img class="mc-log-photo" src="${escapeAttr(linkedUrl)}" alt="" loading="lazy" onclick="openLightbox('${escapeJsSq(linkedUrl)}','${escapeJsSq(e.title)}')">` : ''}
+              <button class="mc-log-del" onclick="deleteMyCarLog(${e.id})" title="Delete entry">✕</button>
+            </div>`;
+          }).join('');
+        })()}
       </div>
 
       <div class="mc-detail-edit">
@@ -418,6 +440,22 @@ async function deleteMyCarLog(logId) {
 
 // "📷 Add photo" — opens the camera, then routes the captured Blob into
 // the same entry sheet so the user can add a caption/notes.
+function setMcLogFilter(kind) {
+  _mcLogFilter = kind;
+  if (_myCarsActive) showMyCarDetail(_myCarsActive);
+}
+
+async function setMyCarCover(carId, photoId) {
+  try {
+    await DB.myCars.update(carId, { hero_photo_id: photoId });
+    _myCars = null;
+    showSnack('✓ Cover updated');
+    await showMyCarDetail(carId);
+  } catch (err) {
+    showErr('Could not update cover', err);
+  }
+}
+
 function triggerMyCarPhoto() {
   if (!_myCarsActive) return;
   document.getElementById('myCarPhotoInput')?.click();
