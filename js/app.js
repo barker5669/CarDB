@@ -475,30 +475,32 @@ async function renderPastEvents() {
   // Show skeletons immediately so the home isn't blank during fetch.
   pastEl.style.display = '';
   _renderPastEventsSkeleton();
-  let events = [];
-  let dbFailed = false;
-  try {
-    const all = await _raceTimeout(_eventsList(), 'Past shows', 8000);
-    const me = currentUserId();
-    events = (all || []).filter(e =>
-      Array.isArray(e.event_attendees) &&
-      e.event_attendees.some(a => a.user_id === me) &&
-      e.id !== S.eventId   // current show shows in the active card above; don't double-list
-    );
-  } catch (err) {
-    console.warn('renderPastEvents:', err);
-    dbFailed = true;
-  }
-  // Fallback: if the DB call failed but we have local sightings under
-  // event names, show those names so FIL can still resume into a show.
-  // The shapes don't quite match (no event id/date/location), but resume
-  // works by name and the in-app cache will fill in the rest.
-  if (dbFailed) {
-    const localNames = Object.keys(S.spotted || {})
-      .filter(name => name && name !== PERSONAL_EVENT && name !== S.event)
-      .filter(name => Object.keys(S.spotted[name] || {}).length > 0);
-    events = localNames.map(name => ({ id: null, name, location: null, event_date: null, _local: true }));
-  }
+  // Local-first: read every show the user's been part of from
+  // localStorage. Renders instantly, never blocks on network.
+  let events = PastEvents.list().filter(e =>
+    e.name && e.name !== PERSONAL_EVENT && e.name !== S.event
+  );
+  // Try to enrich with the DB list so shows attended on another
+  // device show up too. Best-effort; don't block the render.
+  _raceTimeout(_eventsList(), 'Past shows', 8000)
+    .then(all => {
+      const me = currentUserId();
+      const dbEvents = (all || []).filter(e =>
+        Array.isArray(e.event_attendees) &&
+        e.event_attendees.some(a => a.user_id === me)
+      );
+      let added = false;
+      for (const dbEv of dbEvents) {
+        const arr = PastEvents.list();
+        const known = arr.find(e =>
+          (e.id != null && String(e.id) === String(dbEv.id)) || e.name === dbEv.name
+        );
+        if (!known) added = true;
+        PastEvents.upsert(dbEv);
+      }
+      if (added) renderPastEvents().catch(() => {});
+    })
+    .catch(err => console.warn('renderPastEvents enrich:', err));
   if (!events.length) {
     pastEl.style.display = 'none';
     // Show welcome only when there's no active show either.
@@ -528,6 +530,51 @@ async function renderPastEvents() {
     </button>`;
   }).join('');
 }
+
+// Local-first index of every show the user has been part of, persisted
+// across reloads. Source of truth for the "Previous Shows" list on
+// Home — independent of network state, so end-show always lands in a
+// renderable list even if the DB fetch hangs or returns empty (common
+// when the just-ended show had no spotted cars yet).
+const _PAST_KEY = 'cb-past-events-v1';
+const PastEvents = {
+  list() {
+    try {
+      const arr = JSON.parse(localStorage.getItem(_PAST_KEY) || '[]');
+      return Array.isArray(arr) ? arr : [];
+    } catch { return []; }
+  },
+  _save(arr) {
+    try { localStorage.setItem(_PAST_KEY, JSON.stringify(arr.slice(0, 100))); }
+    catch (e) { console.warn('PastEvents save:', e); }
+  },
+  // Insert or update by id (preferred) or by name (fallback for events
+  // that haven't synced yet).
+  upsert(ev) {
+    if (!ev || !ev.name) return;
+    const arr = this.list();
+    const idx = arr.findIndex(e =>
+      (ev.id != null && e.id != null && String(e.id) === String(ev.id)) ||
+      (e.name && ev.name && e.name === ev.name)
+    );
+    const merged = {
+      id:         ev.id ?? (idx >= 0 ? arr[idx].id : null),
+      name:       ev.name,
+      location:   ev.location ?? (idx >= 0 ? arr[idx].location : null),
+      event_date: ev.event_date ?? (idx >= 0 ? arr[idx].event_date : null),
+      ts:         Date.now(),
+    };
+    if (idx >= 0) arr[idx] = merged;
+    else          arr.unshift(merged);
+    arr.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    this._save(arr);
+  },
+  removeById(id) {
+    const arr = this.list().filter(e => String(e.id) !== String(id));
+    this._save(arr);
+  },
+};
+window.PastEvents = PastEvents;
 
 // Cache of recent DB events to avoid re-listing on every action.
 let _eventsCache = null;
@@ -670,6 +717,7 @@ async function resumeEvent(name) {
   try {
     const eventRow = await _raceTimeout(_findEventByName(name), 'Resume show', 10000);
     if (!eventRow) { showSnack('Event not found'); return; }
+    PastEvents.upsert(eventRow);
     S.event   = eventRow.name;
     S.eventId = eventRow.id;
     S.loc     = eventRow.location  || '';
@@ -693,6 +741,7 @@ async function startEvent() {
 
   try {
     const eventRow = await _findOrCreateEvent(ev, loc, date || null);
+    PastEvents.upsert(eventRow);
     S.event   = eventRow.name;
     S.eventId = eventRow.id;
     S.loc     = eventRow.location || '';
@@ -2269,6 +2318,14 @@ async function endCurrentShow() {
     confirmLabel: 'End show',
   });
   if (!ok) return;
+  // Snapshot the show into the local Past Shows index BEFORE clearing
+  // state, so it lands in the list even if it had no spotted cars.
+  PastEvents.upsert({
+    id:         S.eventId,
+    name:       S.event,
+    location:   S.loc || null,
+    event_date: S.date || null,
+  });
   S.event   = '';
   S.eventId = null;
   S.board   = null;
@@ -2280,11 +2337,8 @@ async function endCurrentShow() {
   _invalidateEventsCache();
   showSnack('Show ended');
   switchTab('home');
-  // Belt-and-braces: switchTab kicks off renderPastEvents but doesn't
-  // await it; if the fetch fails on first attempt (stuck auth lock,
-  // flaky Wi-Fi), the past-events list is left blank. Re-render after a
-  // short delay so the user sees their show land.
-  setTimeout(() => { renderPastEvents().catch(e => console.warn('post-end re-render:', e)); }, 200);
+  // renderPastEvents now reads PastEvents (localStorage) first, so the
+  // just-ended show appears instantly with no network dependency.
 }
 
 function openNewShowSheet() {
