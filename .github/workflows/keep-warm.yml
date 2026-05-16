@@ -10,9 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Supabase REST API
+        # `cars` was a typo — this app's schema has no such table, so
+        # the workflow hit /rest/v1/cars and got back 404 (PGRST205),
+        # failing the run on -f every single day. Hit `profiles`, which
+        # exists in schema.sql and returns 200 [] to the anon role.
         run: |
           curl -fsS \
             -H "apikey: sb_publishable_iiFm7jpE-pweUlSCFYdtyw_ImNM1L-I" \
-            -H "Authorization: Bearer sb_publishable_iiFm7jpE-pweUlSCFYdtyw_ImNM1L-I" \
-            "https://itjdpmxqsxodrqmwfoyf.supabase.co/rest/v1/cars?select=name&limit=1" \
+            "https://itjdpmxqsxodrqmwfoyf.supabase.co/rest/v1/profiles?select=id&limit=1" \
             > /dev/null
