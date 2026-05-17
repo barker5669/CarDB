@@ -1045,14 +1045,14 @@ body::before{
 #s-home > .page-hdr{display:none}
 #s-home .home-scroll{padding:0;display:flex;flex-direction:column}
 .car-hero-full{
-  position:relative;height:520px;flex-shrink:0;overflow:hidden;
+  position:relative;height:480px;flex-shrink:0;overflow:hidden;
   background:
     radial-gradient(120% 70% at 50% 18%, #fefbef 0%, #f5ece0 55%, #e6dac3 100%),
     var(--paper);
 }
 /* Empty state is more compact — the "+ Add your car" CTA doesn't
-   need 520px of cream around it. Populated state stays tall so
-   the photo + info zone fit comfortably. */
+   need a full hero of cream around it. Populated state stays tall
+   so the photo + info zone fit comfortably. */
 .car-hero-full.is-empty{height:360px}
 /* Floor shadow positioned right under where the wheels sit. */
 .car-hero-full::before{
@@ -1182,16 +1182,16 @@ body::before{
 
 /* ── Bottom overlay: name block + floating stat pills ── */
 .hero-bottom{
-  position:absolute;bottom:38px;left:22px;right:22px;z-index:3;
+  position:absolute;bottom:34px;left:22px;right:22px;z-index:3;
 }
-.hero-name{margin-bottom:16px}
-.hero-name .eyebrow{margin-bottom:8px}
+.hero-name{margin-bottom:12px}
+.hero-name .eyebrow{margin-bottom:6px}
 .hero-name h2{
   font-family:var(--fh);font-weight:700;
-  font-size:1.45rem;letter-spacing:-0.02em;line-height:1.1;
+  font-size:1.45rem;letter-spacing:-0.02em;line-height:1.05;
   color:var(--ink-strong);word-wrap:break-word;
 }
-.hero-name .sub{font-size:0.84rem;color:var(--ink-muted);margin-top:4px}
+.hero-name .sub{font-size:0.84rem;color:var(--ink-muted);margin-top:3px}
 
 .hero-stats{display:flex;gap:8px;flex-wrap:wrap}
 .stat-pill{
@@ -1234,7 +1234,7 @@ body::before{
 
 /* ── Pager dots at the bottom of the hero ── */
 .hero-pager{
-  position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+  position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
   display:flex;align-items:center;gap:6px;z-index:3;
 }
 .hero-pager .pd{
@@ -1245,7 +1245,7 @@ body::before{
 
 /* ── Hairline between hero and content below ── */
 .hero-divider{height:1px;flex-shrink:0;border:0;margin:0;background:var(--hair-strong)}
-.content-pad{padding:18px 22px 24px;flex-shrink:0;display:flex;flex-direction:column;gap:14px}
+.content-pad{padding:14px 22px 18px;flex-shrink:0;display:flex;flex-direction:column;gap:12px}
 
 /* ── Eyebrow vocabulary (used by hero name + lifetime header) ── */
 .eyebrow{
@@ -1341,7 +1341,7 @@ body::before{
    tally marks, mono caps labels, and a quiet sub-info line. */
 /* Lifetime stats — exact mockup spec. Brass eyebrow + 3 stats
    (mark + num + name+glyph + meta) separated by hairline dividers. */
-.lifetime{margin-top:16px;padding-top:18px;border-top:1px solid var(--hair)}
+.lifetime{margin-top:10px;padding-top:14px;border-top:1px solid var(--hair)}
 .lifetime-lab{
   font-size:0.6rem;font-weight:700;
   letter-spacing:0.28em;text-transform:uppercase;color:var(--brass);
