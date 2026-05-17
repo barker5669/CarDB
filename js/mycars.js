@@ -242,13 +242,24 @@ async function showMyCarDetail(carId) {
   const titleEl = document.getElementById('mycars-hdr-title');
   if (titleEl) titleEl.textContent = '';
 
+  // Route local cars to LocalMyCars so we don't ask Supabase for a
+  // bigint id like "local-mp9gepze-0yai" (which would 400 with a
+  // 22P02 invalid input syntax error).
   let car;
-  try { car = await DB.myCars.get(carId); }
-  catch (err) { showErr('Could not load car', err); return; }
+  if (LocalMyCars.isLocalId(carId)) {
+    car = LocalMyCars.list().find(c => String(c.id) === String(carId));
+    if (!car) { showErr('Could not load car', new Error('Car not found locally')); return; }
+  } else {
+    try { car = await DB.myCars.get(carId); }
+    catch (err) { showErr('Could not load car', err); return; }
+  }
 
   let logEntries = [];
-  try { logEntries = await DB.myCarLog.list(carId); }
-  catch (err) { console.warn('myCarLog list:', err); }
+  // Local cars don't have a remote log yet — skip the network call.
+  if (!LocalMyCars.isLocalId(carId)) {
+    try { logEntries = await DB.myCarLog.list(carId); }
+    catch (err) { console.warn('myCarLog list:', err); }
+  }
 
   const photos    = _mcPhotosFor(car);
   const heroPhoto = _mcHeroFor(car, photos);

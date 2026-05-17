@@ -1045,7 +1045,7 @@ body::before{
 #s-home > .page-hdr{display:none}
 #s-home .home-scroll{padding:0;display:flex;flex-direction:column}
 .car-hero-full{
-  position:relative;height:460px;flex-shrink:0;overflow:hidden;
+  position:relative;height:520px;flex-shrink:0;overflow:hidden;
   background:
     radial-gradient(120% 70% at 50% 18%, #fefbef 0%, #f5ece0 55%, #e6dac3 100%),
     var(--paper);
@@ -1090,17 +1090,30 @@ body::before{
 .hero-add-btn:active{transform:translate(-50%,-50%) scale(0.96)}
 /* When a real photo is loaded, it bleeds edge-to-edge and sits
    BELOW the cal pill row (which floats over the paper, not over
-   the photo). No border-radius or inset — full-bleed cover. */
+   the photo). No border-radius or inset — full-bleed cover. Top
+   and bottom edges fade into the cream paper via a luminance mask
+   so the photo "emerges" from the page rather than sitting on it
+   as a hard rectangle. */
 .car-hero-full .car-photo{
   position:absolute;
   top:calc(var(--st) + 72px);
-  left:0;right:0;height:260px;
+  left:0;right:0;height:280px;
   overflow:hidden;
+  -webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 10%,#000 92%,transparent 100%);
+          mask-image:linear-gradient(180deg,transparent 0%,#000 10%,#000 92%,transparent 100%);
 }
 .car-hero-full .car-photo img{width:100%;height:100%;object-fit:cover;display:block}
 /* When a real photo is showing, hide the cream-paper floor shadow
    (it's positioned for the silhouette and looks odd under a photo). */
 .car-hero-full.has-photo::before{display:none}
+/* Info zone (name + stats) is positioned from the TOP when there's
+   a photo, so the bottom block sits CLEANLY below the photo's
+   bottom edge instead of overlapping it. The pager dots stay
+   anchored to the bottom of the hero. */
+.car-hero-full.has-photo .hero-bottom{
+  top:calc(var(--st) + 72px + 280px + 14px);
+  bottom:auto;
+}
 
 /* ── Top overlay row: calendar pill (left) + burger (right) ── */
 .hero-top{
