@@ -420,7 +420,7 @@ async function openAddMyCar() {
     }
   }
   _myCars = null;
-  showSnack('🚗 Car added');
+  showSnack('Car added');
   // Refresh both the My Cars list AND the dashboard hero so a car
   // added from the home page lands instantly on the home hero too.
   if (typeof renderMyCarsList === 'function') await renderMyCarsList().catch(() => {});

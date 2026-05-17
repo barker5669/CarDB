@@ -33,37 +33,49 @@ async function renderUpcoming() {
   const body = document.getElementById('upcoming-body');
   if (!body) return;
 
-  let events;
-  try { events = await _raceTimeout(DB.upcoming.list(), 'Upcoming events', 8000); }
-  catch (err) {
-    // Backend's flaky — don't dump a scary error; just show the
-    // empty state so the user can still tap "+ Add an event".
-    console.warn('renderUpcoming:', err);
-    body.innerHTML = `
-      <div class="up-empty">
-        <div class="up-empty-icon">📅</div>
-        <h3>Couldn't reach events</h3>
-        <p>You're offline or the backend is unavailable.</p>
-        <button class="primary-btn" onclick="openAddUpcoming()">＋ Add an event</button>
-      </div>`;
-    return;
+  // Local-first: cache is the source of truth. Render whatever's
+  // cached immediately, then refresh from Supabase in the background
+  // and re-render if anything changed. Cache is updated by
+  // openAddUpcoming (optimistic) + by successful list() responses.
+  const cached = (typeof _loadCachedUpcoming === 'function') ? _loadCachedUpcoming() : [];
+  _paintUpcoming(body, cached);
+  if (window.DB && DB.upcoming && typeof DB.upcoming.list === 'function') {
+    _raceTimeout(DB.upcoming.list(), 'Upcoming events', 8000)
+      .then(fresh => {
+        if (!Array.isArray(fresh)) return;
+        // Merge: keep local-only events the backend doesn't know about.
+        const localOnly = cached.filter(e => e && String(e.id || '').startsWith('local-'));
+        const merged    = [...fresh, ...localOnly];
+        if (typeof _saveCachedUpcoming === 'function') _saveCachedUpcoming(merged);
+        _paintUpcoming(body, merged);
+      })
+      .catch(err => console.warn('renderUpcoming:', err));
   }
-  await _loadProfilesIndex();
+}
 
+async function _paintUpcoming(body, events) {
+  if (!body) return;
+  await _loadProfilesIndex();
   if (!events.length) {
     body.innerHTML = `
       <div class="up-empty">
-        <div class="up-empty-icon">📅</div>
+        <div class="up-empty-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>
+        </div>
         <h3>No upcoming events</h3>
-        <p>Add a show or event you'd like to attend.</p>
+        <p>Add a show you'd like to attend.</p>
         <button class="primary-btn" onclick="openAddUpcoming()">＋ Add an event</button>
       </div>`;
     return;
   }
 
   const me = currentUserId();
+  // Sort by date ascending so the list reads top-down chronologically.
+  const sorted = events.slice().sort((a, b) =>
+    String(a.event_date || '').localeCompare(String(b.event_date || ''))
+  );
   const groups = {};
-  for (const e of events) {
+  for (const e of sorted) {
     const key = e.event_date ? e.event_date.slice(0, 7) : 'no-date';
     (groups[key] = groups[key] || []).push(e);
   }
@@ -123,64 +135,83 @@ async function openAddUpcoming() {
     showSnack('Pick a valid date');
     return;
   }
-  showSnack('💾 Saving…');
-  try {
-    const row = await _raceTimeout(DB.upcoming.create({
-      name:       data.name,
-      event_date: data.date,
-      location:   data.location,
-      url:        data.url,
-      notes:      data.notes,
-    }), 'Add event', 10000);
-    try { await _raceTimeout(DB.upcoming.setAttending(row.id, true), 'RSVP', 8000); }
-    catch (e) { console.warn('RSVP after create:', e); }
-    // Write the new event into the local cache so the cal pill +
-    // next-event card pick it up instantly, even if the subsequent
-    // list() call fails / times out.
-    if (typeof _loadCachedUpcoming === 'function') {
+  // Local-first save — instant, works offline. Cache becomes the
+  // source of truth; Supabase sync happens optimistically after.
+  const me = (typeof currentUserId === 'function') ? currentUserId() : null;
+  const localId = 'local-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+  const localEntry = {
+    id: localId,
+    name: data.name,
+    event_date: data.date,
+    location: data.location,
+    url: data.url,
+    notes: data.notes,
+    upcoming_event_attendees: me ? [{ user_id: me }] : [],
+    created_by: me,
+    _local: true,
+  };
+  if (typeof _loadCachedUpcoming === 'function') {
+    const list = _loadCachedUpcoming();
+    list.push(localEntry);
+    _saveCachedUpcoming(list);
+  }
+  showSnack('Event added');
+  await renderUpcoming();
+  if (typeof renderNextEventCard === 'function') renderNextEventCard().catch(() => {});
+  if (typeof renderHomeHeroCalPill === 'function') renderHomeHeroCalPill();
+  // Background Supabase sync — replaces the local entry with the
+  // remote one on success. Doesn't block the UI; failures leave
+  // the local entry in place.
+  if (window.DB && DB.upcoming && typeof DB.upcoming.create === 'function') {
+    (async () => {
       try {
-        const me = (typeof currentUserId === 'function') ? currentUserId() : null;
-        const list = _loadCachedUpcoming();
-        const idx = list.findIndex(e => e && String(e.id) === String(row.id));
-        const entry = {
-          ...row,
-          upcoming_event_attendees: me ? [{ user_id: me }] : [],
-        };
-        if (idx >= 0) list[idx] = entry; else list.push(entry);
-        _saveCachedUpcoming(list);
-      } catch (e) { console.warn('cache add upcoming:', e); }
-    }
-    showSnack('📅 Event added!');
-    await renderUpcoming();
-    // The "Next event" card on the home dashboard also needs to
-    // refresh — otherwise the user has to switch tabs and back
-    // for the freshly-added event to show up there.
-    if (typeof renderNextEventCard === 'function') {
-      renderNextEventCard().catch(() => {});
-    }
-    if (typeof renderHomeHeroCalPill === 'function') {
-      // Cal pill dots also reflect upcoming events — keep it in sync.
-      renderHomeHeroCalPill();
-    }
-  } catch (err) {
-    showErr('Could not save event', err);
+        const row = await _raceTimeout(DB.upcoming.create({
+          name:       data.name,
+          event_date: data.date,
+          location:   data.location,
+          url:        data.url,
+          notes:      data.notes,
+        }), 'Add event', 10000);
+        try { await _raceTimeout(DB.upcoming.setAttending(row.id, true), 'RSVP', 8000); }
+        catch (e) { console.warn('RSVP after create:', e); }
+        if (typeof _loadCachedUpcoming === 'function') {
+          const list = _loadCachedUpcoming();
+          const idx  = list.findIndex(e => e && e.id === localId);
+          const entry = { ...row, upcoming_event_attendees: me ? [{ user_id: me }] : [] };
+          if (idx >= 0) list[idx] = entry; else list.push(entry);
+          _saveCachedUpcoming(list);
+        }
+      } catch (err) {
+        console.warn('Background upcoming sync failed:', err);
+      }
+    })();
   }
 }
 
 async function toggleUpcomingRSVP(id, currentlyGoing) {
+  const me   = (typeof currentUserId === 'function') ? currentUserId() : null;
+  const goal = !currentlyGoing;
+  // Update the cache optimistically so the UI flips instantly.
+  if (typeof _loadCachedUpcoming === 'function' && me) {
+    const list = _loadCachedUpcoming();
+    const ev   = list.find(e => e && String(e.id) === String(id));
+    if (ev) {
+      const attendees = Array.isArray(ev.upcoming_event_attendees) ? ev.upcoming_event_attendees : [];
+      if (goal && !attendees.some(a => a.user_id === me)) attendees.push({ user_id: me });
+      if (!goal) ev.upcoming_event_attendees = attendees.filter(a => a.user_id !== me);
+      else       ev.upcoming_event_attendees = attendees;
+      _saveCachedUpcoming(list);
+    }
+  }
+  await renderUpcoming();
+  if (typeof renderNextEventCard === 'function') renderNextEventCard().catch(() => {});
+  if (typeof renderHomeHeroCalPill === 'function') renderHomeHeroCalPill();
+  // Skip the backend round-trip for local-only events.
+  if (String(id).startsWith('local-')) return;
   try {
-    await _raceTimeout(DB.upcoming.setAttending(id, !currentlyGoing), 'RSVP', 8000);
-    await renderUpcoming();
-    // Same refresh dance — RSVPing makes / unmakes the event the
-    // home's "Next event" target, so the card needs to know.
-    if (typeof renderNextEventCard === 'function') {
-      renderNextEventCard().catch(() => {});
-    }
-    if (typeof renderHomeHeroCalPill === 'function') {
-      renderHomeHeroCalPill();
-    }
+    await _raceTimeout(DB.upcoming.setAttending(id, goal), 'RSVP', 8000);
   } catch (err) {
-    showErr('Could not update RSVP', err);
+    console.warn('RSVP sync failed:', err);
   }
 }
 
@@ -191,11 +222,16 @@ async function confirmDeleteUpcoming(id) {
     danger:       true,
   });
   if (!ok) return;
-  try {
-    await DB.upcoming.remove(id);
-    showSnack('Deleted');
-    await renderUpcoming();
-  } catch (err) {
-    showErr('Could not delete', err);
+  // Optimistic local removal so the UI updates immediately.
+  if (typeof _loadCachedUpcoming === 'function') {
+    const list = _loadCachedUpcoming().filter(e => e && String(e.id) !== String(id));
+    _saveCachedUpcoming(list);
   }
+  showSnack('Deleted');
+  await renderUpcoming();
+  if (typeof renderNextEventCard === 'function') renderNextEventCard().catch(() => {});
+  if (typeof renderHomeHeroCalPill === 'function') renderHomeHeroCalPill();
+  if (String(id).startsWith('local-')) return;
+  try { await DB.upcoming.remove(id); }
+  catch (err) { console.warn('Delete sync failed:', err); }
 }

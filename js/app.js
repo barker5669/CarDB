@@ -705,6 +705,10 @@ async function hydrateSightingsFromDB() {
     });
   }
   S.spotted = spotted;
+  // Sightings just hydrated — refresh the dashboard stats so the
+  // numbers reflect reality (they ran once with empty S.spotted
+  // before the network responded).
+  try { renderLifetimeStats(); } catch {}
   // Warm the photo cache in the background so renders prefer local
   // blobs over network URLs. Don't await — it can take a while if the
   // user has dozens of photos and we don't want to block hydrate.
