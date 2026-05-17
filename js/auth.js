@@ -302,6 +302,14 @@ async function afterSignIn(session) {
     try { await initSetup(); } catch (e) { console.warn('initSetup:', e); }
   }
   if (typeof buildNav === 'function') buildNav('home');
+  // Home is the default visible tab (s-home has class="screen active"
+  // in the HTML), but nothing has actually rendered its contents yet —
+  // the cards/stats/hero are still showing their static "0" defaults
+  // from the markup. Trigger a full home render now so the dashboard
+  // shows real data on load instead of after a tab switch.
+  if (typeof updateHomeCard === 'function') {
+    try { updateHomeCard(); } catch (e) { console.warn('updateHomeCard on signin:', e); }
+  }
   if (typeof Queue !== 'undefined') Queue.drain().catch(() => {});
   if (typeof LocalPhotos !== 'undefined') {
     LocalPhotos.warmAll()
