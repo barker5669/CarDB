@@ -367,6 +367,20 @@
     </div>
   </div>
 
+  <!-- SHOWS TAB — browseable list of past shows the user has done.
+       Tap a row to view that show's summary / resume. -->
+  <div class="screen" id="s-shows">
+    <div class="page-hdr">
+      <div class="page-hdr-text">
+        <div class="page-hdr-title">Shows</div>
+        <div class="page-hdr-sub" id="shows-hdr-sub">All your previous shows</div>
+      </div>
+      <button class="hdr-cta-btn" onclick="openNewShowSheet()">＋ New</button>
+    </div>
+    <div class="shows-scroll" id="shows-body"></div>
+    <nav class="bottom-nav" id="nav-shows-bar"></nav>
+  </div>
+
   <!-- COLLECTION TAB -->
   <div class="screen" id="s-garage">
     <div class="page-hdr">

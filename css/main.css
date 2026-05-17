@@ -204,14 +204,33 @@ body::before{
 .primary-btn{width:100%;background:var(--brass);border:none;color:#fff;font-family:var(--ff);font-size:1.05rem;font-weight:700;padding:17px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 -1px 0 rgba(0,0,0,0.10) inset,0 4px 14px -4px rgba(166,124,82,0.40);letter-spacing:0.01em}
 .primary-btn:active{opacity:0.92;transform:scale(0.98)}
 
-/* Past shows */
-.past-btn{display:flex;align-items:center;gap:12px;width:100%;background:var(--card);border:1px solid var(--bdr);border-radius:var(--R);color:var(--ink);font-family:var(--ff);font-size:0.96rem;font-weight:600;padding:14px 15px;cursor:pointer;margin-bottom:8px;text-align:left;-webkit-appearance:none;appearance:none}
-.past-btn:active{background:var(--card2)}
+/* Past shows — row vocabulary mirroring the Shows tab so both
+   list views feel like the same thing. */
+.past-btn{display:flex;align-items:center;gap:12px;width:100%;background:linear-gradient(180deg,var(--card-surf) 0%,var(--card-deep) 100%);border:1px solid var(--hair);border-radius:var(--R);color:var(--ink-strong);font-family:var(--ff);font-size:0.96rem;font-weight:600;padding:13px 14px;cursor:pointer;margin-bottom:8px;text-align:left;-webkit-appearance:none;appearance:none;box-shadow:0 1px 0 rgba(255,255,255,0.85) inset,0 1px 2px rgba(40,30,20,0.04)}
+.past-btn:active{background:linear-gradient(180deg,var(--card-deep),var(--paper-deep))}
 .pb-icon{font-size:1.3rem;flex-shrink:0}
 .pb-body{flex:1;min-width:0}
-.pb-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pb-meta{font-size:0.75rem;color:var(--dim);font-weight:600;margin-top:2px}
-.pb-arrow{font-size:1.3rem;color:var(--dim);flex-shrink:0}
+.pb-name{font-family:var(--fh);font-weight:700;letter-spacing:-0.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-meta{font-family:var(--ff-mono);font-size:0.66rem;color:var(--ink-muted);font-weight:500;letter-spacing:0.04em;margin-top:3px}
+.pb-arrow{font-size:1.3rem;color:var(--brass);flex-shrink:0}
+
+/* SHOWS TAB — dedicated browseable list. Same row vocabulary as
+   the home's past-btn so the two views feel continuous. */
+#s-shows{background:var(--paper)}
+.shows-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px calc(var(--sb) + 14px)}
+.shows-scroll::-webkit-scrollbar{display:none}
+.shows-row{display:flex;align-items:center;gap:12px;width:100%;background:linear-gradient(180deg,var(--card-surf) 0%,var(--card-deep) 100%);border:1px solid var(--hair);border-radius:var(--R);color:var(--ink-strong);font-family:var(--ff);padding:14px 14px;cursor:pointer;margin-bottom:8px;text-align:left;-webkit-appearance:none;appearance:none;box-shadow:0 1px 0 rgba(255,255,255,0.85) inset,0 1px 2px rgba(40,30,20,0.04)}
+.shows-row:active{background:linear-gradient(180deg,var(--card-deep),var(--paper-deep))}
+.shows-row-icon{font-size:1.4rem;flex-shrink:0}
+.shows-row-body{flex:1;min-width:0}
+.shows-row-name{font-family:var(--fh);font-size:1.02rem;font-weight:700;letter-spacing:-0.015em;color:var(--ink-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shows-row-meta{font-family:var(--ff-mono);font-size:0.66rem;color:var(--ink-muted);font-weight:500;letter-spacing:0.04em;margin-top:3px}
+.shows-row-badge{background:var(--brass);color:#fff;font-family:var(--ff-mono);font-size:0.6rem;font-weight:700;letter-spacing:0.06em;padding:3px 9px;border-radius:999px;flex-shrink:0;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset}
+.shows-row-arrow{font-size:1.3rem;color:var(--brass);flex-shrink:0}
+.shows-empty{text-align:center;padding:60px 24px;color:var(--ink-muted)}
+.shows-empty-icon{font-size:3.5rem;margin-bottom:14px}
+.shows-empty h3{font-family:var(--fh);font-size:1.4rem;font-weight:700;color:var(--ink-strong);margin-bottom:8px;letter-spacing:-0.02em}
+.shows-empty p{font-size:0.92rem;color:var(--ink-muted);line-height:1.55}
 
 /* FILTER BAR — mono-caps brass-tinted chips (the mockup vocabulary).
    Active chip carries a brass tint; rarity chips carry the tier

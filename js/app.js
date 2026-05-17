@@ -531,6 +531,60 @@ async function renderPastEvents() {
   }).join('');
 }
 
+// Renders the dedicated Shows tab — a full-screen browseable list
+// of every past show, sourced from the same PastEvents store the
+// home dashboard uses. Tap a row to resume; the brass count badge
+// shows spotted totals at a glance.
+function renderShowsList() {
+  const body = document.getElementById('shows-body');
+  if (!body) return;
+  // Read directly from the local store so the render is instant.
+  // Network enrichment happens in renderPastEvents (home), and any
+  // new shows it discovers will be in PastEvents the next time the
+  // user opens Shows — no need to re-fetch here.
+  const events = (PastEvents.list() || []).filter(e =>
+    e.name && e.name !== PERSONAL_EVENT
+  );
+  const sub = document.getElementById('shows-hdr-sub');
+  if (sub) sub.textContent = events.length
+    ? `${events.length} show${events.length === 1 ? '' : 's'}`
+    : 'No shows yet';
+  if (!events.length) {
+    body.innerHTML = `
+      <div class="shows-empty">
+        <div class="shows-empty-icon">🏁</div>
+        <h3>No shows yet</h3>
+        <p>Start a show from Home and it'll show up here when you end it.</p>
+      </div>`;
+    return;
+  }
+  const countFor = (name) => Object.keys((S.spotted || {})[name] || {}).length;
+  const fmtDate  = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return isNaN(d) ? iso : d.toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+  };
+  // Sort newest-first when we have dates.
+  const sorted = events.slice().sort((a, b) => {
+    const ad = a.event_date || '';
+    const bd = b.event_date || '';
+    return bd.localeCompare(ad);
+  });
+  body.innerHTML = sorted.map(e => {
+    const meta  = [e.location, fmtDate(e.event_date)].filter(Boolean).join(' · ');
+    const count = countFor(e.name);
+    return `<button class="shows-row" onclick="resumeEvent('${escapeJsSq(e.name)}')">
+      <span class="shows-row-icon">🏁</span>
+      <div class="shows-row-body">
+        <div class="shows-row-name">${escapeHtml(e.name)}</div>
+        ${meta ? `<div class="shows-row-meta">${escapeHtml(meta)}</div>` : ''}
+      </div>
+      ${count > 0 ? `<span class="shows-row-badge">${count} spotted</span>` : ''}
+      <span class="shows-row-arrow">›</span>
+    </button>`;
+  }).join('');
+}
+
 // Local-first index of every show the user has been part of, persisted
 // across reloads. Source of truth for the "Previous Shows" list on
 // Home — independent of network state, so end-show always lands in a
@@ -778,7 +832,7 @@ function launch() {
 // ══════════════════════════════════════════════
 function switchTab(tab) {
   S.tab = tab;
-  const tabs = ['home','bingo','event','garage','mycars','upcoming','sort','settings'];
+  const tabs = ['home','bingo','event','shows','garage','mycars','upcoming','sort','settings'];
   tabs.forEach(t => {
     const el = document.getElementById('s-' + t);
     if (el) el.classList.toggle('active', t === tab);
@@ -786,6 +840,7 @@ function switchTab(tab) {
   buildNav(tab);
   if (tab === 'bingo')    { updateBingoState(); }
   if (tab === 'event')    { buildEvFilters(); renderEventList(); }
+  if (tab === 'shows')    { renderShowsList(); }
   if (tab === 'garage')   { buildGarageFilters(); renderGarage(); }
   if (tab === 'home')     { updateHomeCard(); renderPastEvents(); refreshHomeShortcuts(); }
   if (tab === 'mycars')   { /* renderMyCarsList is called explicitly by showMyCars */ }
@@ -794,16 +849,20 @@ function switchTab(tab) {
 }
 
 function buildNav(activeTab) {
-  // Nav shows: Home | Bingo | 📷 (FAB) | Spotted | Collection
-  // Settings is accessed via Home page (less frequently used)
+  // Nav: Home | Bingo | 📷 (FAB) | Shows | Collection
+  // Shows = browseable list of past shows. The per-event "Spotted"
+  // detail (s-event) is still reachable from the bingo screen and
+  // from tapping a past show, but no longer has a nav slot.
+  // My Cars (s-mycars) is reached by tapping the hero on the dashboard.
+  // Settings is accessed via the burger on the dashboard hero.
   const NAV_TABS = [
     { id:'home',   lbl:'Home',       svg:'<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
     { id:'bingo',  lbl:'Bingo',      svg:'<rect x="3" y="2" width="18" height="20" rx="3"/><path d="M8 7h2l2 5 2-5h2"/><path d="M8 14h8"/>' },
-    { id:'event',  lbl:'Spotted',    svg:'<path d="M8 21h8M12 17v4M7 4H4a1 1 0 0 0-1 1v3c0 3.31 2.69 6 6 6h6c3.31 0 6-2.69 6-6V5a1 1 0 0 0-1-1h-3"/><path d="M7 4h10v7a5 5 0 0 1-10 0V4z"/>' },
+    { id:'shows',  lbl:'Shows',      svg:'<path d="M4 5h16v6H4z"/><path d="M4 13h16v6H4z"/><path d="M8 5v14M12 5v14M16 5v14"/>' },
     { id:'garage', lbl:'Collection', svg:'<path d="M2 3h9a2 2 0 0 1 2 2v13a1.5 1.5 0 0 0-1.5-1.5H2z"/><path d="M22 3h-9a2 2 0 0 0-2 2v13a1.5 1.5 0 0 1 1.5-1.5H22z"/>' },
   ];
   const camSvg = '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>';
-  
+
   // Mark home as active if on settings (since settings is accessed from home)
   const displayActive = activeTab === 'settings' ? 'home' : activeTab;
 
@@ -814,7 +873,7 @@ function buildNav(activeTab) {
 
   const html = tabBtn(NAV_TABS[0]) + tabBtn(NAV_TABS[1]) + camBtn + tabBtn(NAV_TABS[2]) + tabBtn(NAV_TABS[3]);
 
-  ['home','bingo','event','garage','mycars','upcoming','sort','settings'].forEach(id => {
+  ['home','bingo','event','shows','garage','mycars','upcoming','sort','settings'].forEach(id => {
     const bar = document.getElementById('nav-' + id + '-bar');
     if (bar) bar.innerHTML = html;
   });
@@ -894,11 +953,26 @@ async function renderHomeHero() {
     const oldImg = photoEl.querySelector('img');
     if (oldImg) oldImg.remove();
     photoEl.classList.remove('has-image');
+    // No car → hero shouldn't act tappable.
+    hero.style.cursor = '';
+    hero.onclick = null;
     return;
   }
 
   hero.classList.remove('is-empty');
   if (ctaEl) ctaEl.style.display = 'none';
+
+  // Tap the hero → jump to the car's detail page. The cal pill and
+  // burger are real <button>s inside the hero, so we ignore clicks
+  // that originated inside one (they have their own onclick handlers).
+  hero.style.cursor = 'pointer';
+  const carId = data.car.id;
+  hero.onclick = (e) => {
+    if (e.target.closest('button')) return; // clicked an overlay control
+    if (typeof showMyCarDetail === 'function' && carId != null) showMyCarDetail(carId);
+    else if (typeof showMyCars === 'function') showMyCars();
+    else switchTab('mycars');
+  };
 
   // Photo: swap the silhouette for an <img> when a hero photo exists.
   const oldImg = photoEl.querySelector('img');
