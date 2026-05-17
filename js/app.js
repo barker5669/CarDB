@@ -470,18 +470,11 @@ function _renderPastEventsSkeleton() {
 async function renderPastEvents() {
   const pastEl = document.getElementById('past-events');
   const listEl = document.getElementById('past-list');
-  const welcomeEl = document.getElementById('home-welcome');
-  if (!pastEl || !listEl) return;
-  // Show skeletons immediately so the home isn't blank during fetch.
-  pastEl.style.display = '';
-  _renderPastEventsSkeleton();
-  // Local-first: read every show the user's been part of from
-  // localStorage. Renders instantly, never blocks on network.
-  let events = PastEvents.list().filter(e =>
-    e.name && e.name !== PERSONAL_EVENT && e.name !== S.event
-  );
-  // Try to enrich with the DB list so shows attended on another
-  // device show up too. Best-effort; don't block the render.
+  // Welcome card display is now driven by updateHomeCard since the
+  // past-events DOM was removed from the home (it lives on the Shows
+  // tab instead). But the network enrichment below still runs so
+  // PastEvents stays in sync for the Shows tab — that's the whole
+  // reason this function survives.
   _raceTimeout(_eventsList(), 'Past shows', 8000)
     .then(all => {
       const me = currentUserId();
@@ -489,25 +482,24 @@ async function renderPastEvents() {
         Array.isArray(e.event_attendees) &&
         e.event_attendees.some(a => a.user_id === me)
       );
-      let added = false;
-      for (const dbEv of dbEvents) {
-        const arr = PastEvents.list();
-        const known = arr.find(e =>
-          (e.id != null && String(e.id) === String(dbEv.id)) || e.name === dbEv.name
-        );
-        if (!known) added = true;
-        PastEvents.upsert(dbEv);
-      }
-      if (added) renderPastEvents().catch(() => {});
+      for (const dbEv of dbEvents) PastEvents.upsert(dbEv);
+      // Re-render the Shows tab if it happens to be visible so the
+      // newly-enriched data shows up without a tab switch.
+      if (S.tab === 'shows' && typeof renderShowsList === 'function') renderShowsList();
     })
     .catch(err => console.warn('renderPastEvents enrich:', err));
+  // Old past-events DOM has been removed. If a future render adds
+  // it back, render the list; otherwise nothing more to do here.
+  if (!pastEl || !listEl) return;
+  pastEl.style.display = '';
+  _renderPastEventsSkeleton();
+  const events = PastEvents.list().filter(e =>
+    e.name && e.name !== PERSONAL_EVENT && e.name !== S.event
+  );
   if (!events.length) {
     pastEl.style.display = 'none';
-    // Show welcome only when there's no active show either.
-    if (welcomeEl) welcomeEl.style.display = !S.event ? 'block' : 'none';
     return;
   }
-  if (welcomeEl) welcomeEl.style.display = 'none';
   pastEl.style.display = '';
   // Sightings count still reads from localStorage until Phase 6.
   const countFor = (name) => Object.keys(S.spotted[name] || {}).length;
@@ -900,6 +892,14 @@ function updateHomeCard() {
     const name = currentDisplayName();
     greeting.textContent = name ? `Hello, ${name}` : 'Classic Car Spotter';
   }
+  const startBtn = document.getElementById('home-start-btn');
+  // Welcome card: shown only on a true first run — no active show
+  // AND no past shows the user could resume into.
+  const welcomeEl = document.getElementById('home-welcome');
+  if (welcomeEl) {
+    const hasPast = (PastEvents.list() || []).some(e => e.name && e.name !== PERSONAL_EVENT);
+    welcomeEl.style.display = (!S.event && !hasPast) ? 'block' : 'none';
+  }
   if (S.event) {
     activeDiv.style.display = 'block';
     const nameEl  = document.getElementById('home-show-name');
@@ -911,8 +911,11 @@ function updateHomeCard() {
       const count = Object.keys(currentSpotted()).length;
       badgeEl.textContent = count + ' spotted';
     }
+    // A show is running — get the start-new-show CTA out of the way.
+    if (startBtn) startBtn.style.display = 'none';
   } else {
     activeDiv.style.display = 'none';
+    if (startBtn) startBtn.style.display = '';
   }
   // Dashboard components — lifetime stats, next-event preview,
   // and the full-bleed His Car hero. Lifetime is synchronous (reads
