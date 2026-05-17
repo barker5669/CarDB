@@ -94,6 +94,26 @@ async function _loadMyCars(force = false) {
   return _myCars;
 }
 
+// Public helper for the dashboard hero. Returns the user's primary
+// car (the first one in the list) plus its hero photo URL + counts
+// derived from the my_car_photos / my_car_log_entries relations the
+// DB module already eagerly joins. Null when the user has no cars.
+async function getHomeHeroCar() {
+  const cars = await _loadMyCars();
+  if (!Array.isArray(cars) || !cars.length) return null;
+  const car = cars[0];
+  const photos = _mcPhotosFor(car);
+  const heroPhoto = _mcHeroFor(car, photos);
+  const heroUrl = _mcPhotoUrl(heroPhoto);
+  return {
+    car,
+    photoUrl: heroUrl,
+    photoCount: photos.length,
+    logCount: Array.isArray(car.my_car_log_entries) ? car.my_car_log_entries.length : 0,
+  };
+}
+window.getHomeHeroCar = getHomeHeroCar;
+
 async function showMyCars() {
   _myCarsActive = null;
   switchTab('mycars');

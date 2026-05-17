@@ -855,11 +855,132 @@ function updateHomeCard() {
   } else {
     activeDiv.style.display = 'none';
   }
-  // Dashboard components — lifetime stats and next-event preview.
-  // Lifetime is synchronous (reads localStorage); next event is
-  // best-effort over the network, hidden by default.
+  // Dashboard components — lifetime stats, next-event preview,
+  // and the full-bleed His Car hero. Lifetime is synchronous (reads
+  // localStorage); the other two are best-effort over the network
+  // and fall back to placeholders/hidden when nothing's available.
   renderLifetimeStats();
   renderNextEventCard().catch(err => console.warn('renderNextEventCard:', err));
+  renderHomeHero().catch(err => console.warn('renderHomeHero:', err));
+}
+
+// Full-bleed His Car hero at the top of the dashboard. Photo from
+// the user's first My Car, with name + stats + cal pill overlaid.
+// Falls back to a silhouette + "Add your car" CTA when no cars yet.
+async function renderHomeHero() {
+  const hero = document.getElementById('cb-hero');
+  if (!hero) return;
+  // Cal pill renders regardless of cars — it's a calendar peek,
+  // not car data. Fire-and-forget.
+  renderHomeHeroCalPill().catch(() => {});
+
+  if (typeof getHomeHeroCar !== 'function') return;
+  let data;
+  try { data = await getHomeHeroCar(); } catch { data = null; }
+
+  const photoEl = document.getElementById('cb-hero-photo');
+  const nameEl  = document.getElementById('cb-hero-name');
+  const statsEl = document.getElementById('cb-hero-stats');
+  const ctaEl   = document.getElementById('cb-hero-empty-cta');
+  const silEl   = document.getElementById('cb-hero-silhouette');
+  if (!photoEl || !nameEl || !statsEl) return;
+
+  if (!data) {
+    // Empty state — keep silhouette, show CTA, hide name/stats.
+    hero.classList.add('is-empty');
+    if (ctaEl) ctaEl.style.display = '';
+    if (silEl) silEl.style.display = '';
+    // Strip any prior <img> so we don't flash an old photo.
+    const oldImg = photoEl.querySelector('img');
+    if (oldImg) oldImg.remove();
+    photoEl.classList.remove('has-image');
+    return;
+  }
+
+  hero.classList.remove('is-empty');
+  if (ctaEl) ctaEl.style.display = 'none';
+
+  // Photo: swap the silhouette for an <img> when a hero photo exists.
+  const oldImg = photoEl.querySelector('img');
+  if (oldImg) oldImg.remove();
+  if (data.photoUrl) {
+    if (silEl) silEl.style.display = 'none';
+    const img = document.createElement('img');
+    img.src = data.photoUrl;
+    img.alt = data.car.name || '';
+    img.onerror = () => {
+      img.remove();
+      if (silEl) silEl.style.display = '';
+      photoEl.classList.remove('has-image');
+    };
+    photoEl.appendChild(img);
+    photoEl.classList.add('has-image');
+  } else {
+    if (silEl) silEl.style.display = '';
+    photoEl.classList.remove('has-image');
+  }
+
+  // Name: prefer the car's name; fall back to make+model.
+  const car  = data.car;
+  const name = car.name || [car.make, car.model].filter(Boolean).join(' ') || 'My Car';
+  nameEl.textContent = name;
+
+  // Stat pills: Year / Photos / Log entries. Skipped when zero so
+  // we don't show a fake "0" on a brand-new car.
+  const pills = [];
+  if (car.year) pills.push({ num: car.year, lbl: 'Year' });
+  pills.push({ num: data.photoCount, lbl: data.photoCount === 1 ? 'Photo' : 'Photos' });
+  if (data.logCount > 0) pills.push({ num: data.logCount, lbl: data.logCount === 1 ? 'Entry' : 'Entries' });
+  statsEl.innerHTML = pills.map(p =>
+    `<div class="cb-stat-pill"><span class="num">${escapeHtml(String(p.num))}</span><span class="lbl">${escapeHtml(p.lbl)}</span></div>`
+  ).join('');
+}
+
+// 7-day calendar peek (today + 6 days ahead) for the cal pill in
+// the hero overlay. Days with an upcoming event the user RSVPd to
+// get a brass dot beneath the number.
+async function renderHomeHeroCalPill() {
+  const pill = document.getElementById('cb-hero-cal');
+  if (!pill) return;
+  const days = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    days.push({
+      iso: d.toISOString().slice(0, 10),
+      day: d.getDate(),
+      dow: d.toLocaleDateString('en-GB', { weekday: 'narrow' }),
+      isToday: i === 0,
+      hasEvent: false,
+    });
+  }
+
+  // Fetch upcoming events; best-effort. If the call fails we still
+  // render the 7-day strip without dots.
+  let events = [];
+  if (window.DB && DB.upcoming && typeof DB.upcoming.list === 'function') {
+    try { events = await _raceTimeout(DB.upcoming.list(), 'Hero cal', 6000) || []; }
+    catch { events = []; }
+  }
+  const me = currentUserId();
+  for (const e of events) {
+    if (!e.event_date) continue;
+    const attending = Array.isArray(e.upcoming_event_attendees) &&
+                      e.upcoming_event_attendees.some(a => a.user_id === me);
+    if (!attending) continue;
+    const hit = days.find(d => d.iso === e.event_date);
+    if (hit) hit.hasEvent = true;
+  }
+
+  pill.innerHTML = days.map(d => `
+    <span class="cb-cal-day ${d.isToday ? 'today' : ''} ${d.hasEvent ? 'has-event' : ''}">
+      <span class="d">${escapeHtml(d.dow)}</span>
+      <span class="n">${d.day}</span>
+      <span class="dot"></span>
+    </span>
+  `).join('');
 }
 
 // Lifetime stats — three bare numbers (Spotted, Shows, Since)

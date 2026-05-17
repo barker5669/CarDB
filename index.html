@@ -130,6 +130,41 @@
     </div>
     <div class="home-scroll">
 
+      <!-- ──── HIS CAR HERO ─────────────────────────────────────
+           Full-bleed photo of the first My Car, with glass cal
+           pill + burger overlaid on top and name + stat pills on
+           the bottom. renderHomeHero() populates everything. -->
+      <div class="cb-hero is-empty" id="cb-hero">
+        <div class="cb-hero-photo" id="cb-hero-photo">
+          <!-- Default silhouette — replaced by an <img> when a
+               cover photo is available. -->
+          <svg viewBox="0 0 340 130" id="cb-hero-silhouette">
+            <path d="M22 96 Q 38 92 56 88 L 96 76 Q 124 56 162 56 Q 200 48 232 58 Q 256 62 282 80 L 300 88 Q 308 92 310 96 L 22 98 Z" fill="#1a1814"/>
+            <circle cx="86" cy="100" r="15" fill="#0d0c09"/>
+            <circle cx="86" cy="100" r="9"  fill="#2a261f"/>
+            <circle cx="86" cy="100" r="3"  fill="#5a544a"/>
+            <circle cx="252" cy="100" r="15" fill="#0d0c09"/>
+            <circle cx="252" cy="100" r="9"  fill="#2a261f"/>
+            <circle cx="252" cy="100" r="3"  fill="#5a544a"/>
+          </svg>
+        </div>
+        <div class="cb-hero-floor"></div>
+
+        <div class="cb-hero-top">
+          <button class="cb-cal-pill" id="cb-hero-cal" onclick="showUpcoming()" title="Upcoming shows"></button>
+          <button class="cb-hero-burger" onclick="switchTab('settings')" title="Settings">
+            <svg viewBox="0 0 24 24"><line x1="4" y1="7"  x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+          </button>
+        </div>
+
+        <button class="cb-hero-empty-cta" id="cb-hero-empty-cta" onclick="openAddMyCar()">＋ Add your car</button>
+
+        <div class="cb-hero-bottom">
+          <div class="cb-hero-name" id="cb-hero-name">—</div>
+          <div class="cb-hero-stats" id="cb-hero-stats"></div>
+        </div>
+      </div>
+
       <!-- Active show card (only shown when there's a current event) -->
       <div id="home-active-show" style="display:none">
         <div class="show-active-card">
