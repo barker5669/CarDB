@@ -136,6 +136,16 @@ async function openAddUpcoming() {
     catch (e) { console.warn('RSVP after create:', e); }
     showSnack('📅 Event added!');
     await renderUpcoming();
+    // The "Next event" card on the home dashboard also needs to
+    // refresh — otherwise the user has to switch tabs and back
+    // for the freshly-added event to show up there.
+    if (typeof renderNextEventCard === 'function') {
+      renderNextEventCard().catch(() => {});
+    }
+    if (typeof renderHomeHeroCalPill === 'function') {
+      // Cal pill dots also reflect upcoming events — keep it in sync.
+      renderHomeHeroCalPill();
+    }
   } catch (err) {
     showErr('Could not save event', err);
   }
@@ -145,6 +155,14 @@ async function toggleUpcomingRSVP(id, currentlyGoing) {
   try {
     await _raceTimeout(DB.upcoming.setAttending(id, !currentlyGoing), 'RSVP', 8000);
     await renderUpcoming();
+    // Same refresh dance — RSVPing makes / unmakes the event the
+    // home's "Next event" target, so the card needs to know.
+    if (typeof renderNextEventCard === 'function') {
+      renderNextEventCard().catch(() => {});
+    }
+    if (typeof renderHomeHeroCalPill === 'function') {
+      renderHomeHeroCalPill();
+    }
   } catch (err) {
     showErr('Could not update RSVP', err);
   }
