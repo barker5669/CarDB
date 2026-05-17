@@ -765,9 +765,9 @@ async function _loadOrCreateBoard(eventRow) {
 
 async function resumeEvent(name) {
   // Optimistically jump to bingo right away so the user gets instant
-  // feedback. If we already have a cached PastEvents row for this
-  // show, prime S.* from that so the bingo tab shows the right
-  // header instead of "no show". Board fetch happens after.
+  // feedback. Prime S.* from cached PastEvents row (header info),
+  // and pull S.board / S.spotted from localStorage so the cards
+  // render immediately even if Supabase is slow or dead.
   const cached = (PastEvents.list() || []).find(e => e.name === name);
   if (cached) {
     S.event   = cached.name;
@@ -776,6 +776,20 @@ async function resumeEvent(name) {
     S.date    = cached.event_date || '';
     if (!S.spotted[cached.name]) S.spotted[cached.name] = {};
   }
+  // Read the cached board for this show so cards render right away.
+  // save() persists store.events[name].board after every change, so
+  // this is the same data we'd build remotely.
+  try {
+    const store = loadStore();
+    const evCache = store.events && store.events[name];
+    if (evCache && Array.isArray(evCache.board) && evCache.board.length) {
+      S.board         = hydrateBoard(evCache.board);
+      S.rolls         = evCache.rolls ?? 0;
+      S.boardEras     = evCache.eras ?? S.boardEras;
+      S.boardCarCount = evCache.carCount ?? S.boardCarCount;
+      if (evCache.spotted) S.spotted[name] = { ...(S.spotted[name] || {}), ...evCache.spotted };
+    }
+  } catch (e) { console.warn('resumeEvent cache read:', e); }
   switchTab('bingo');
   try {
     const eventRow = await _raceTimeout(_findEventByName(name), 'Resume show', 10000);
