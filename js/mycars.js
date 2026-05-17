@@ -279,18 +279,28 @@ async function openAddMyCar() {
     fields:      _MC_CAR_FIELDS,
   });
   if (!data) return;
+  // User-visible status — the create call can hang on a flaky/dead
+  // backend, so wrap with _raceTimeout and surface progress through
+  // snackbars. Otherwise the modal closes and the user is left
+  // staring at nothing while the await silently hangs.
+  showSnack('💾 Saving…');
   try {
-    await DB.myCars.create({
+    const wrap = (p) =>
+      (typeof _raceTimeout === 'function') ? _raceTimeout(p, 'Add car', 10000) : p;
+    await wrap(DB.myCars.create({
       name:         data.name,
       make:         data.make,
       model:        data.model,
       year:         _yearOrNull(data.year),
       registration: data.reg,
       notes:        data.notes,
-    });
+    }));
     _myCars = null;
     showSnack('🚗 Car added!');
-    await renderMyCarsList();
+    // Refresh both the My Cars list AND the dashboard hero so a car
+    // added from the home page lands instantly on the home hero too.
+    if (typeof renderMyCarsList === 'function') await renderMyCarsList().catch(() => {});
+    if (typeof renderHomeHero === 'function')   renderHomeHero().catch(() => {});
   } catch (err) {
     showErr('Could not save car', err);
   }

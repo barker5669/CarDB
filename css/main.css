@@ -930,13 +930,14 @@ body::before{
 /* Top control row — cal pill left, burger right. Both glass on
    the paper surface. */
 .cb-hero-top{display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:5;position:relative}
-/* Photo zone — cream gradient backdrop the car photo sits on.
-   Real photos use object-fit:cover and overflow:hidden so they
-   crop nicely. Empty state has overflow:visible so the dashed
-   border draws cleanly. */
+/* Photo zone — the car (silhouette by default, real photo when
+   we have one) sits centred. Real photos use object-fit:cover
+   with overflow:hidden so they crop nicely. */
 .cb-hero-photo{position:relative;width:100%;height:170px;display:flex;align-items:center;justify-content:center;background:transparent;border-radius:12px}
 .cb-hero-photo.has-image{overflow:hidden}
 .cb-hero-photo img{width:100%;height:100%;object-fit:cover;display:block;border-radius:12px}
+.cb-hero-silhouette{width:100%;height:100%;display:block}
+.cb-hero-photo.has-image .cb-hero-silhouette{display:none}
 /* Floor shadow under the car — only when no real photo, so the
    silhouette feels grounded. Real photos already have their own
    composition; we don't need a fake floor under them. */
@@ -978,12 +979,13 @@ body::before{
 .cb-hero-pager{display:flex;align-items:center;justify-content:flex-start;gap:5px;margin-top:6px}
 .cb-hero-pager .pdot{width:5px;height:5px;border-radius:50%;background:var(--hair-strong)}
 .cb-hero-pager .pdot.on{width:14px;border-radius:3px;background:var(--brass)}
-/* Empty state — no car yet. Photo zone shows a quiet "Add your
-   car" CTA instead of a placeholder silhouette. */
-.cb-hero.is-empty .cb-hero-info{display:none}
-.cb-hero.is-empty .cb-hero-photo{border:1.5px dashed var(--hair-strong)}
-.cb-hero-empty-cta{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;background:var(--brass);color:#fff;border:none;border-radius:999px;font-family:var(--ff);font-size:0.86rem;font-weight:700;padding:10px 20px;cursor:pointer;-webkit-appearance:none;appearance:none;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 -1px 0 rgba(0,0,0,0.10) inset,0 4px 14px -4px rgba(166,124,82,0.45)}
-.cb-hero-empty-cta:active{transform:translate(-50%,-50%) scale(0.96)}
+/* Empty state — silhouette stays visible, info zone shows
+   placeholder text ("Add your car" / "Tap to get started").
+   The whole hero is tappable to open the add-car flow. */
+.cb-hero.is-empty{cursor:pointer}
+.cb-hero.is-empty .cb-hero-name{color:var(--ink-2)}
+.cb-hero.is-empty .cb-hero-stats,
+.cb-hero.is-empty .cb-hero-pager{display:none}
 
 /* ─── HOME DASHBOARD COMPONENTS ─────────────────────────────
    Next-event card (charcoal block with date plaque) + lifetime

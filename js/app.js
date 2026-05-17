@@ -907,7 +907,6 @@ function updateHomeCard() {
     const name = currentDisplayName();
     greeting.textContent = name ? `Hello, ${name}` : 'Classic Car Spotter';
   }
-  const startBtn = document.getElementById('home-start-btn');
   // Welcome card: shown only on a true first run — no active show
   // AND no past shows the user could resume into.
   const welcomeEl = document.getElementById('home-welcome');
@@ -926,11 +925,8 @@ function updateHomeCard() {
       const count = Object.keys(currentSpotted()).length;
       badgeEl.textContent = count + ' spotted';
     }
-    // A show is running — get the start-new-show CTA out of the way.
-    if (startBtn) startBtn.style.display = 'none';
   } else {
     activeDiv.style.display = 'none';
-    if (startBtn) startBtn.style.display = '';
   }
   // Dashboard components — lifetime stats, next-event preview,
   // and the full-bleed His Car hero. Lifetime is synchronous (reads
@@ -962,7 +958,6 @@ async function renderHomeHero() {
   const metaEl  = document.getElementById('cb-hero-meta');
   const statsEl = document.getElementById('cb-hero-stats');
   const pagerEl = document.getElementById('cb-hero-pager');
-  const ctaEl   = document.getElementById('cb-hero-empty-cta');
   if (!photoEl || !nameEl || !statsEl) return;
 
   // Helper — strip any previously-injected <img> so re-renders
@@ -974,24 +969,27 @@ async function renderHomeHero() {
   };
 
   if (!data) {
-    // No car yet — empty state. Show the CTA, blank the photo zone.
+    // No car yet — empty state. Silhouette stays visible (it's the
+    // default in the photo zone); info zone shows placeholder copy.
+    // Whole hero is tappable to open the add-car flow.
     hero.classList.add('is-empty');
-    if (ctaEl) ctaEl.style.display = '';
-    if (metaEl) metaEl.style.display = 'none';
+    if (nameEl) nameEl.textContent = 'Add your car';
+    if (metaEl) { metaEl.textContent = 'Tap to get started'; metaEl.style.display = ''; }
+    if (statsEl) statsEl.innerHTML = '';
     if (pagerEl) pagerEl.style.display = 'none';
     clearImg();
-    hero.style.cursor = '';
-    hero.onclick = null;
+    hero.onclick = (e) => {
+      if (e.target.closest('button')) return; // cal pill / burger
+      if (typeof openAddMyCar === 'function') openAddMyCar();
+    };
     return;
   }
 
   hero.classList.remove('is-empty');
-  if (ctaEl) ctaEl.style.display = 'none';
 
   // Tap the hero → jump to the car's detail page. The cal pill and
   // burger are real <button>s inside the hero, so we ignore clicks
   // that originated inside one (they have their own onclick handlers).
-  hero.style.cursor = 'pointer';
   const carId = data.car.id;
   hero.onclick = (e) => {
     if (e.target.closest('button')) return; // clicked an overlay control
@@ -1050,54 +1048,47 @@ async function renderHomeHero() {
 }
 
 // 7-day calendar peek (today + 6 days ahead) for the cal pill on
-// the hero. Renders the day strip SYNCHRONOUSLY so it shows even
-// when the network is dead; event dots get enriched asynchronously
-// when DB.upcoming.list returns (best-effort, swallowed on error).
+// the hero. Renders the day strip synchronously, no Promise — this
+// path MUST always paint, even when the network is dead and the
+// async enrichment below never returns.
 function renderHomeHeroCalPill() {
   const pill = document.getElementById('cb-hero-cal');
-  if (!pill) return Promise.resolve();
-  const days = [];
+  if (!pill) return;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const days = [];
+  let html = '';
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    days.push({
-      iso: d.toISOString().slice(0, 10),
-      day: d.getDate(),
-      dow: d.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase(),
-      isToday: i === 0,
-      hasEvent: false,
-    });
+    const dow = d.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase();
+    const day = d.getDate();
+    const iso = d.toISOString().slice(0, 10);
+    const isToday = i === 0;
+    days.push({ iso, isToday });
+    html += `<span class="cb-cal-day${isToday ? ' today' : ''}" data-iso="${iso}">`
+         +  `<span class="d">${dow}</span>`
+         +  `<span class="n">${day}</span>`
+         +  `<span class="dot"></span>`
+         +  `</span>`;
   }
-  const draw = () => {
-    pill.innerHTML = days.map(d => `
-      <span class="cb-cal-day ${d.isToday ? 'today' : ''} ${d.hasEvent ? 'has-event' : ''}">
-        <span class="d">${escapeHtml(d.dow)}</span>
-        <span class="n">${d.day}</span>
-        <span class="dot"></span>
-      </span>
-    `).join('');
-  };
-  draw();
-  // Async enrichment — paint the event dots when upcoming events
-  // come back. Failures are swallowed; the strip stays usable.
-  if (!(window.DB && DB.upcoming && typeof DB.upcoming.list === 'function')) {
-    return Promise.resolve();
-  }
-  return _raceTimeout(DB.upcoming.list(), 'Hero cal', 6000)
+  pill.innerHTML = html;
+  // Async event dot enrichment — never blocks the strip render.
+  // Failures are swallowed; the strip stays usable as a calendar
+  // peek even if upcoming events are unreachable.
+  if (!(window.DB && DB.upcoming && typeof DB.upcoming.list === 'function')) return;
+  Promise.resolve()
+    .then(() => _raceTimeout(DB.upcoming.list(), 'Hero cal', 6000))
     .then(events => {
       const me = currentUserId();
-      let dirty = false;
       for (const e of (events || [])) {
         if (!e.event_date) continue;
         const attending = Array.isArray(e.upcoming_event_attendees) &&
                           e.upcoming_event_attendees.some(a => a.user_id === me);
         if (!attending) continue;
-        const hit = days.find(d => d.iso === e.event_date);
-        if (hit && !hit.hasEvent) { hit.hasEvent = true; dirty = true; }
+        const node = pill.querySelector(`.cb-cal-day[data-iso="${e.event_date}"]`);
+        if (node) node.classList.add('has-event');
       }
-      if (dirty) draw();
     })
     .catch(() => { /* leave the strip as-is */ });
 }
