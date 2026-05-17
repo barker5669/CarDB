@@ -1045,7 +1045,7 @@ body::before{
 #s-home > .page-hdr{display:none}
 #s-home .home-scroll{padding:0;display:flex;flex-direction:column}
 .car-hero-full{
-  position:relative;height:390px;flex-shrink:0;overflow:hidden;
+  position:relative;height:460px;flex-shrink:0;overflow:hidden;
   background:
     radial-gradient(120% 70% at 50% 18%, #fefbef 0%, #f5ece0 55%, #e6dac3 100%),
     var(--paper);
@@ -1088,14 +1088,19 @@ body::before{
     0 12px 28px -8px rgba(40,30,20,0.28);
 }
 .hero-add-btn:active{transform:translate(-50%,-50%) scale(0.96)}
-/* When a real photo is loaded, it replaces the silhouette and fills
-   the photo area cleanly. */
+/* When a real photo is loaded, it bleeds edge-to-edge and sits
+   BELOW the cal pill row (which floats over the paper, not over
+   the photo). No border-radius or inset — full-bleed cover. */
 .car-hero-full .car-photo{
-  position:absolute;top:calc(var(--st) + 14px);left:14%;right:14%;height:200px;
-  border-radius:14px;overflow:hidden;
-  box-shadow:0 12px 28px -8px rgba(40,30,20,0.30);
+  position:absolute;
+  top:calc(var(--st) + 72px);
+  left:0;right:0;height:260px;
+  overflow:hidden;
 }
 .car-hero-full .car-photo img{width:100%;height:100%;object-fit:cover;display:block}
+/* When a real photo is showing, hide the cream-paper floor shadow
+   (it's positioned for the silhouette and looks odd under a photo). */
+.car-hero-full.has-photo::before{display:none}
 
 /* ── Top overlay row: calendar pill (left) + burger (right) ── */
 .hero-top{

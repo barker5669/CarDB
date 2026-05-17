@@ -989,19 +989,24 @@ async function renderHomeHero() {
   };
 
   // Real photo if we have one — otherwise keep the silhouette.
+  // .has-photo toggles styling that swaps the silhouette floor
+  // shadow off when a real photo is present.
   if (data.photoUrl && photoEl && imgEl) {
     imgEl.src = data.photoUrl;
     imgEl.alt = data.car.name || '';
     imgEl.onerror = () => {
       photoEl.style.display = 'none';
       if (svgEl) svgEl.style.display = '';
+      hero.classList.remove('has-photo');
     };
     photoEl.style.display = '';
     if (svgEl) svgEl.style.display = 'none';
+    hero.classList.add('has-photo');
   } else {
     if (photoEl) photoEl.style.display = 'none';
     if (imgEl)   imgEl.removeAttribute('src');
     if (svgEl)   svgEl.style.display = '';
+    hero.classList.remove('has-photo');
   }
 
   // Name + meta line.
