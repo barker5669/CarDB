@@ -265,7 +265,11 @@ const _MC_CAR_FIELDS = [
   { id:'year',  label:'Year',          type:'number',  inputmode:'numeric', placeholder:'1972' },
   { id:'reg',   label:'Registration',  placeholder:'Optional' },
   { id:'notes', label:'Notes',         type:'textarea', placeholder:'Anything you want to remember' },
+  { id:'photo', label:'Cover photo',   type:'photo' },
 ];
+// Edit form keeps the original text fields — we don't want to overwrite
+// a cover photo from this form (cover is managed from the detail page).
+const _MC_CAR_FIELDS_EDIT = _MC_CAR_FIELDS.filter(f => f.type !== 'photo');
 
 function _yearOrNull(s) {
   const n = parseInt(s, 10);
@@ -287,7 +291,7 @@ async function openAddMyCar() {
   try {
     const wrap = (p) =>
       (typeof _raceTimeout === 'function') ? _raceTimeout(p, 'Add car', 10000) : p;
-    await wrap(DB.myCars.create({
+    const newCar = await wrap(DB.myCars.create({
       name:         data.name,
       make:         data.make,
       model:        data.model,
@@ -295,6 +299,19 @@ async function openAddMyCar() {
       registration: data.reg,
       notes:        data.notes,
     }));
+    // If the user picked a cover photo, save it locally under the new
+    // car's owner key and set it as the hero photo. LocalPhotos + the
+    // hero pointer are both device-local (£0 design), so this never
+    // touches the network.
+    if (data.photo && newCar && newCar.id != null && typeof LocalPhotos !== 'undefined') {
+      try {
+        const saved = await LocalPhotos.add(_mcOwnerId(newCar.id), data.photo, {});
+        if (saved && saved.id != null) _setMcHero(newCar.id, saved.id);
+      } catch (e) {
+        console.warn('Add car photo save:', e);
+        // Car was created OK; just no photo. Don't fail the whole flow.
+      }
+    }
     _myCars = null;
     showSnack('🚗 Car added!');
     // Refresh both the My Cars list AND the dashboard hero so a car
@@ -312,7 +329,7 @@ async function openEditMyCar(carId) {
   const data = await openFormSheet({
     title:       'Edit car',
     submitLabel: 'Save',
-    fields:      _MC_CAR_FIELDS,
+    fields:      _MC_CAR_FIELDS_EDIT,
     initial: {
       name:  car.name,
       make:  car.make  || '',

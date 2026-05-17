@@ -425,6 +425,15 @@ body::before{
 .form-field-wrap textarea.form-field-err{border-color:var(--red2)}
 .form-action{padding:6px 0 calc(var(--sb) + 6px)}
 
+/* PHOTO FIELD in openFormSheet */
+.form-photo-wrap{display:flex;flex-direction:column;gap:6px}
+.form-photo-btn{width:100%;background:var(--card-surf);border:1.5px dashed var(--hair-strong);color:var(--ink-2);font-family:var(--ff);font-size:0.95rem;font-weight:600;padding:16px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;gap:8px;min-height:56px;box-shadow:0 1px 0 rgba(255,255,255,0.85) inset}
+.form-photo-btn:active{opacity:0.78;transform:scale(0.98)}
+.form-photo-btn svg{stroke:var(--brass-dk)}
+.form-photo-preview{position:relative;width:100%;aspect-ratio:16/10;background:var(--paper-deep);border-radius:var(--R);overflow:hidden;border:1px solid var(--hair)}
+.form-photo-preview img{width:100%;height:100%;object-fit:cover;display:block}
+.form-photo-remove{position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.7);border:none;color:#fff;font-family:var(--ff);font-size:0.78rem;font-weight:600;padding:6px 11px;border-radius:999px;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+
 /* CONFIRM SHEET */
 .confirm-body{font-size:0.92rem;color:var(--ink2);font-weight:500;line-height:1.55;text-align:center;padding:0 6px 12px}
 .confirm-ok-danger{background:var(--red);color:var(--ink)}
