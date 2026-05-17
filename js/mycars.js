@@ -259,13 +259,16 @@ async function showMyCarDetail(carId) {
 }
 
 const _MC_CAR_FIELDS = [
+  // Photo field first so it's seen immediately on a phone — the
+  // form-fields container is scrollable and capped at 55vh, so
+  // anything past the first ~3 fields sits below the fold.
+  { id:'photo', label:'Cover photo',   type:'photo' },
   { id:'name',  label:'Name',          required:true,  placeholder:"e.g. FIL's MGB" },
   { id:'make',  label:'Make',          placeholder:'e.g. MG' },
   { id:'model', label:'Model',         placeholder:'e.g. MGB' },
   { id:'year',  label:'Year',          type:'number',  inputmode:'numeric', placeholder:'1972' },
   { id:'reg',   label:'Registration',  placeholder:'Optional' },
   { id:'notes', label:'Notes',         type:'textarea', placeholder:'Anything you want to remember' },
-  { id:'photo', label:'Cover photo',   type:'photo' },
 ];
 // Edit form keeps the original text fields — we don't want to overwrite
 // a cover photo from this form (cover is managed from the detail page).
