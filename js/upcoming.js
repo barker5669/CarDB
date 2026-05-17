@@ -134,6 +134,22 @@ async function openAddUpcoming() {
     }), 'Add event', 10000);
     try { await _raceTimeout(DB.upcoming.setAttending(row.id, true), 'RSVP', 8000); }
     catch (e) { console.warn('RSVP after create:', e); }
+    // Write the new event into the local cache so the cal pill +
+    // next-event card pick it up instantly, even if the subsequent
+    // list() call fails / times out.
+    if (typeof _loadCachedUpcoming === 'function') {
+      try {
+        const me = (typeof currentUserId === 'function') ? currentUserId() : null;
+        const list = _loadCachedUpcoming();
+        const idx = list.findIndex(e => e && String(e.id) === String(row.id));
+        const entry = {
+          ...row,
+          upcoming_event_attendees: me ? [{ user_id: me }] : [],
+        };
+        if (idx >= 0) list[idx] = entry; else list.push(entry);
+        _saveCachedUpcoming(list);
+      } catch (e) { console.warn('cache add upcoming:', e); }
+    }
     showSnack('📅 Event added!');
     await renderUpcoming();
     // The "Next event" card on the home dashboard also needs to

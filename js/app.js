@@ -1043,12 +1043,29 @@ async function renderHomeHero() {
 // the hero. Mockup vocabulary: <button class="cal-day"> with
 // <span class="dow"> + <span class="d">. Today gets .today (ink
 // nub); days with RSVPd events get .has-event (brass dot below).
-// Synchronous render, async enrichment for event dots.
+// Synchronous render uses cached events from the last successful
+// fetch; async enrichment refreshes the cache.
+const _UPCOMING_CACHE_KEY = 'cb-upcoming-cache-v1';
+
+function _loadCachedUpcoming() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(_UPCOMING_CACHE_KEY) || '[]');
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+function _saveCachedUpcoming(events) {
+  try { localStorage.setItem(_UPCOMING_CACHE_KEY, JSON.stringify(events || [])); }
+  catch (e) { console.warn('upcoming cache save:', e); }
+}
+
 function renderHomeHeroCalPill() {
   const pill = document.getElementById('cb-hero-cal');
   if (!pill) return;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  // Build 7-day window with onclick handlers wired up — earlier
+  // versions of this render were emitting buttons without onclick,
+  // so once app.js re-painted, the days lost their interactivity.
   let html = '';
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
@@ -1057,28 +1074,43 @@ function renderHomeHeroCalPill() {
     const day = d.getDate();
     const iso = d.toISOString().slice(0, 10);
     const isToday = i === 0;
-    html += `<button class="cal-day${isToday ? ' today' : ''}" data-iso="${iso}">`
+    html += `<button class="cal-day${isToday ? ' today' : ''}" data-iso="${iso}" onclick="onCalDayTap('${iso}')">`
          +  `<span class="dow">${dow}</span>`
          +  `<span class="d">${day}</span>`
          +  `</button>`;
   }
   pill.innerHTML = html;
-  // Async event dot enrichment — never blocks the strip render.
+  // Paint dots from the local cache immediately — that way the
+  // calendar shows the user's events even when the backend is
+  // unreachable. Then refresh the cache asynchronously.
+  _paintCalDotsFromList(pill, _loadCachedUpcoming());
   if (!(window.DB && DB.upcoming && typeof DB.upcoming.list === 'function')) return;
   Promise.resolve()
     .then(() => _raceTimeout(DB.upcoming.list(), 'Hero cal', 6000))
     .then(events => {
-      const me = currentUserId();
-      for (const e of (events || [])) {
-        if (!e.event_date) continue;
-        const attending = Array.isArray(e.upcoming_event_attendees) &&
-                          e.upcoming_event_attendees.some(a => a.user_id === me);
-        if (!attending) continue;
-        const node = pill.querySelector(`.cal-day[data-iso="${e.event_date}"]`);
-        if (node) node.classList.add('has-event');
-      }
+      if (!Array.isArray(events)) return;
+      _saveCachedUpcoming(events);
+      _paintCalDotsFromList(pill, events);
     })
-    .catch(() => { /* leave the strip as-is */ });
+    .catch(() => { /* leave the strip as-is — cached dots stay visible */ });
+}
+
+function _paintCalDotsFromList(pill, events) {
+  if (!pill || !Array.isArray(events)) return;
+  // Clear old dots first so a removed event doesn't ghost.
+  pill.querySelectorAll('.cal-day.has-event').forEach(n => n.classList.remove('has-event'));
+  const me = (typeof currentUserId === 'function') ? currentUserId() : null;
+  for (const e of events) {
+    if (!e || !e.event_date) continue;
+    const attendees = Array.isArray(e.upcoming_event_attendees) ? e.upcoming_event_attendees : [];
+    // If we know the current user, only paint dots for events
+    // they RSVPd to. If we don't (auth hasn't loaded yet), show
+    // any attended event so the user gets feedback.
+    const attending = me ? attendees.some(a => a.user_id === me) : attendees.length > 0;
+    if (!attending) continue;
+    const node = pill.querySelector(`.cal-day[data-iso="${e.event_date}"]`);
+    if (node) node.classList.add('has-event');
+  }
 }
 
 // Lifetime stats — three bare numbers (Spotted, Shows, Legendary)
@@ -1206,14 +1238,23 @@ let _nextEventState = 'empty';  // 'empty' or 'event'
 async function renderNextEventCard() {
   const card = document.getElementById('cb-next-event');
   if (!card) return;
-  // Start with the empty state visible — if DB.upcoming.list comes
-  // back with something, we'll flip it.
+  // Start with the empty state visible — if cached events (or a
+  // fresh fetch) reveal an upcoming RSVPd event, we'll flip it.
   _setNextEventEmpty();
+  // Paint from cache first so the card shows the next event even
+  // when the backend is unreachable.
+  const cached = _loadCachedUpcoming();
+  if (cached.length) _showNextEventFromList(cached);
   if (!window.DB || !DB.upcoming || typeof DB.upcoming.list !== 'function') return;
   let events;
   try { events = await _raceTimeout(DB.upcoming.list(), 'Next event', 6000); }
   catch { return; }
   if (!Array.isArray(events) || !events.length) return;
+  _saveCachedUpcoming(events);
+  _showNextEventFromList(events);
+}
+
+function _showNextEventFromList(events) {
   const me = currentUserId();
   const todayIso = new Date().toISOString().slice(0, 10);
   const candidates = events
