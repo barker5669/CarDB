@@ -19,7 +19,7 @@
 // - Storage API responses for photos in the 'photos' bucket are
 //   cache-first when present so a slow connection doesn't blank the
 //   bingo card.
-const CACHE = 'carbingo-v61';
+const CACHE = 'carbingo-v62';
 const ASSETS = [
   '/',
   '/index.html',
@@ -36,7 +36,7 @@ const ASSETS = [
   '/js/queue.js',
   '/js/supabase.js',
   '/js/upcoming.js',
-  'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@400;500;600;700;800&display=swap'
+  'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap'
 ];
 
 self.addEventListener('install', e => {

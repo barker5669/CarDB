@@ -855,6 +855,97 @@ function updateHomeCard() {
   } else {
     activeDiv.style.display = 'none';
   }
+  // Dashboard components — lifetime stats and next-event preview.
+  // Lifetime is synchronous (reads localStorage); next event is
+  // best-effort over the network, hidden by default.
+  renderLifetimeStats();
+  renderNextEventCard().catch(err => console.warn('renderNextEventCard:', err));
+}
+
+// Lifetime stats — three bare numbers (Spotted, Shows, Since)
+// derived from local state. Always synchronous; never blocks on
+// a network call so the home renders instantly.
+function renderLifetimeStats() {
+  const spottedEl = document.getElementById('cb-life-spotted');
+  const showsEl   = document.getElementById('cb-life-shows');
+  const sinceEl   = document.getElementById('cb-life-since');
+  if (!spottedEl || !showsEl || !sinceEl) return;
+
+  // Unique cars across every event the user has logged. Each
+  // S.spotted entry maps to a unique car key — counting the keys
+  // overcounts duplicates across events, which we want for the
+  // "things you've spotted" totals (FIL sees the same MGB twice,
+  // that's two memories, not one).
+  let totalSpotted = 0;
+  const allSpotted = S.spotted || {};
+  for (const evName of Object.keys(allSpotted)) {
+    totalSpotted += Object.keys(allSpotted[evName] || {}).length;
+  }
+  spottedEl.textContent = totalSpotted;
+
+  // Shows = past events the user attended + 1 if there's a current
+  // active show. PastEvents.list() is local-first.
+  let pastList = [];
+  try { pastList = (window.PastEvents && PastEvents.list()) || []; } catch {}
+  const past = pastList.filter(e => e.name && e.name !== PERSONAL_EVENT);
+  const showsCount = past.length + (S.event ? 1 : 0);
+  showsEl.textContent = showsCount;
+
+  // Since = year of the earliest past event we have. Falls back
+  // to the current year if there's no history yet.
+  let earliestYear = null;
+  for (const e of past) {
+    if (!e.event_date) continue;
+    const d = new Date(e.event_date);
+    if (isNaN(d)) continue;
+    const y = d.getFullYear();
+    if (earliestYear == null || y < earliestYear) earliestYear = y;
+  }
+  if (S.event && S.date) {
+    const d = new Date(S.date);
+    if (!isNaN(d)) {
+      const y = d.getFullYear();
+      if (earliestYear == null || y < earliestYear) earliestYear = y;
+    }
+  }
+  sinceEl.textContent = earliestYear != null ? earliestYear : new Date().getFullYear();
+}
+
+// Next-event preview card — first upcoming event the user has
+// RSVPd "going" to. Best-effort over the network; hidden when
+// nothing's coming up so the home stays clean.
+async function renderNextEventCard() {
+  const card = document.getElementById('cb-next-event');
+  if (!card) return;
+  // Default hidden; if the query succeeds we'll show it.
+  card.style.display = 'none';
+  if (!window.DB || !DB.upcoming || typeof DB.upcoming.list !== 'function') return;
+
+  let events;
+  try { events = await _raceTimeout(DB.upcoming.list(), 'Next event', 6000); }
+  catch { return; }
+  if (!Array.isArray(events) || !events.length) return;
+
+  // Find the next event the user is attending, dated from today.
+  const me = currentUserId();
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const candidates = events
+    .filter(e => e.event_date && e.event_date >= todayIso)
+    .filter(e => Array.isArray(e.upcoming_event_attendees) &&
+                 e.upcoming_event_attendees.some(a => a.user_id === me))
+    .sort((a, b) => a.event_date.localeCompare(b.event_date));
+  if (!candidates.length) return;
+
+  const ev = candidates[0];
+  const d  = new Date(ev.event_date);
+  if (isNaN(d)) return;
+  const set = (id, text) => { const n = document.getElementById(id); if (n) n.textContent = text; };
+  set('cb-ne-d', d.getDate());
+  set('cb-ne-m', d.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase());
+  set('cb-ne-w', d.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase());
+  set('cb-ne-name', ev.name || 'Upcoming');
+  set('cb-ne-loc',  ev.location || '');
+  card.style.display = 'flex';
 }
 
 function showGoLive() {

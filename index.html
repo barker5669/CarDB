@@ -6,11 +6,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Car Bingo">
-<meta name="theme-color" content="#0e1d14">
+<meta name="theme-color" content="#f5f1e7">
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <title>Car Bingo</title>
 <link rel="stylesheet" href="css/main.css">
 </head>
@@ -121,7 +121,7 @@
   <div class="screen active" id="s-home">
     <div class="page-hdr">
       <div class="page-hdr-text">
-        <div class="page-hdr-title">Car <em style="font-style:italic;color:var(--gold)">Bingo</em></div>
+        <div class="page-hdr-title">Car <em>Bingo</em></div>
         <div class="page-hdr-sub" id="home-greeting">Classic Car Spotter</div>
       </div>
       <button class="hdr-icon-btn" onclick="switchTab('settings')" title="Settings">
@@ -145,6 +145,22 @@
           </button>
         </div>
       </div>
+
+      <!-- Next event preview (charcoal card with date plaque). Hidden
+           until renderNextEventCard finds an upcoming RSVP. -->
+      <button class="cb-next-event" id="cb-next-event" style="display:none" onclick="showUpcoming()">
+        <div class="date-block">
+          <div class="date-d" id="cb-ne-d">—</div>
+          <div class="date-m" id="cb-ne-m">—</div>
+          <div class="date-w" id="cb-ne-w">—</div>
+        </div>
+        <div class="body">
+          <div class="eyebrow">Next show</div>
+          <div class="name" id="cb-ne-name">—</div>
+          <div class="loc"  id="cb-ne-loc">—</div>
+        </div>
+        <div class="chev">›</div>
+      </button>
 
       <!-- Photos to sort banner — shown only when there are pending photos -->
       <button class="home-sort-banner" id="home-sort-banner" style="display:none" onclick="showPhotoSort()">
@@ -191,6 +207,37 @@
         <span class="home-start-text"><span class="home-start-title">Start a New Show</span><span class="home-start-sub">Build a fresh bingo card</span></span>
         <span class="home-start-arrow">›</span>
       </button>
+
+      <!-- Lifetime stats — bare numbers on the page, mono caps
+           labels with tiny brass glyphs. Populated by renderLifetimeStats. -->
+      <div class="cb-lifetime" id="cb-lifetime">
+        <div class="stat">
+          <div class="tally"><span></span><span></span><span></span><span></span></div>
+          <div class="num" id="cb-life-spotted">0</div>
+          <div class="lbl">
+            <svg class="glyph" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>
+            Spotted
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="stat">
+          <div class="tally"><span></span><span></span><span></span></div>
+          <div class="num" id="cb-life-shows">0</div>
+          <div class="lbl">
+            <svg class="glyph" viewBox="0 0 24 24"><path d="M4 7l8-3 8 3v3l-8 3-8-3z"/><path d="M4 10v9l8 3 8-3v-9"/></svg>
+            Shows
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="stat">
+          <div class="tally"><span></span><span></span></div>
+          <div class="num" id="cb-life-since">—</div>
+          <div class="lbl">
+            <svg class="glyph" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>
+            Since
+          </div>
+        </div>
+      </div>
 
     </div>
     <nav class="bottom-nav" id="nav-home-bar"></nav>
