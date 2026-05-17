@@ -760,6 +760,19 @@ async function _loadOrCreateBoard(eventRow) {
 }
 
 async function resumeEvent(name) {
+  // Optimistically jump to bingo right away so the user gets instant
+  // feedback. If we already have a cached PastEvents row for this
+  // show, prime S.* from that so the bingo tab shows the right
+  // header instead of "no show". Board fetch happens after.
+  const cached = (PastEvents.list() || []).find(e => e.name === name);
+  if (cached) {
+    S.event   = cached.name;
+    S.eventId = cached.id ?? S.eventId;
+    S.loc     = cached.location  || '';
+    S.date    = cached.event_date || '';
+    if (!S.spotted[cached.name]) S.spotted[cached.name] = {};
+  }
+  switchTab('bingo');
   try {
     const eventRow = await _raceTimeout(_findEventByName(name), 'Resume show', 10000);
     if (!eventRow) { showSnack('Event not found'); return; }
@@ -773,7 +786,9 @@ async function resumeEvent(name) {
     if (!S.spotted[eventRow.name]) S.spotted[eventRow.name] = {};
     _resetBingoFiredForEvent();
     save();
-    launch();
+    // Re-render now that the board is loaded.
+    updateBingoState();
+    if (Array.isArray(S.board) && S.board.length) preloadEraImages(S.board);
   } catch (err) {
     showErr('Could not load event', err);
   }
@@ -1034,12 +1049,13 @@ async function renderHomeHero() {
   }
 }
 
-// 7-day calendar peek (today + 6 days ahead) for the cal pill in
-// the hero overlay. Days with an upcoming event the user RSVPd to
-// get a brass dot beneath the number.
-async function renderHomeHeroCalPill() {
+// 7-day calendar peek (today + 6 days ahead) for the cal pill on
+// the hero. Renders the day strip SYNCHRONOUSLY so it shows even
+// when the network is dead; event dots get enriched asynchronously
+// when DB.upcoming.list returns (best-effort, swallowed on error).
+function renderHomeHeroCalPill() {
   const pill = document.getElementById('cb-hero-cal');
-  if (!pill) return;
+  if (!pill) return Promise.resolve();
   const days = [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1049,36 +1065,41 @@ async function renderHomeHeroCalPill() {
     days.push({
       iso: d.toISOString().slice(0, 10),
       day: d.getDate(),
-      dow: d.toLocaleDateString('en-GB', { weekday: 'narrow' }),
+      dow: d.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase(),
       isToday: i === 0,
       hasEvent: false,
     });
   }
-
-  // Fetch upcoming events; best-effort. If the call fails we still
-  // render the 7-day strip without dots.
-  let events = [];
-  if (window.DB && DB.upcoming && typeof DB.upcoming.list === 'function') {
-    try { events = await _raceTimeout(DB.upcoming.list(), 'Hero cal', 6000) || []; }
-    catch { events = []; }
+  const draw = () => {
+    pill.innerHTML = days.map(d => `
+      <span class="cb-cal-day ${d.isToday ? 'today' : ''} ${d.hasEvent ? 'has-event' : ''}">
+        <span class="d">${escapeHtml(d.dow)}</span>
+        <span class="n">${d.day}</span>
+        <span class="dot"></span>
+      </span>
+    `).join('');
+  };
+  draw();
+  // Async enrichment — paint the event dots when upcoming events
+  // come back. Failures are swallowed; the strip stays usable.
+  if (!(window.DB && DB.upcoming && typeof DB.upcoming.list === 'function')) {
+    return Promise.resolve();
   }
-  const me = currentUserId();
-  for (const e of events) {
-    if (!e.event_date) continue;
-    const attending = Array.isArray(e.upcoming_event_attendees) &&
-                      e.upcoming_event_attendees.some(a => a.user_id === me);
-    if (!attending) continue;
-    const hit = days.find(d => d.iso === e.event_date);
-    if (hit) hit.hasEvent = true;
-  }
-
-  pill.innerHTML = days.map(d => `
-    <span class="cb-cal-day ${d.isToday ? 'today' : ''} ${d.hasEvent ? 'has-event' : ''}">
-      <span class="d">${escapeHtml(d.dow)}</span>
-      <span class="n">${d.day}</span>
-      <span class="dot"></span>
-    </span>
-  `).join('');
+  return _raceTimeout(DB.upcoming.list(), 'Hero cal', 6000)
+    .then(events => {
+      const me = currentUserId();
+      let dirty = false;
+      for (const e of (events || [])) {
+        if (!e.event_date) continue;
+        const attending = Array.isArray(e.upcoming_event_attendees) &&
+                          e.upcoming_event_attendees.some(a => a.user_id === me);
+        if (!attending) continue;
+        const hit = days.find(d => d.iso === e.event_date);
+        if (hit && !hit.hasEvent) { hit.hasEvent = true; dirty = true; }
+      }
+      if (dirty) draw();
+    })
+    .catch(() => { /* leave the strip as-is */ });
 }
 
 // Lifetime stats — three bare numbers (Spotted, Shows, Legendary)
@@ -1105,11 +1126,12 @@ function renderLifetimeStats() {
   let totalLegendary = 0;
   let lastLegendary = null;
   let lastLegendaryTs = 0;
-  const RARITY_OF = window.CAR_RARITY_BY_NAME || {};
-  // Build a quick lookup if we have CARS list — falls back gracefully.
+  // Build a quick name → car lookup so we can read the rarity for
+  // each spotted sighting. CAR_DB is the canonical list from cars.js,
+  // a sibling classic-script global.
   const carIndex = {};
-  if (Array.isArray(window.CARS)) {
-    for (const c of window.CARS) { if (c && c.name) carIndex[c.name] = c; }
+  if (typeof CAR_DB !== 'undefined' && Array.isArray(CAR_DB)) {
+    for (const c of CAR_DB) { if (c && c.name) carIndex[c.name] = c; }
   }
   const allSpotted = S.spotted || {};
   for (const evName of Object.keys(allSpotted)) {
@@ -1122,8 +1144,7 @@ function renderLifetimeStats() {
       const m = /^fil-[^-]+-(.+)$/.exec(key);
       const carName = m ? m[1] : null;
       const car = carName ? carIndex[carName] : null;
-      const rarity = (car && car.rarity) || RARITY_OF[carName] || null;
-      const isLegendary = rarity === 'legendary';
+      const isLegendary = !!(car && car.rarity === 'legendary');
       if (isLegendary) totalLegendary += 1;
       // First sighting timestamp powers the "this month" + "last seen" rolls.
       for (const sg of sightings) {

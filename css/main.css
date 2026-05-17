@@ -78,7 +78,7 @@
   --legend: var(--tier-legendary);
   --lbg:    var(--tier-legendary-bg);
 
-  --nav-h: calc(64px + var(--sb));
+  --nav-h: calc(72px + var(--sb));
   --hdr-h: calc(56px + var(--st));
   --R:  12px;
   --RL: 16px;
@@ -133,27 +133,34 @@ body::before{
 .auth-back-btn{background:transparent;border:1px solid var(--bdr);color:var(--dim);font-family:var(--ff);font-size:0.86rem;font-weight:700;padding:10px 18px;border-radius:20px;cursor:pointer;-webkit-appearance:none;appearance:none;margin-top:8px}
 .auth-back-btn:active{opacity:0.7}
 
-/* NAV — 5 tabs.
-   Cream paper-light surface with a hairline above. Inactive tabs
-   muted ink, active tab brass with a soft brass-soft halo behind
-   the icon. */
-.bottom-nav{height:var(--nav-h);background:linear-gradient(180deg,var(--paper-light) 0%,var(--paper) 100%);border-top:1px solid var(--hair-strong);display:flex;align-items:flex-start;padding-top:7px;flex-shrink:0;z-index:50;box-shadow:0 -1px 0 rgba(255,255,255,0.85) inset,0 -8px 20px -10px rgba(40,30,20,0.06)}
-.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:4px 2px 0;color:var(--ink-muted);-webkit-appearance:none;appearance:none;min-height:54px}
+/* NAV — 5 tabs. Bigger than before to fit the bigger camera lens
+   FAB without crowding labels. Cream paper-light surface with a
+   hairline above; active tab gets brass colour + a small brass dot
+   below the label so it reads even at a glance. */
+.bottom-nav{height:var(--nav-h);background:linear-gradient(180deg,var(--paper-light) 0%,var(--paper) 100%);border-top:1px solid var(--hair-strong);display:flex;align-items:flex-start;padding-top:9px;flex-shrink:0;z-index:50;box-shadow:0 -1px 0 rgba(255,255,255,0.85) inset,0 -8px 20px -10px rgba(40,30,20,0.06)}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:4px 2px 0;color:var(--ink-muted);-webkit-appearance:none;appearance:none;min-height:60px;position:relative}
 .nav-btn.active{color:var(--brass-dk)}
-.nb-wrap{width:46px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:16px;transition:background 0.15s}
+.nb-wrap{width:48px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:16px;transition:background 0.15s}
 .nav-btn.active .nb-wrap{background:var(--brass-soft)}
-.nav-svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}
+.nav-svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}
 .nav-btn.active .nav-svg{stroke-width:2.3}
 .nav-lbl{font-family:var(--ff-mono);font-size:0.6rem;font-weight:600;letter-spacing:0.14em;line-height:1;text-transform:uppercase}
 .nav-btn:active{opacity:0.55}
-/* Camera FAB — brass disc with a tire-tread inner ring. Sits
-   slightly above the nav line, the "always-available capture" pin. */
-.nav-cam{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:0 2px;-webkit-appearance:none;appearance:none;margin-top:-14px}
-.nav-cam-disc{width:54px;height:54px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--brass-light) 0%,var(--brass) 55%,var(--brass-dk) 100%);box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 -1px 0 rgba(0,0,0,0.18) inset,0 6px 18px -4px rgba(166,124,82,0.45),0 0 0 3px var(--paper-light);display:flex;align-items:center;justify-content:center;transition:transform 0.12s;position:relative}
-.nav-cam-disc::before{content:'';position:absolute;inset:5px;border-radius:50%;border:1.5px dashed rgba(255,240,210,0.32);pointer-events:none}
-.nav-cam:active .nav-cam-disc{transform:scale(0.9)}
-.nav-cam-disc svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;position:relative;z-index:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,0.20))}
-.nav-cam-lbl{font-family:var(--ff-mono);font-size:0.58rem;font-weight:600;color:var(--ink-muted);letter-spacing:0.12em;text-transform:uppercase}
+/* Active dot — small brass nub below the active tab's label.
+   Replaces the iOS-style underline; reads instantly at a glance. */
+.nav-btn.active::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--brass);box-shadow:0 0 0 2px var(--brass-soft)}
+/* Camera FAB — charcoal "lens" disc with a brass outer ring (the
+   tire-tread reference). Sits above the nav line; reads as a
+   real camera lens, not just a brass dot. */
+.nav-cam{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:0 2px;-webkit-appearance:none;appearance:none;margin-top:-18px}
+.nav-cam-disc{width:62px;height:62px;border-radius:50%;background:radial-gradient(circle at 50% 45%,#2a261f 0%,#0d0c09 70%,#000 100%);box-shadow:0 0 0 3px var(--brass-dk),0 0 0 5px var(--brass),0 0 0 8px var(--paper-light),0 8px 18px -4px rgba(40,30,20,0.45);display:flex;align-items:center;justify-content:center;transition:transform 0.12s;position:relative}
+/* Tire-tread dashed inner ring — the lens groove. */
+.nav-cam-disc::before{content:'';position:absolute;inset:7px;border-radius:50%;border:1.5px dashed rgba(199,149,105,0.55);pointer-events:none}
+/* Inner lens glint — small highlight off-centre top-left. */
+.nav-cam-disc::after{content:'';position:absolute;top:14px;left:18px;width:12px;height:8px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(199,149,105,0.40) 0%,transparent 70%);pointer-events:none;filter:blur(1px)}
+.nav-cam:active .nav-cam-disc{transform:scale(0.92)}
+.nav-cam-disc svg{width:24px;height:24px;stroke:var(--brass-light);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;position:relative;z-index:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.40))}
+.nav-cam-lbl{font-family:var(--ff-mono);font-size:0.58rem;font-weight:600;color:var(--ink-muted);letter-spacing:0.12em;text-transform:uppercase;margin-top:6px}
 
 /* STICKY HEADER
    Cream paper-light bar with a hairline beneath. Title in DM Sans
@@ -723,13 +730,16 @@ body::before{
 .home-tile-name{font-family:var(--fh);font-size:1.06rem;font-weight:800;color:var(--ink-strong);letter-spacing:-0.015em}
 .home-tile-sub{font-family:var(--ff-mono);font-size:0.62rem;color:var(--ink-muted);font-weight:600;letter-spacing:0.16em;text-transform:uppercase}
 
-.home-start-btn{display:flex;align-items:center;gap:14px;width:100%;background:linear-gradient(135deg,#1f1d18,#0d0c09);border:none;border-radius:var(--RL);padding:18px 18px 17px;cursor:pointer;-webkit-appearance:none;appearance:none;color:#f5f1e7;text-align:left;box-shadow:0 1px 0 rgba(255,255,255,0.06) inset,0 8px 20px -6px rgba(26,24,20,0.35);margin-top:14px;margin-bottom:6px;transition:transform 0.12s}
+/* Start a New Show — chamfered charcoal card with a brass corner
+   diagonal, matching the next-event card and bingo carousel
+   vocabulary. No emoji; the brass corner does the visual lifting. */
+.home-start-btn{position:relative;display:flex;align-items:center;gap:14px;width:100%;background:linear-gradient(180deg,#1f1d18 0%,#0d0c09 100%);border:none;border-radius:var(--RL);padding:18px 20px;cursor:pointer;-webkit-appearance:none;appearance:none;color:#f5f1e7;text-align:left;box-shadow:0 1px 0 rgba(255,255,255,0.06) inset,0 10px 24px -10px rgba(26,24,20,0.40);margin:0 0 6px;transition:transform 0.12s;clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,0 100%);min-height:78px}
 .home-start-btn:active{transform:scale(0.985)}
-.home-start-icon{font-size:1.7rem;line-height:1;flex-shrink:0;filter:drop-shadow(0 0 6px rgba(166,124,82,0.45))}
-.home-start-text{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
-.home-start-title{font-family:var(--fh);font-size:1.15rem;font-weight:800;letter-spacing:-0.01em}
-.home-start-sub{font-size:0.78rem;color:rgba(245,241,231,0.55);font-weight:500;font-family:var(--ff-mono);letter-spacing:0.06em}
-.home-start-arrow{font-size:1.5rem;color:var(--brass-light);flex-shrink:0}
+.home-start-btn::before{content:'';position:absolute;top:-1px;right:-1px;width:26px;height:26px;background:linear-gradient(135deg,transparent 46%,var(--brass-light) 46%,var(--brass) 54%,transparent 54%);pointer-events:none;z-index:2}
+.home-start-text{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+.home-start-title{font-family:var(--fh);font-size:1.15rem;font-weight:700;letter-spacing:-0.015em;color:#fdfaf2}
+.home-start-sub{font-family:var(--ff-mono);font-size:0.62rem;color:rgba(245,241,231,0.55);font-weight:500;letter-spacing:0.10em;text-transform:uppercase;margin-top:1px}
+.home-start-arrow{font-size:1.4rem;color:var(--brass-light);flex-shrink:0}
 
 /* Compact "your current show" eyebrow */
 .sab-eyebrow{font-size:0.66rem;font-weight:800;letter-spacing:3px;color:var(--gold);text-transform:uppercase;margin-bottom:3px}
@@ -912,16 +922,21 @@ body::before{
    paper surface — not overlaid. The page header is hidden on
    home so the hero owns the top of the screen. */
 #s-home > .page-hdr{display:none}
-#s-home .home-scroll{padding-top:0}
-.cb-hero{position:relative;margin:-14px -14px 14px;background:linear-gradient(180deg,var(--paper-light) 0%,var(--paper-deep) 100%);border-bottom:1px solid var(--hair);padding:calc(var(--st) + 10px) 18px 22px;display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+/* Home scroll uses flex column so the lifetime stats can stick to
+   the bottom (margin-top:auto on the stats). Hero breaks out of the
+   horizontal padding but NOT the top — top padding is already 0. */
+#s-home .home-scroll{padding-top:0;display:flex;flex-direction:column}
+.cb-hero{position:relative;margin:0 -14px 14px;background:linear-gradient(180deg,var(--paper-light) 0%,var(--paper-deep) 100%);border-bottom:1px solid var(--hair);padding:calc(var(--st) + 18px) 18px 22px;display:flex;flex-direction:column;gap:8px;flex-shrink:0}
 /* Top control row — cal pill left, burger right. Both glass on
    the paper surface. */
 .cb-hero-top{display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:5;position:relative}
-/* Photo zone — cream gradient backdrop the car (real photo or
-   silhouette) sits on. Floor shadow lives at the bottom. */
-.cb-hero-photo{position:relative;width:100%;height:170px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:transparent}
-.cb-hero-photo img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 12px 22px rgba(40,30,20,0.25))}
-.cb-hero-photo.has-image img{object-fit:cover;filter:none}
+/* Photo zone — cream gradient backdrop the car photo sits on.
+   Real photos use object-fit:cover and overflow:hidden so they
+   crop nicely. Empty state has overflow:visible so the dashed
+   border draws cleanly. */
+.cb-hero-photo{position:relative;width:100%;height:170px;display:flex;align-items:center;justify-content:center;background:transparent;border-radius:12px}
+.cb-hero-photo.has-image{overflow:hidden}
+.cb-hero-photo img{width:100%;height:100%;object-fit:cover;display:block;border-radius:12px}
 /* Floor shadow under the car — only when no real photo, so the
    silhouette feels grounded. Real photos already have their own
    composition; we don't need a fake floor under them. */
@@ -966,7 +981,7 @@ body::before{
 /* Empty state — no car yet. Photo zone shows a quiet "Add your
    car" CTA instead of a placeholder silhouette. */
 .cb-hero.is-empty .cb-hero-info{display:none}
-.cb-hero.is-empty .cb-hero-photo::before{content:'';position:absolute;inset:0;border:1.5px dashed var(--hair-strong);border-radius:12px;pointer-events:none}
+.cb-hero.is-empty .cb-hero-photo{border:1.5px dashed var(--hair-strong)}
 .cb-hero-empty-cta{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;background:var(--brass);color:#fff;border:none;border-radius:999px;font-family:var(--ff);font-size:0.86rem;font-weight:700;padding:10px 20px;cursor:pointer;-webkit-appearance:none;appearance:none;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 -1px 0 rgba(0,0,0,0.10) inset,0 4px 14px -4px rgba(166,124,82,0.45)}
 .cb-hero-empty-cta:active{transform:translate(-50%,-50%) scale(0.96)}
 
@@ -995,14 +1010,20 @@ body::before{
 
 /* Lifetime stats — eyebrow row + three bare numbers with brass
    tally marks, mono caps labels, and a quiet sub-info line. */
-.cb-lifetime-eyebrow{display:flex;align-items:center;gap:7px;margin:14px 0 6px;font-family:var(--ff-mono);font-size:0.6rem;font-weight:600;color:var(--brass-dk);letter-spacing:0.18em;text-transform:uppercase}
-.cb-lifetime-eyebrow::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--brass);box-shadow:0 0 0 3px var(--brass-soft)}
+/* Lifetime stats — eyebrow + 3 bare numbers, each with a single
+   short brass accent line above (cleaner than the prior tally
+   marks). Pushed to the bottom of the home via margin-top:auto. */
+.cb-lifetime-eyebrow{display:flex;align-items:center;gap:7px;margin:auto 0 8px;padding:0 2px;font-family:var(--ff-mono);font-size:0.6rem;font-weight:600;color:var(--brass-dk);letter-spacing:0.18em;text-transform:uppercase}
+.cb-lifetime-eyebrow::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--brass);box-shadow:0 0 0 3px var(--brass-soft);flex-shrink:0}
 .cb-lifetime-eyebrow .sep{color:var(--ink-dim);margin:0 2px;letter-spacing:0}
 .cb-lifetime-eyebrow b{color:var(--ink-strong);font-weight:700}
-.cb-lifetime{display:flex;align-items:stretch;gap:0;margin:0 0 18px;padding:6px 4px 2px}
-.cb-lifetime .stat{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:0 6px;min-width:0}
-.cb-lifetime .tally{display:flex;gap:2px;margin-bottom:5px}
-.cb-lifetime .tally span{display:block;width:2px;height:9px;background:var(--brass);border-radius:1px}
+.cb-lifetime{display:flex;align-items:stretch;gap:0;margin:0 0 18px;padding:8px 4px 2px;border-top:1px solid var(--hair)}
+.cb-lifetime .stat{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:0 6px;min-width:0;position:relative}
+/* Single brass accent line above each stat — short horizontal
+   tick, kept to the left of the number so it reads as an underline
+   inverted. .tally container preserved for HTML compat. */
+.cb-lifetime .tally{display:block;width:16px;height:2px;background:var(--brass);border-radius:1px;margin-bottom:8px}
+.cb-lifetime .tally span{display:none}
 .cb-lifetime .num{font-family:var(--fh);font-size:1.85rem;font-weight:800;color:var(--ink-strong);letter-spacing:-0.03em;line-height:1}
 .cb-lifetime .lbl{font-family:var(--ff-mono);font-size:0.58rem;font-weight:600;color:var(--ink-muted);letter-spacing:0.18em;text-transform:uppercase;margin-top:3px;display:inline-flex;align-items:center;gap:5px}
 .cb-lifetime .glyph{width:10px;height:10px;stroke:var(--brass);fill:none;stroke-width:1.6;flex-shrink:0}
