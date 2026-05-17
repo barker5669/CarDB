@@ -585,6 +585,26 @@
   </div>
 </div>
 
+<!-- CAR CATALOG PICKER — opens on top of openFormSheet so the user
+     can search CAR_DB to pre-fill the Add Car form. Higher z-index
+     than the form sheet so it lands cleanly on top. -->
+<div class="picker-overlay" id="catalog-picker-overlay" style="z-index:280">
+  <div class="picker-sheet">
+    <div class="picker-handle"></div>
+    <div class="picker-hdr">
+      <h2>Choose your car</h2>
+      <button class="picker-cancel" type="button" onclick="closeCarCatalogPicker()">Cancel</button>
+    </div>
+    <div class="picker-search-wrap">
+      <input class="picker-search" id="catalog-search-input" type="search" placeholder="Search by name, make or era…" autocomplete="off" />
+    </div>
+    <div class="picker-list" id="catalog-picker-list"></div>
+    <div class="catalog-fallback">
+      <button class="catalog-manual-btn" type="button" onclick="closeCarCatalogPicker()">Can't find it? Type it in below ↓</button>
+    </div>
+  </div>
+</div>
+
 <!-- GARAGE ADD -->
 <div class="sheet-overlay" id="garage-add-overlay">
   <div class="picker-sheet">

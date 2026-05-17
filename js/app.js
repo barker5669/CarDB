@@ -1263,6 +1263,71 @@ function _setNextEventFilled({ m, d, name, meta }) {
   set('cb-ne-loc',  meta);
   set('cb-ne-chev', '›');
 }
+// ─── Car catalog picker ──────────────────────────────────────
+// Search CAR_DB for a car to pre-fill the Add Car form. Opens on
+// top of the form sheet (z-index:280 in HTML). Selection invokes
+// the callback with the picked CAR_DB entry; cancellation invokes
+// it with null (or never — the cancel button just closes).
+let _catalogPickerCb = null;
+
+function openCarCatalogPicker(callback) {
+  _catalogPickerCb = callback || null;
+  const overlay = document.getElementById('catalog-picker-overlay');
+  const input   = document.getElementById('catalog-search-input');
+  if (!overlay) return;
+  if (input) {
+    input.value = '';
+    input.oninput = () => renderCatalogPickerList(input.value);
+    setTimeout(() => input.focus(), 280);
+  }
+  renderCatalogPickerList('');
+  overlay.classList.add('open');
+}
+
+function closeCarCatalogPicker() {
+  const overlay = document.getElementById('catalog-picker-overlay');
+  if (overlay) overlay.classList.remove('open');
+  _catalogPickerCb = null;
+}
+
+function renderCatalogPickerList(query) {
+  const list = document.getElementById('catalog-picker-list');
+  if (!list) return;
+  const cars = (typeof CAR_DB !== 'undefined' && Array.isArray(CAR_DB)) ? CAR_DB : [];
+  const q = (query || '').toLowerCase().trim();
+  const filtered = !q ? cars : cars.filter(c =>
+    (c.name  && c.name.toLowerCase().includes(q)) ||
+    (c.make  && c.make.toLowerCase().includes(q)) ||
+    (c.model && c.model.toLowerCase().includes(q)) ||
+    (c.era   && c.era.toLowerCase().includes(q))
+  );
+  if (!filtered.length) {
+    list.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--ink-muted);font-size:0.88rem">No cars match "${escapeHtml(query)}".</div>`;
+    return;
+  }
+  // Cap at 100 rows so a typo doesn't render 500+ DOM nodes; the
+  // user can keep typing to narrow.
+  list.innerHTML = filtered.slice(0, 100).map((c, idx) => {
+    const realIdx = cars.indexOf(c);
+    const sub = [c.make, c.years, c.era].filter(Boolean).join(' · ');
+    return `<button class="picker-row" type="button" onclick="selectCatalogCar(${realIdx})">
+      <span class="picker-flag">${c.flag || '🚗'}</span>
+      <div class="picker-info">
+        <div class="picker-name">${escapeHtml(c.name)}</div>
+        <div class="picker-sub">${escapeHtml(sub)}</div>
+      </div>
+    </button>`;
+  }).join('');
+}
+
+function selectCatalogCar(index) {
+  const cars = (typeof CAR_DB !== 'undefined' && Array.isArray(CAR_DB)) ? CAR_DB : [];
+  const car  = cars[index] || null;
+  const cb   = _catalogPickerCb;
+  closeCarCatalogPicker();
+  if (cb && car) cb(car);
+}
+
 function onNextEventTap() {
   if (_nextEventState === 'empty' && typeof openAddUpcoming === 'function') {
     openAddUpcoming();

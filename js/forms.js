@@ -63,6 +63,22 @@ async function openFormSheet({
         <input id="${id}" type="file" accept="image/*" capture="environment" hidden>
       </div>`;
     }
+    if (f.type === 'catalog') {
+      // Catalog picker — opens a search overlay that lists CAR_DB
+      // entries. Picking a row auto-fills name / make / model / year
+      // text fields in this same form (data-autofill targets), so the
+      // catalog field is convenience + the existing text fields are the
+      // fallback for cars not in the database.
+      return `<div class="form-field-wrap form-catalog-wrap">
+        <label>${escapeHtml(f.label)}${reqMk}</label>
+        <button type="button" class="form-catalog-btn" data-target="${id}" id="${id}-btn">
+          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.5" y2="16.5"/></svg>
+          <span class="form-catalog-label" id="${id}-label">${escapeHtml(f.placeholder || 'Search the car catalog')}</span>
+          <span class="form-catalog-chev">›</span>
+        </button>
+        <input id="${id}" type="hidden">
+      </div>`;
+    }
     const inputType = f.type || 'text';
     const inputmode = f.inputmode ? ` inputmode="${escapeAttr(f.inputmode)}"` : '';
     const autocap   = (f.type === 'email' || f.type === 'url') ? ' autocapitalize="none" autocorrect="off"' : '';
@@ -100,6 +116,35 @@ async function openFormSheet({
       if (trigger) trigger.style.display = 'none';
     };
   });
+  // Catalog picker — tap opens an overlay that searches CAR_DB.
+  // Selection both stores the picked car on the hidden input AND
+  // auto-fills the sibling name/make/model/year text fields so the
+  // user can tweak them after if they want (e.g. nickname the car).
+  fieldsEl.querySelectorAll('.form-catalog-btn').forEach(btn => {
+    btn.onclick = () => {
+      if (typeof openCarCatalogPicker !== 'function') return;
+      openCarCatalogPicker((car) => {
+        if (!car) return; // user dismissed without selecting
+        const hiddenId = btn.dataset.target;
+        const hidden   = document.getElementById(hiddenId);
+        if (hidden) hidden._selectedCar = car;
+        const label    = document.getElementById(`${hiddenId}-label`);
+        if (label) label.textContent = '✓ ' + (car.name || 'Selected');
+        // Auto-fill text fields if they exist in this form.
+        const fill = (id, value) => {
+          const el = document.getElementById(`form-field-${id}`);
+          if (el && 'value' in el) el.value = value || '';
+        };
+        fill('name',  car.name);
+        fill('make',  car.make);
+        fill('model', car.model);
+        if (car.years) {
+          const m = /(\d{4})/.exec(car.years);
+          if (m) fill('year', m[1]);
+        }
+      });
+    };
+  });
 
   overlay.classList.add('open');
   // Focus the first field once the sheet's slide-in transition has settled.
@@ -130,6 +175,14 @@ async function openFormSheet({
             document.getElementById(`form-field-${f.id}-btn`)?.focus();
             return;
           }
+          continue;
+        }
+        if (f.type === 'catalog') {
+          // Catalog picker — output the picked car (or null if user
+          // skipped). The text fields it auto-fills (name/make/model/
+          // year) are still required separately, so we don't gate the
+          // submit on the catalog choice.
+          out[f.id] = el?._selectedCar || null;
           continue;
         }
         const raw = (el?.value ?? '').trim();

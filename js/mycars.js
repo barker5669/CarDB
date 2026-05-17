@@ -262,7 +262,11 @@ const _MC_CAR_FIELDS = [
   // Photo field first so it's seen immediately on a phone — the
   // form-fields container is scrollable and capped at 55vh, so
   // anything past the first ~3 fields sits below the fold.
-  { id:'photo', label:'Cover photo',   type:'photo' },
+  { id:'photo',   label:'Cover photo',  type:'photo' },
+  // Catalog picker pre-fills name/make/model/year from CAR_DB. If
+  // the car isn't in the database (kit car, rare grey-import, etc.)
+  // the user just skips this and types into the text fields below.
+  { id:'catalog', label:'Pick from catalog', type:'catalog', placeholder:'Search the car catalog' },
   { id:'name',  label:'Name',          required:true,  placeholder:"e.g. FIL's MGB" },
   { id:'make',  label:'Make',          placeholder:'e.g. MG' },
   { id:'model', label:'Model',         placeholder:'e.g. MGB' },

@@ -511,6 +511,40 @@ body::before{
 .form-photo-preview img{width:100%;height:100%;object-fit:cover;display:block}
 .form-photo-remove{position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.7);border:none;color:#fff;font-family:var(--ff);font-size:0.78rem;font-weight:600;padding:6px 11px;border-radius:999px;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 
+/* CATALOG PICKER button on the Add Car form. Brass-tinted pill
+   so it reads as an action (not just another text field). */
+.form-catalog-wrap{display:flex;flex-direction:column;gap:6px}
+.form-catalog-btn{
+  width:100%;background:rgba(166,124,82,0.06);
+  border:1px solid var(--brass-line);color:var(--brass-dk);
+  font-family:var(--ff);font-size:0.92rem;font-weight:600;
+  padding:13px 14px;border-radius:var(--R);
+  cursor:pointer;-webkit-appearance:none;appearance:none;
+  display:flex;align-items:center;gap:10px;min-height:48px;text-align:left;
+  box-shadow:
+    0 1px 0 rgba(255,240,210,0.55) inset,
+    0 1px 3px rgba(166,124,82,0.10);
+}
+.form-catalog-btn:active{opacity:0.85;transform:scale(0.99)}
+.form-catalog-btn svg{stroke:var(--brass);flex-shrink:0}
+.form-catalog-label{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.form-catalog-chev{color:var(--brass);font-size:1.2rem;font-weight:300;flex-shrink:0}
+
+/* Catalog picker overlay — fallback bar at the bottom that nudges
+   the user back to the manual fields if their car isn't listed. */
+.catalog-fallback{
+  flex-shrink:0;padding:12px 13px calc(var(--sb) + 12px);
+  border-top:1px solid var(--hair);
+  background:var(--paper-light);
+}
+.catalog-manual-btn{
+  width:100%;background:transparent;border:0;
+  color:var(--ink-muted);font-family:var(--ff);font-size:0.86rem;font-weight:600;
+  cursor:pointer;-webkit-appearance:none;appearance:none;padding:10px;
+  border-radius:var(--R);
+}
+.catalog-manual-btn:active{color:var(--ink-strong);background:var(--card-deep)}
+
 /* CONFIRM SHEET */
 .confirm-body{font-size:0.92rem;color:var(--ink2);font-weight:500;line-height:1.55;text-align:center;padding:0 6px 12px}
 .confirm-ok-danger{background:var(--red);color:var(--ink)}
