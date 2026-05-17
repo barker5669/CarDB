@@ -257,8 +257,11 @@ body::before{
 .hdr-cta-btn{background:var(--brass);border:none;color:#fff;font-family:var(--ff);font-size:0.84rem;font-weight:700;letter-spacing:0.01em;padding:9px 14px;border-radius:999px;min-height:42px;display:flex;align-items:center;gap:5px;cursor:pointer;-webkit-appearance:none;appearance:none;flex-shrink:0;white-space:nowrap;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 -1px 0 rgba(0,0,0,0.10) inset,0 3px 10px -3px rgba(166,124,82,0.40)}
 .hdr-cta-btn:active{opacity:0.92;transform:scale(0.96)}
 
-/* HOME TAB */
-#s-home{background:var(--bg)}
+/* HOME TAB
+   Transparent so the body's layered showroom-lighting gradients
+   shine through the bottom (content-pad + lifetime area). The hero
+   has its own warm radial; below the hero we want to inherit. */
+#s-home{background:transparent}
 .home-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px calc(var(--sb) + 14px)}
 .home-scroll::-webkit-scrollbar{display:none}
 .home-section-lbl{font-size:0.66rem;font-weight:800;letter-spacing:3px;color:var(--dim);text-transform:uppercase;padding:0 2px 9px;margin-top:4px}

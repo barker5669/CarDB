@@ -89,10 +89,83 @@ window.addEventListener('localphotos:warmed', () => {
 
 async function _loadMyCars(force = false) {
   if (!force && _myCars) return _myCars;
-  try { _myCars = await DB.myCars.list(); }
-  catch (err) { _myCars = []; showErr('Could not load your cars', err); }
+  // Local cars are always read first — instant, never blocks. Remote
+  // sync is best-effort and swallowed on failure (the backend is
+  // currently flaky; the user is migrating off it anyway).
+  const local = LocalMyCars.list();
+  let remote = [];
+  try {
+    const wrap = (typeof _raceTimeout === 'function')
+      ? _raceTimeout(DB.myCars.list(), 'My cars', 8000)
+      : DB.myCars.list();
+    remote = await wrap;
+    if (!Array.isArray(remote)) remote = [];
+  } catch (err) {
+    console.warn('myCars.list failed (using local only):', err);
+    remote = [];
+  }
+  // Local entries come first — these are the cars the user added on
+  // this device. Remote entries follow, deduped by id so we don't
+  // double-render a car that's both in localStorage and Supabase.
+  const seen = new Set(local.map(c => String(c.id)));
+  const merged = [...local];
+  for (const r of remote) {
+    if (r && !seen.has(String(r.id))) merged.push(r);
+  }
+  _myCars = merged;
   return _myCars;
 }
+
+// Local-first My Cars store. The user is migrating off Supabase
+// and the backend hangs intermittently — saving cars to localStorage
+// means the Add Car flow works offline, instantly, with zero
+// network dependency. Old remote cars still get merged in via
+// _loadMyCars; new cars added here live entirely on the device.
+const _LOCAL_MYCARS_KEY = 'cb-local-mycars-v1';
+const LocalMyCars = {
+  list() {
+    try {
+      const arr = JSON.parse(localStorage.getItem(_LOCAL_MYCARS_KEY) || '[]');
+      return Array.isArray(arr) ? arr : [];
+    } catch { return []; }
+  },
+  _save(cars) {
+    try { localStorage.setItem(_LOCAL_MYCARS_KEY, JSON.stringify(cars)); }
+    catch (e) { console.warn('LocalMyCars save:', e); }
+  },
+  add(payload) {
+    const id = `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const car = {
+      id,
+      name:         payload.name,
+      make:         payload.make,
+      model:        payload.model,
+      year:         payload.year,
+      registration: payload.registration,
+      notes:        payload.notes,
+      my_car_photos: [],
+      my_car_log_entries: [],
+      _local: true,
+    };
+    const cars = this.list();
+    cars.push(car);
+    this._save(cars);
+    return car;
+  },
+  update(id, patch) {
+    const cars = this.list();
+    const i = cars.findIndex(c => String(c.id) === String(id));
+    if (i < 0) return null;
+    cars[i] = { ...cars[i], ...patch };
+    this._save(cars);
+    return cars[i];
+  },
+  remove(id) {
+    this._save(this.list().filter(c => String(c.id) !== String(id)));
+  },
+  isLocalId(id) { return String(id || '').startsWith('local-'); },
+};
+window.LocalMyCars = LocalMyCars;
 
 // Public helper for the dashboard hero. Returns the user's primary
 // car (the first one in the list) plus its hero photo URL + counts
@@ -290,44 +363,41 @@ async function openAddMyCar() {
     fields:      _MC_CAR_FIELDS,
   });
   if (!data) return;
-  // User-visible status — the create call can hang on a flaky/dead
-  // backend, so wrap with _raceTimeout and surface progress through
-  // snackbars. Otherwise the modal closes and the user is left
-  // staring at nothing while the await silently hangs.
-  showSnack('💾 Saving…');
+  // Local-only save — instant, never blocks on Supabase. The user
+  // is migrating off the backend and the network has been flaky;
+  // localStorage is the source of truth for new cars. Old remote
+  // cars still appear in the merged list (see _loadMyCars).
+  let car;
   try {
-    const wrap = (p) =>
-      (typeof _raceTimeout === 'function') ? _raceTimeout(p, 'Add car', 10000) : p;
-    const newCar = await wrap(DB.myCars.create({
+    car = LocalMyCars.add({
       name:         data.name,
       make:         data.make,
       model:        data.model,
       year:         _yearOrNull(data.year),
       registration: data.reg,
       notes:        data.notes,
-    }));
-    // If the user picked a cover photo, save it locally under the new
-    // car's owner key and set it as the hero photo. LocalPhotos + the
-    // hero pointer are both device-local (£0 design), so this never
-    // touches the network.
-    if (data.photo && newCar && newCar.id != null && typeof LocalPhotos !== 'undefined') {
-      try {
-        const saved = await LocalPhotos.add(_mcOwnerId(newCar.id), data.photo, {});
-        if (saved && saved.id != null) _setMcHero(newCar.id, saved.id);
-      } catch (e) {
-        console.warn('Add car photo save:', e);
-        // Car was created OK; just no photo. Don't fail the whole flow.
-      }
-    }
-    _myCars = null;
-    showSnack('🚗 Car added!');
-    // Refresh both the My Cars list AND the dashboard hero so a car
-    // added from the home page lands instantly on the home hero too.
-    if (typeof renderMyCarsList === 'function') await renderMyCarsList().catch(() => {});
-    if (typeof renderHomeHero === 'function')   renderHomeHero().catch(() => {});
+    });
   } catch (err) {
     showErr('Could not save car', err);
+    return;
   }
+  // Cover photo — save locally under the new car's owner key and
+  // set as the hero pointer. All local; no Storage upload.
+  if (data.photo && typeof LocalPhotos !== 'undefined') {
+    try {
+      const saved = await LocalPhotos.add(_mcOwnerId(car.id), data.photo, {});
+      if (saved && saved.id != null) _setMcHero(car.id, saved.id);
+    } catch (e) {
+      console.warn('Add car photo save:', e);
+      // Car saved OK without photo. Don't fail.
+    }
+  }
+  _myCars = null;
+  showSnack('🚗 Car added');
+  // Refresh both the My Cars list AND the dashboard hero so a car
+  // added from the home page lands instantly on the home hero too.
+  if (typeof renderMyCarsList === 'function') await renderMyCarsList().catch(() => {});
+  if (typeof renderHomeHero === 'function')   renderHomeHero().catch(() => {});
 }
 
 async function openEditMyCar(carId) {
@@ -347,15 +417,22 @@ async function openEditMyCar(carId) {
     },
   });
   if (!data) return;
+  const patch = {
+    name:         data.name,
+    make:         data.make,
+    model:        data.model,
+    year:         _yearOrNull(data.year),
+    registration: data.reg,
+    notes:        data.notes,
+  };
   try {
-    await DB.myCars.update(carId, {
-      name:         data.name,
-      make:         data.make,
-      model:        data.model,
-      year:         _yearOrNull(data.year),
-      registration: data.reg,
-      notes:        data.notes,
-    });
+    // Route to LocalMyCars or Supabase based on the id prefix —
+    // local-only cars never touch the network.
+    if (LocalMyCars.isLocalId(carId)) {
+      LocalMyCars.update(carId, patch);
+    } else {
+      await DB.myCars.update(carId, patch);
+    }
     _myCars = null;
     showSnack('Saved');
     await showMyCarDetail(carId);
@@ -373,7 +450,11 @@ async function confirmDeleteMyCar(carId) {
   });
   if (!ok) return;
   try {
-    await DB.myCars.remove(carId);
+    if (LocalMyCars.isLocalId(carId)) {
+      LocalMyCars.remove(carId);
+    } else {
+      await DB.myCars.remove(carId);
+    }
     _myCars = null;
     showSnack('Deleted');
     await renderMyCarsList();

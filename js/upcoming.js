@@ -36,9 +36,16 @@ async function renderUpcoming() {
   let events;
   try { events = await _raceTimeout(DB.upcoming.list(), 'Upcoming events', 8000); }
   catch (err) {
-    console.error('renderUpcoming:', err);
-    const detail = err?.message || String(err);
-    body.innerHTML = `<div class="up-error">⚠️ ${escapeHtml(detail)}</div>`;
+    // Backend's flaky — don't dump a scary error; just show the
+    // empty state so the user can still tap "+ Add an event".
+    console.warn('renderUpcoming:', err);
+    body.innerHTML = `
+      <div class="up-empty">
+        <div class="up-empty-icon">📅</div>
+        <h3>Couldn't reach events</h3>
+        <p>You're offline or the backend is unavailable.</p>
+        <button class="primary-btn" onclick="openAddUpcoming()">＋ Add an event</button>
+      </div>`;
     return;
   }
   await _loadProfilesIndex();
