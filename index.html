@@ -737,8 +737,24 @@
 <input type="file" id="myCarEntryPhotoInput" accept="image/*" capture="environment" onchange="handleMyCarEntryPhoto(event)">
 
 <script>
+// Register the SW and auto-reload the page when a new version takes
+// over. With skipWaiting() in install + clients.claim() in activate,
+// `controllerchange` fires as soon as the new SW is active — at which
+// point the page is still running the old CSS/JS bundle from cache,
+// so we reload once to pick up the new build. Guarded so it ONLY fires
+// for updates (not first installs) and only once per page lifetime.
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    const hadController = !!navigator.serviceWorker.controller;
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController) return;     // first install — no reload needed
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
+  });
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
