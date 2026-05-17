@@ -874,9 +874,9 @@ function buildNav(activeTab) {
   const displayActive = activeTab === 'settings' ? 'home' : activeTab;
 
   function tabBtn(t) {
-    return `<button class="nav-btn${displayActive===t.id?' active':''}" onclick="switchTab('${t.id}')"><div class="nb-wrap"><svg class="nav-svg" viewBox="0 0 24 24">${t.svg}</svg></div><span class="nav-lbl">${t.lbl}</span></button>`;
+    return `<button class="nav-btn${displayActive===t.id?' active':''}" onclick="switchTab('${t.id}')"><svg viewBox="0 0 24 24">${t.svg}</svg>${t.lbl}</button>`;
   }
-  const camBtn = `<button class="nav-cam" onclick="triggerPhotoFirst()"><div class="nav-cam-disc"><svg viewBox="0 0 24 24">${camSvg}</svg></div><span class="nav-cam-lbl">Photo</span></button>`;
+  const camBtn = `<button class="nav-cam" onclick="triggerPhotoFirst()"><span class="disc"><svg viewBox="0 0 24 24">${camSvg}</svg></span></button>`;
 
   const html = tabBtn(NAV_TABS[0]) + tabBtn(NAV_TABS[1]) + camBtn + tabBtn(NAV_TABS[2]) + tabBtn(NAV_TABS[3]);
 
@@ -937,78 +937,71 @@ function updateHomeCard() {
   renderHomeHero().catch(err => console.warn('renderHomeHero:', err));
 }
 
-// Cream-paper His Car hero at the top of the dashboard. Cal pill +
-// burger float over a wide photo zone; car info (eyebrow + name +
-// meta + stat pills + pager dots) sits below the photo on the same
-// paper surface. Empty state replaces the photo with an "Add your
-// car" CTA — no silhouette placeholder.
+// Dashboard hero — exact mockup structure. Cal pill + burger float
+// over the cream-paper hero, car silhouette sits centred (replaced
+// by a real photo when available), name + stats overlay the bottom,
+// pager dots anchor the centre. Whole hero is tappable: in empty
+// state opens the add-car flow, populated state opens the car detail.
 async function renderHomeHero() {
   const hero = document.getElementById('cb-hero');
   if (!hero) return;
-  // Cal pill renders regardless of cars — it's a calendar peek,
-  // not car data. Fire-and-forget.
-  renderHomeHeroCalPill().catch(() => {});
+  // Cal pill renders regardless of cars — fire-and-forget.
+  renderHomeHeroCalPill();
 
   if (typeof getHomeHeroCar !== 'function') return;
   let data;
   try { data = await getHomeHeroCar(); } catch { data = null; }
 
+  const svgEl   = document.getElementById('cb-hero-svg');
   const photoEl = document.getElementById('cb-hero-photo');
+  const imgEl   = document.getElementById('cb-hero-img');
   const nameEl  = document.getElementById('cb-hero-name');
   const metaEl  = document.getElementById('cb-hero-meta');
   const statsEl = document.getElementById('cb-hero-stats');
   const pagerEl = document.getElementById('cb-hero-pager');
-  if (!photoEl || !nameEl || !statsEl) return;
-
-  // Helper — strip any previously-injected <img> so re-renders
-  // don't leak old photos.
-  const clearImg = () => {
-    const old = photoEl.querySelector('img');
-    if (old) old.remove();
-    photoEl.classList.remove('has-image');
-  };
+  if (!nameEl || !statsEl) return;
 
   if (!data) {
-    // No car yet — empty state. Silhouette stays visible (it's the
-    // default in the photo zone); info zone shows placeholder copy.
-    // Whole hero is tappable to open the add-car flow.
+    // Empty state — silhouette stays visible, placeholder copy in
+    // the bottom block, hero tappable to start the add-car flow.
     hero.classList.add('is-empty');
-    if (nameEl) nameEl.textContent = 'Add your car';
-    if (metaEl) { metaEl.textContent = 'Tap to get started'; metaEl.style.display = ''; }
-    if (statsEl) statsEl.innerHTML = '';
+    if (svgEl)   svgEl.style.display = '';
+    if (photoEl) photoEl.style.display = 'none';
+    if (imgEl)   imgEl.removeAttribute('src');
+    nameEl.textContent = 'Add your car';
+    if (metaEl) metaEl.textContent = 'Tap to get started';
+    statsEl.innerHTML = '';
     if (pagerEl) pagerEl.style.display = 'none';
-    clearImg();
     hero.onclick = (e) => {
-      if (e.target.closest('button')) return; // cal pill / burger
+      if (e.target.closest('button')) return;
       if (typeof openAddMyCar === 'function') openAddMyCar();
     };
     return;
   }
 
   hero.classList.remove('is-empty');
-
-  // Tap the hero → jump to the car's detail page. The cal pill and
-  // burger are real <button>s inside the hero, so we ignore clicks
-  // that originated inside one (they have their own onclick handlers).
   const carId = data.car.id;
   hero.onclick = (e) => {
-    if (e.target.closest('button')) return; // clicked an overlay control
+    if (e.target.closest('button')) return;
     if (typeof showMyCarDetail === 'function' && carId != null) showMyCarDetail(carId);
     else if (typeof showMyCars === 'function') showMyCars();
     else switchTab('mycars');
   };
 
-  // Photo zone — inject <img> when we have one, otherwise leave the
-  // zone clean (no silhouette placeholder). The empty paper area
-  // still reads as "this is where your car will go" without shouting.
-  clearImg();
-  if (data.photoUrl) {
-    const img = document.createElement('img');
-    img.src = data.photoUrl;
-    img.alt = data.car.name || '';
-    img.onerror = () => { img.remove(); photoEl.classList.remove('has-image'); };
-    photoEl.appendChild(img);
-    photoEl.classList.add('has-image');
+  // Real photo if we have one — otherwise keep the silhouette.
+  if (data.photoUrl && photoEl && imgEl) {
+    imgEl.src = data.photoUrl;
+    imgEl.alt = data.car.name || '';
+    imgEl.onerror = () => {
+      photoEl.style.display = 'none';
+      if (svgEl) svgEl.style.display = '';
+    };
+    photoEl.style.display = '';
+    if (svgEl) svgEl.style.display = 'none';
+  } else {
+    if (photoEl) photoEl.style.display = 'none';
+    if (imgEl)   imgEl.removeAttribute('src');
+    if (svgEl)   svgEl.style.display = '';
   }
 
   // Name + meta line.
@@ -1016,29 +1009,23 @@ async function renderHomeHero() {
   const name = car.name || [car.make, car.model].filter(Boolean).join(' ') || 'My Car';
   nameEl.textContent = name;
   const metaParts = [car.year, car.make, car.color].filter(Boolean);
-  if (metaEl) {
-    if (metaParts.length) { metaEl.textContent = metaParts.join(' · '); metaEl.style.display = ''; }
-    else { metaEl.style.display = 'none'; }
-  }
+  if (metaEl) metaEl.textContent = metaParts.join(' · ');
 
-  // Stat pills: Year / Photos / Log entries. Skipped when zero so
-  // we don't show a fake "0" on a brand-new car.
+  // Stat pills — mockup uses .stat-pill with .num and .lab (lowercase).
   const pills = [];
-  if (car.year) pills.push({ num: car.year, lbl: 'Year' });
-  pills.push({ num: data.photoCount, lbl: data.photoCount === 1 ? 'Photo' : 'Photos' });
-  if (data.logCount > 0) pills.push({ num: data.logCount, lbl: data.logCount === 1 ? 'Entry' : 'Entries' });
+  if (car.year) pills.push({ num: car.year, lab: 'YR' });
+  pills.push({ num: data.photoCount, lab: data.photoCount === 1 ? 'PHOTO' : 'PHOTOS' });
+  if (data.logCount > 0) pills.push({ num: data.logCount, lab: data.logCount === 1 ? 'ENTRY' : 'LOG' });
   statsEl.innerHTML = pills.map(p =>
-    `<div class="cb-stat-pill"><span class="num">${escapeHtml(String(p.num))}</span><span class="lbl">${escapeHtml(p.lbl)}</span></div>`
+    `<div class="stat-pill"><span class="num">${escapeHtml(String(p.num))}</span><span class="lab">${escapeHtml(p.lab)}</span></div>`
   ).join('');
 
-  // Pager dots — only shown when there's actually more than one car
-  // (multi-car carousel is a follow-up; for now the dots indicate
-  // position when the carousel lands).
+  // Pager dots — only when >1 car.
   if (pagerEl) {
     const total = data.totalCars || 1;
     if (total > 1) {
       pagerEl.innerHTML = Array.from({ length: total }, (_, i) =>
-        `<span class="pdot${i === 0 ? ' on' : ''}"></span>`
+        `<span class="pd${i === 0 ? ' on' : ''}"></span>`
       ).join('');
       pagerEl.style.display = '';
     } else {
@@ -1048,34 +1035,30 @@ async function renderHomeHero() {
 }
 
 // 7-day calendar peek (today + 6 days ahead) for the cal pill on
-// the hero. Renders the day strip synchronously, no Promise — this
-// path MUST always paint, even when the network is dead and the
-// async enrichment below never returns.
+// the hero. Mockup vocabulary: <button class="cal-day"> with
+// <span class="dow"> + <span class="d">. Today gets .today (ink
+// nub); days with RSVPd events get .has-event (brass dot below).
+// Synchronous render, async enrichment for event dots.
 function renderHomeHeroCalPill() {
   const pill = document.getElementById('cb-hero-cal');
   if (!pill) return;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const days = [];
   let html = '';
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    const dow = d.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase();
+    const dow = d.toLocaleDateString('en-GB', { weekday: 'short' });
     const day = d.getDate();
     const iso = d.toISOString().slice(0, 10);
     const isToday = i === 0;
-    days.push({ iso, isToday });
-    html += `<span class="cb-cal-day${isToday ? ' today' : ''}" data-iso="${iso}">`
-         +  `<span class="d">${dow}</span>`
-         +  `<span class="n">${day}</span>`
-         +  `<span class="dot"></span>`
-         +  `</span>`;
+    html += `<button class="cal-day${isToday ? ' today' : ''}" data-iso="${iso}">`
+         +  `<span class="dow">${dow}</span>`
+         +  `<span class="d">${day}</span>`
+         +  `</button>`;
   }
   pill.innerHTML = html;
   // Async event dot enrichment — never blocks the strip render.
-  // Failures are swallowed; the strip stays usable as a calendar
-  // peek even if upcoming events are unreachable.
   if (!(window.DB && DB.upcoming && typeof DB.upcoming.list === 'function')) return;
   Promise.resolve()
     .then(() => _raceTimeout(DB.upcoming.list(), 'Hero cal', 6000))
@@ -1086,7 +1069,7 @@ function renderHomeHeroCalPill() {
         const attending = Array.isArray(e.upcoming_event_attendees) &&
                           e.upcoming_event_attendees.some(a => a.user_id === me);
         if (!attending) continue;
-        const node = pill.querySelector(`.cb-cal-day[data-iso="${e.event_date}"]`);
+        const node = pill.querySelector(`.cal-day[data-iso="${e.event_date}"]`);
         if (node) node.classList.add('has-event');
       }
     })

@@ -130,48 +130,54 @@
     </div>
     <div class="home-scroll">
 
-      <!-- ──── HIS CAR HERO ─────────────────────────────────────
-           Cream-paper hero. Top row: glass cal pill + burger.
-           Middle: photo zone — real photo if available, otherwise
-           a refined Vantage-style silhouette as a placeholder.
-           Below: car info (eyebrow, name, meta, stat pills, pager
-           dots). In the empty state, the info zone shows placeholder
-           text and the whole hero is tappable to start the add-car
-           flow. -->
-      <div class="cb-hero is-empty" id="cb-hero">
-        <div class="cb-hero-top">
-          <button class="cb-cal-pill" id="cb-hero-cal" onclick="showUpcoming()" title="Upcoming shows"></button>
-          <button class="cb-hero-burger" onclick="switchTab('settings')" title="Settings">
+      <!-- ──── HIS CAR HERO — full-bleed, exact mockup structure.
+           Top row floats glass cal-pill + burger. Car silhouette
+           (or photo when available) sits centred. Name + stats
+           overlay the bottom on the same paper. Pager dots
+           anchor the bottom centre. -->
+      <section class="car-hero-full is-empty" id="cb-hero">
+
+        <!-- Top overlay row -->
+        <div class="hero-top">
+          <div class="cal-pill" id="cb-hero-cal"></div>
+          <button class="burger-btn" onclick="switchTab('settings')" title="Settings">
             <svg viewBox="0 0 24 24"><line x1="4" y1="7"  x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
           </button>
         </div>
 
-        <div class="cb-hero-photo" id="cb-hero-photo">
-          <!-- Refined silhouette placeholder — sleek coupe profile
-               with brass-tinted wheel hubs. Replaced by an <img>
-               when the user has a cover photo. -->
-          <svg class="cb-hero-silhouette" viewBox="0 0 340 110" preserveAspectRatio="xMidYMax meet">
-            <ellipse cx="170" cy="100" rx="146" ry="4" fill="rgba(40,30,20,0.22)"/>
-            <path d="M22 92 L48 92 Q56 92 64 89 L92 78 Q108 64 142 56 Q176 50 212 56 Q236 58 258 68 L286 80 Q296 84 312 90 L318 92 L22 92 Z" fill="#0e0c09"/>
-            <circle cx="88"  cy="92" r="15" fill="#0e0c09"/>
-            <circle cx="88"  cy="92" r="12" fill="#1f1c17"/>
-            <circle cx="88"  cy="92" r="6"  fill="#2a261f"/>
-            <circle cx="88"  cy="92" r="3"  fill="#a67c52"/>
-            <circle cx="252" cy="92" r="15" fill="#0e0c09"/>
-            <circle cx="252" cy="92" r="12" fill="#1f1c17"/>
-            <circle cx="252" cy="92" r="6"  fill="#2a261f"/>
-            <circle cx="252" cy="92" r="3"  fill="#a67c52"/>
-          </svg>
+        <!-- Car silhouette — refined coupe profile. Swapped for the
+             user's cover photo when one exists. -->
+        <svg class="car-display" id="cb-hero-svg" viewBox="0 0 340 130">
+          <path d="M22 96 Q 38 92 56 88 L 96 76 Q 124 56 162 56 Q 200 48 232 58 Q 256 62 282 80 L 300 88 Q 310 92 312 96 L 22 98 Z"
+                fill="#1a1814" stroke="#c79569" stroke-width="0.6" stroke-opacity="0.30"/>
+          <circle cx="86"  cy="100" r="15" fill="#0d0c09"/>
+          <circle cx="86"  cy="100" r="9"  fill="#2a261f"/>
+          <circle cx="86"  cy="100" r="3"  fill="#c79569" opacity="0.7"/>
+          <circle cx="252" cy="100" r="15" fill="#0d0c09"/>
+          <circle cx="252" cy="100" r="9"  fill="#2a261f"/>
+          <circle cx="252" cy="100" r="3"  fill="#c79569" opacity="0.7"/>
+          <path d="M104 76 L 142 64 L 200 64 L 232 70" stroke="#7da9c4" stroke-width="0.7" stroke-opacity="0.55" fill="none"/>
+        </svg>
+        <div class="car-photo" id="cb-hero-photo" style="display:none">
+          <img id="cb-hero-img" alt="">
         </div>
 
-        <div class="cb-hero-info">
-          <div class="cb-hero-eyebrow">My Car</div>
-          <div class="cb-hero-name" id="cb-hero-name">Add your car</div>
-          <div class="cb-hero-meta" id="cb-hero-meta">Tap to get started</div>
-          <div class="cb-hero-stats" id="cb-hero-stats"></div>
-          <div class="cb-hero-pager" id="cb-hero-pager" style="display:none"></div>
+        <!-- Bottom overlay: name + floating stat pills -->
+        <div class="hero-bottom">
+          <div class="hero-name">
+            <div class="eyebrow">My car</div>
+            <h2 id="cb-hero-name">Add your car</h2>
+            <div class="sub" id="cb-hero-meta">Tap to get started</div>
+          </div>
+          <div class="hero-stats" id="cb-hero-stats"></div>
         </div>
-      </div>
+
+        <!-- Pager dots (only visible when >1 car) -->
+        <div class="hero-pager" id="cb-hero-pager" style="display:none"></div>
+      </section>
+
+      <hr class="hero-divider">
+      <div class="content-pad">
 
       <!-- Active show card (only shown when there's a current event) -->
       <div id="home-active-show" style="display:none">
@@ -189,20 +195,20 @@
         </div>
       </div>
 
-      <!-- Next event preview (charcoal card with date plaque). Hidden
-           until renderNextEventCard finds an upcoming RSVP. -->
-      <button class="cb-next-event" id="cb-next-event" style="display:none" onclick="showUpcoming()">
+      <!-- Next event preview — charcoal card with brass corner badge.
+           Hidden until renderNextEventCard finds an upcoming RSVP. -->
+      <a class="upcoming-card" id="cb-next-event" style="display:none" onclick="showUpcoming()">
         <div class="date-block">
-          <div class="date-m" id="cb-ne-m">—</div>
-          <div class="date-d" id="cb-ne-d">—</div>
+          <div class="m" id="cb-ne-m">—</div>
+          <div class="d" id="cb-ne-d">—</div>
         </div>
-        <div class="body">
-          <div class="eyebrow">Next event</div>
+        <div class="info">
+          <div class="top-line">Next event</div>
           <div class="name" id="cb-ne-name">—</div>
-          <div class="loc"  id="cb-ne-loc">—</div>
+          <div class="meta" id="cb-ne-loc">—</div>
         </div>
         <div class="chev">›</div>
-      </button>
+      </a>
 
       <!-- Photos to sort banner — shown only when there are pending photos -->
       <button class="home-sort-banner" id="home-sort-banner" style="display:none" onclick="showPhotoSort()">
@@ -223,47 +229,44 @@
         </div>
       </div>
 
-      <!-- Lifetime stats — bare numbers on the page with brass
-           tally marks + tiny SVG glyphs + a quiet sub-info line
-           ("+5 this month" / "4 this year" / "last · DB5"). The
-           eyebrow row carries "LIFETIME · SINCE '24". -->
-      <div class="cb-lifetime-eyebrow">
-        <span>Lifetime</span>
-        <span class="sep">·</span>
-        <span>Since <b id="cb-life-since-year">—</b></span>
-      </div>
-      <div class="cb-lifetime" id="cb-lifetime">
-        <div class="stat">
-          <div class="tally"><span></span><span></span><span></span><span></span></div>
-          <div class="num" id="cb-life-spotted">0</div>
-          <div class="lbl">
-            <svg class="glyph" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>
-            Spotted
+      <!-- Lifetime stats — exact mockup vocabulary. Eyebrow row +
+           3 stat columns (mark + num + name with glyph + meta). -->
+      <div class="lifetime">
+        <div class="lifetime-lab">Lifetime · <span class="since">since <span id="cb-life-since-year">—</span></span></div>
+        <div class="lifetime-row">
+          <div class="stat">
+            <div class="mark"></div>
+            <div class="num" id="cb-life-spotted">0</div>
+            <div class="name">
+              <svg class="glyph" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5"/><circle cx="8" cy="8" r="2" fill="currentColor" stroke="none"/></svg>
+              Spotted
+            </div>
+            <div class="meta" id="cb-life-spotted-sub"> </div>
           </div>
-          <div class="sub" id="cb-life-spotted-sub">—</div>
-        </div>
-        <div class="divider"></div>
-        <div class="stat">
-          <div class="tally"><span></span><span></span><span></span></div>
-          <div class="num" id="cb-life-shows">0</div>
-          <div class="lbl">
-            <svg class="glyph" viewBox="0 0 24 24"><path d="M4 7l8-3 8 3v3l-8 3-8-3z"/><path d="M4 10v9l8 3 8-3v-9"/></svg>
-            Shows
+          <div class="stat-divider"></div>
+          <div class="stat">
+            <div class="mark"></div>
+            <div class="num" id="cb-life-shows">0</div>
+            <div class="name">
+              <svg class="glyph" viewBox="0 0 16 16"><path d="M3 13 L3 2 L13 2 L9 6 L13 10 L3 10"/></svg>
+              Shows
+            </div>
+            <div class="meta" id="cb-life-shows-sub"> </div>
           </div>
-          <div class="sub" id="cb-life-shows-sub">—</div>
-        </div>
-        <div class="divider"></div>
-        <div class="stat">
-          <div class="tally"><span></span><span></span></div>
-          <div class="num" id="cb-life-legendary">0</div>
-          <div class="lbl">
-            <svg class="glyph" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>
-            Legendary
+          <div class="stat-divider"></div>
+          <div class="stat">
+            <div class="mark"></div>
+            <div class="num" id="cb-life-legendary">0</div>
+            <div class="name">
+              <svg class="glyph" viewBox="0 0 16 16"><path d="M8 1.5 L10 6 L14.5 6.5 L11 9.5 L12 14 L8 11.5 L4 14 L5 9.5 L1.5 6.5 L6 6 Z" fill="currentColor" stroke="none"/></svg>
+              Legendary
+            </div>
+            <div class="meta" id="cb-life-legendary-sub"> </div>
           </div>
-          <div class="sub" id="cb-life-legendary-sub">—</div>
         </div>
       </div>
 
+      </div><!-- /content-pad -->
     </div>
     <nav class="bottom-nav" id="nav-home-bar"></nav>
   </div>

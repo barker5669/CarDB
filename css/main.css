@@ -15,11 +15,12 @@
   --card-surf:   #fefbf2;
   --card-deep:   #f6efe1;
 
-  /* Ink palette — warm near-black, with muted/dim steps */
+  /* Ink palette — warm near-black, with muted/dim steps.
+     Values match mockups/home-states.html :root exactly. */
   --ink-strong:  #1a1814;
-  --ink-2:       #3a352e;
+  --ink-2:       #2f2b25;
   --ink-muted:   #75706a;
-  --ink-dim:     #a59f95;
+  --ink-dim:     #aea89e;
   --ink-faint:   #c7c1b5;
 
   /* Brass accents — the only accent colour in the system */
@@ -29,9 +30,10 @@
   --brass-soft:  rgba(166, 124, 82, 0.18);
   --brass-line:  rgba(166, 124, 82, 0.42);
 
-  /* Hairlines — used everywhere for borders + dividers */
-  --hair:        rgba(26, 24, 20, 0.10);
-  --hair-strong: rgba(26, 24, 20, 0.18);
+  /* Hairlines — lighter than typical so they whisper. Match
+     the mockup; prior values were too heavy. */
+  --hair:        rgba(26, 24, 20, 0.06);
+  --hair-strong: rgba(26, 24, 20, 0.12);
 
   /* Rarity tier colours */
   --tier-common:    #8b8278;
@@ -92,20 +94,34 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
-body{font-family:var(--ff);background:var(--paper);color:var(--ink-strong);display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+/* Body — paper surface with the same layered showroom-lighting
+   gradients the mockup uses (spotlight from upper centre, warm
+   sash-window band across the middle, cool shade bottom-right). */
+body{
+  font-family:var(--ff);
+  color:var(--ink-strong);
+  display:flex;flex-direction:column;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  background:
+    radial-gradient(110% 50% at 50% -8%, #fefaf0 0%, rgba(254,250,240,0) 55%),
+    linear-gradient(180deg, transparent 24%, rgba(214,188,142,0.10) 40%, transparent 58%),
+    radial-gradient(130% 80% at 100% 100%, rgba(184,172,146,0.40) 0%, transparent 55%),
+    radial-gradient(80% 60% at 0% 95%, rgba(220,196,154,0.16) 0%, transparent 55%),
+    linear-gradient(180deg, var(--paper) 0%, var(--paper-deep) 100%);
+}
 /* No italics anywhere — DM Sans carries character via weight and
-   letter-spacing, not slant. Override <em> globally so we don't
-   need to hunt down every legacy `<em>...` in markup. */
+   letter-spacing, not slant. Override <em> globally. */
 em,i{font-style:normal}
-/* Subtle paper grain — almost-invisible noise so big cream
-   surfaces don't feel like plastic. Layered behind body content. */
+/* Fine paper texture — tiny 3px grid you sense rather than see,
+   plus low-opacity fractal noise. Matches the mockup's .phone::before. */
 body::before{
   content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:
-    radial-gradient(1px 1px at 25% 30%, rgba(26,24,20,0.025), transparent 50%),
-    radial-gradient(1px 1px at 75% 70%, rgba(26,24,20,0.020), transparent 50%),
-    radial-gradient(1px 1px at 60% 20%, rgba(26,24,20,0.018), transparent 50%);
-  background-size: 140px 140px, 180px 180px, 100px 100px;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(60,50,38,0.020) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(0deg,  rgba(60,50,38,0.020) 0 1px, transparent 1px 3px);
+  mix-blend-mode:multiply;
+  opacity:0.5;
 }
 .screen{position:relative;z-index:1}
 .screen{display:none;flex-direction:column;height:100%;overflow:hidden}
@@ -133,34 +149,95 @@ body::before{
 .auth-back-btn{background:transparent;border:1px solid var(--bdr);color:var(--dim);font-family:var(--ff);font-size:0.86rem;font-weight:700;padding:10px 18px;border-radius:20px;cursor:pointer;-webkit-appearance:none;appearance:none;margin-top:8px}
 .auth-back-btn:active{opacity:0.7}
 
-/* NAV — 5 tabs. Bigger than before to fit the bigger camera lens
-   FAB without crowding labels. Cream paper-light surface with a
-   hairline above; active tab gets brass colour + a small brass dot
-   below the label so it reads even at a glance. */
-.bottom-nav{height:var(--nav-h);background:linear-gradient(180deg,var(--paper-light) 0%,var(--paper) 100%);border-top:1px solid var(--hair-strong);display:flex;align-items:flex-start;padding-top:9px;flex-shrink:0;z-index:50;box-shadow:0 -1px 0 rgba(255,255,255,0.85) inset,0 -8px 20px -10px rgba(40,30,20,0.06)}
-.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:4px 2px 0;color:var(--ink-muted);-webkit-appearance:none;appearance:none;min-height:60px;position:relative}
-.nav-btn.active{color:var(--brass-dk)}
-.nb-wrap{width:48px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:16px;transition:background 0.15s}
-.nav-btn.active .nb-wrap{background:var(--brass-soft)}
-.nav-svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}
-.nav-btn.active .nav-svg{stroke-width:2.3}
-.nav-lbl{font-family:var(--ff-mono);font-size:0.6rem;font-weight:600;letter-spacing:0.14em;line-height:1;text-transform:uppercase}
+/* NAV — exact mockup spec. Glass paper surface, 5-column grid,
+   active tab in ink with a small brass dot below it. Camera FAB
+   is a charcoal lens disc with a tire-tread conic gradient + brass
+   rim, lifted above the nav line. */
+.bottom-nav{
+  flex-shrink:0;
+  background:
+    linear-gradient(180deg, rgba(255,252,240,0.92) 0%, rgba(245,240,226,0.88) 100%),
+    rgba(252,248,240,0.85);
+  backdrop-filter:blur(22px) saturate(150%);
+  -webkit-backdrop-filter:blur(22px) saturate(150%);
+  border-top:1px solid rgba(255,252,245,0.7);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.85) inset,
+    0 -1px 0 rgba(26,24,20,0.08),
+    0 -10px 24px -16px rgba(26,24,20,0.15);
+  padding:10px 16px calc(var(--sb) + 22px);
+  display:grid;grid-template-columns:repeat(5, 1fr);
+  align-items:center;position:relative;z-index:50;
+}
+.nav-btn{
+  background:transparent;border:0;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  color:var(--ink-muted);font-family:var(--ff);
+  font-size:0.58rem;font-weight:600;
+  letter-spacing:0.14em;text-transform:uppercase;
+  cursor:pointer;padding:6px 0;position:relative;
+  -webkit-appearance:none;appearance:none;
+}
+.nav-btn .nb-wrap{display:flex;align-items:center;justify-content:center}
+.nav-btn svg, .nav-btn .nav-svg{
+  width:20px;height:20px;stroke:currentColor;fill:none;
+  stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;
+}
+.nav-btn.active{color:var(--ink-strong)}
+.nav-btn.active::after{
+  content:'';position:absolute;bottom:-8px;left:50%;
+  width:3px;height:3px;border-radius:50%;
+  background:var(--brass);transform:translateX(-50%);
+}
 .nav-btn:active{opacity:0.55}
-/* Active dot — small brass nub below the active tab's label.
-   Replaces the iOS-style underline; reads instantly at a glance. */
-.nav-btn.active::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--brass);box-shadow:0 0 0 2px var(--brass-soft)}
-/* Camera FAB — charcoal "lens" disc with a brass outer ring (the
-   tire-tread reference). Sits above the nav line; reads as a
-   real camera lens, not just a brass dot. */
-.nav-cam{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:0 2px;-webkit-appearance:none;appearance:none;margin-top:-18px}
-.nav-cam-disc{width:62px;height:62px;border-radius:50%;background:radial-gradient(circle at 50% 45%,#2a261f 0%,#0d0c09 70%,#000 100%);box-shadow:0 0 0 3px var(--brass-dk),0 0 0 5px var(--brass),0 0 0 8px var(--paper-light),0 8px 18px -4px rgba(40,30,20,0.45);display:flex;align-items:center;justify-content:center;transition:transform 0.12s;position:relative}
-/* Tire-tread dashed inner ring — the lens groove. */
-.nav-cam-disc::before{content:'';position:absolute;inset:7px;border-radius:50%;border:1.5px dashed rgba(199,149,105,0.55);pointer-events:none}
-/* Inner lens glint — small highlight off-centre top-left. */
-.nav-cam-disc::after{content:'';position:absolute;top:14px;left:18px;width:12px;height:8px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(199,149,105,0.40) 0%,transparent 70%);pointer-events:none;filter:blur(1px)}
-.nav-cam:active .nav-cam-disc{transform:scale(0.92)}
-.nav-cam-disc svg{width:24px;height:24px;stroke:var(--brass-light);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;position:relative;z-index:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.40))}
-.nav-cam-lbl{font-family:var(--ff-mono);font-size:0.58rem;font-weight:600;color:var(--ink-muted);letter-spacing:0.12em;text-transform:uppercase;margin-top:6px}
+.nav-lbl{font-family:var(--ff);font-size:inherit;font-weight:inherit;letter-spacing:inherit;line-height:1;text-transform:inherit}
+
+/* Camera FAB — charcoal lens disc, lifted above the nav. */
+.nav-cam{
+  position:relative;
+  display:flex;flex-direction:column;align-items:center;
+  background:transparent;border:0;cursor:pointer;
+  -webkit-appearance:none;appearance:none;padding:0;
+}
+.nav-cam .disc, .nav-cam-disc{
+  width:58px;height:58px;border-radius:50%;
+  background:radial-gradient(ellipse at 30% 22%, #4a443d 0%, #1f1c17 60%, #100e0b 100%);
+  color:#f4e9d3;
+  display:flex;align-items:center;justify-content:center;
+  margin-top:-22px;
+  box-shadow:
+    0 1px 0 rgba(255,240,210,0.10) inset,
+    0 -2px 4px rgba(0,0,0,0.45) inset,
+    0 8px 20px -8px rgba(0,0,0,0.45),
+    0 2px 4px rgba(0,0,0,0.12);
+  transition:transform 0.16s ease;position:relative;
+}
+/* Tire-tread ring — 24 alternating angular stripes via conic
+   gradient, masked to the outer ~25% of the disc. */
+.nav-cam .disc::before, .nav-cam-disc::before{
+  content:'';position:absolute;inset:0;border-radius:50%;
+  background:repeating-conic-gradient(
+    from 0deg,
+    rgba(196,178,144,0.55) 0deg 4deg,
+    transparent               4deg 11deg
+  );
+  -webkit-mask:radial-gradient(circle, transparent 60%, black 68%, black 100%);
+          mask:radial-gradient(circle, transparent 60%, black 68%, black 100%);
+  pointer-events:none;
+}
+/* Brass hairline rim just outside the tread. */
+.nav-cam .disc::after, .nav-cam-disc::after{
+  content:'';position:absolute;inset:-3px;border-radius:50%;
+  border:1px solid var(--brass-line);
+  opacity:0.55;pointer-events:none;
+}
+.nav-cam:active .disc, .nav-cam:active .nav-cam-disc{transform:scale(0.94)}
+.nav-cam .disc svg, .nav-cam-disc svg{
+  width:22px;height:22px;stroke:currentColor;fill:none;
+  stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;
+  position:relative;z-index:1;
+}
+.nav-cam-lbl{display:none}
 
 /* STICKY HEADER
    Cream paper-light bar with a hairline beneath. Title in DM Sans
@@ -924,77 +1001,183 @@ body::before{
 .mc-photo.is-cover .mc-cover-toggle{color:var(--brass-light);background:rgba(0,0,0,0.85);box-shadow:0 0 12px var(--brass-soft)}
 .mc-photo.is-cover{box-shadow:0 0 0 2px var(--brass);border-radius:var(--R)}
 
-/* ─── HOME HERO (His Car) ────────────────────────────────────
-   Cream-paper hero. Cal pill top-left + burger top-right float
-   over a wide photo zone; car info (eyebrow + name + meta +
-   stat pills + pager dots) sits BELOW the photo on the same
-   paper surface — not overlaid. The page header is hidden on
-   home so the hero owns the top of the screen. */
+/* ─── HOME HERO (His Car) — exact copy of mockup vocabulary ──
+   Full-bleed, 390px tall, no padding on the parent. Cal pill +
+   burger float top, car silhouette (or photo) lives in the middle,
+   name + stats + pager dots overlay the bottom. */
 #s-home > .page-hdr{display:none}
-/* Home scroll uses flex column so the lifetime stats can stick to
-   the bottom (margin-top:auto on the stats). Hero breaks out of the
-   horizontal padding but NOT the top — top padding is already 0. */
-#s-home .home-scroll{padding-top:0;display:flex;flex-direction:column}
-.cb-hero{position:relative;margin:0 -14px 14px;background:linear-gradient(180deg,var(--paper-light) 0%,var(--paper-deep) 100%);border-bottom:1px solid var(--hair);padding:calc(var(--st) + 18px) 18px 22px;display:flex;flex-direction:column;gap:8px;flex-shrink:0}
-/* Top control row — cal pill left, burger right. Both glass on
-   the paper surface. */
-.cb-hero-top{display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:5;position:relative}
-/* Photo zone — the car (silhouette by default, real photo when
-   we have one) sits centred. Real photos use object-fit:cover
-   with overflow:hidden so they crop nicely. */
-.cb-hero-photo{position:relative;width:100%;height:170px;display:flex;align-items:center;justify-content:center;background:transparent;border-radius:12px}
-.cb-hero-photo.has-image{overflow:hidden}
-.cb-hero-photo img{width:100%;height:100%;object-fit:cover;display:block;border-radius:12px}
-.cb-hero-silhouette{width:100%;height:100%;display:block}
-.cb-hero-photo.has-image .cb-hero-silhouette{display:none}
-/* Floor shadow under the car — only when no real photo, so the
-   silhouette feels grounded. Real photos already have their own
-   composition; we don't need a fake floor under them. */
-.cb-hero-floor{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);width:62%;height:18px;background:radial-gradient(ellipse at center,rgba(40,30,20,0.18) 0%,transparent 70%);pointer-events:none;z-index:1}
-.cb-hero-photo.has-image ~ .cb-hero-floor,
-.cb-hero-photo.has-image .cb-hero-floor{display:none}
-/* Cal pill — wider than before with 3-letter day labels.
-   Today's number sits in a filled charcoal nub; days with an
-   RSVPd event get a small brass dot beneath. */
-.cb-cal-pill{display:inline-flex;align-items:center;gap:0;background:var(--card-surf);border:1px solid var(--hair);border-radius:999px;padding:7px 10px;cursor:pointer;-webkit-appearance:none;appearance:none;box-shadow:0 1px 0 rgba(255,255,255,0.85) inset,0 2px 8px -2px rgba(40,30,20,0.10)}
-.cb-cal-pill:active{transform:scale(0.97)}
-.cb-cal-day{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:26px;padding:0 1px}
-.cb-cal-day .d{font-family:var(--ff-mono);font-size:0.52rem;font-weight:600;color:var(--ink-muted);letter-spacing:0.10em;text-transform:uppercase;line-height:1}
-.cb-cal-day .n{width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:0.78rem;font-weight:700;color:var(--ink-strong);line-height:1;letter-spacing:-0.01em}
-.cb-cal-day.today .n{background:var(--ink-strong);color:var(--paper-light);border-radius:50%}
-.cb-cal-day .dot{width:3px;height:3px;border-radius:50%;background:var(--brass);margin-top:1px}
-.cb-cal-day:not(.has-event) .dot{visibility:hidden}
-/* Burger — same surface as cal pill so they read as a set. */
-.cb-hero-burger{width:38px;height:38px;background:var(--card-surf);border:1px solid var(--hair);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-appearance:none;appearance:none;color:var(--ink-2);box-shadow:0 1px 0 rgba(255,255,255,0.85) inset,0 2px 8px -2px rgba(40,30,20,0.10);flex-shrink:0}
-.cb-hero-burger:active{transform:scale(0.92)}
-.cb-hero-burger svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-/* Info zone — eyebrow + big name + meta line + stat pill row +
-   pager dots. Sits below the photo on the cream surface. */
-.cb-hero-info{display:flex;flex-direction:column;gap:8px;margin-top:4px}
-.cb-hero-eyebrow{font-family:var(--ff-mono);font-size:0.6rem;font-weight:600;color:var(--brass-dk);letter-spacing:0.18em;text-transform:uppercase;display:inline-flex;align-items:center;gap:7px}
-.cb-hero-eyebrow::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--brass);box-shadow:0 0 0 3px var(--brass-soft)}
-.cb-hero-name{font-family:var(--fh);font-size:1.75rem;font-weight:800;color:var(--ink-strong);letter-spacing:-0.025em;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cb-hero-meta{font-family:var(--ff-mono);font-size:0.68rem;color:var(--ink-muted);font-weight:500;letter-spacing:0.04em;margin-top:-2px}
-.cb-hero-stats{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
-.cb-stat-pill{display:inline-flex;align-items:baseline;gap:6px;background:var(--card-surf);border:1px solid var(--hair);border-radius:999px;padding:6px 14px 6px 11px;box-shadow:0 1px 0 rgba(255,255,255,0.85) inset,0 1px 3px rgba(40,30,20,0.06);position:relative;min-height:30px;align-items:center}
-/* Screw-head dot — the brass detail that ties the pills to the
-   mockup vocabulary (pills look like they're bolted on). */
-.cb-stat-pill::before{content:'';position:absolute;left:5px;top:50%;transform:translateY(-50%);width:6px;height:6px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--brass-light) 0%,var(--brass) 60%,var(--brass-dk) 100%);box-shadow:0 0 0 0.5px var(--brass-dk) inset,0 1px 1px rgba(0,0,0,0.15)}
-.cb-stat-pill .num{font-family:var(--fh);font-size:0.9rem;font-weight:800;color:var(--ink-strong);letter-spacing:-0.01em;line-height:1;padding-left:9px}
-.cb-stat-pill .lbl{font-family:var(--ff-mono);font-size:0.56rem;font-weight:600;color:var(--ink-muted);letter-spacing:0.14em;text-transform:uppercase;line-height:1}
-/* Pager dots — only shown when the user has more than one car
-   (multi-car carousel UX, not implemented yet, but the dots
-   indicate position when it lands). */
-.cb-hero-pager{display:flex;align-items:center;justify-content:flex-start;gap:5px;margin-top:6px}
-.cb-hero-pager .pdot{width:5px;height:5px;border-radius:50%;background:var(--hair-strong)}
-.cb-hero-pager .pdot.on{width:14px;border-radius:3px;background:var(--brass)}
-/* Empty state — silhouette stays visible, info zone shows
-   placeholder text ("Add your car" / "Tap to get started").
-   The whole hero is tappable to open the add-car flow. */
-.cb-hero.is-empty{cursor:pointer}
-.cb-hero.is-empty .cb-hero-name{color:var(--ink-2)}
-.cb-hero.is-empty .cb-hero-stats,
-.cb-hero.is-empty .cb-hero-pager{display:none}
+#s-home .home-scroll{padding:0;display:flex;flex-direction:column}
+.car-hero-full{
+  position:relative;height:390px;flex-shrink:0;overflow:hidden;
+  background:
+    radial-gradient(120% 70% at 50% 18%, #fefbef 0%, #f5ece0 55%, #e6dac3 100%),
+    var(--paper);
+}
+/* Floor shadow positioned right under where the wheels sit. */
+.car-hero-full::before{
+  content:'';position:absolute;top:160px;left:14%;right:14%;height:6px;
+  background:radial-gradient(ellipse,rgba(40,30,20,0.22) 0%,transparent 70%);
+  filter:blur(3px);pointer-events:none;
+}
+/* Edge vignette */
+.car-hero-full::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120% 100% at 50% 25%,transparent 50%,rgba(40,30,20,0.10) 100%);
+}
+.car-hero-full .car-display{
+  position:absolute;top:calc(var(--st) + 56px);left:50%;width:72%;
+  transform:translateX(-50%);
+  filter:drop-shadow(0 10px 18px rgba(40,30,20,0.28));
+}
+/* When a real photo is loaded, it replaces the silhouette and fills
+   the photo area cleanly. */
+.car-hero-full .car-photo{
+  position:absolute;top:calc(var(--st) + 14px);left:14%;right:14%;height:200px;
+  border-radius:14px;overflow:hidden;
+  box-shadow:0 12px 28px -8px rgba(40,30,20,0.30);
+}
+.car-hero-full .car-photo img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* ── Top overlay row: calendar pill (left) + burger (right) ── */
+.hero-top{
+  position:absolute;top:calc(var(--st) + 14px);left:18px;right:18px;
+  display:flex;align-items:center;gap:10px;z-index:3;
+}
+.cal-pill{
+  flex:1;min-width:0;
+  display:inline-flex;align-items:stretch;gap:0;
+  padding:5px;
+  background:rgba(255,252,245,0.78);
+  backdrop-filter:blur(18px) saturate(150%);
+  -webkit-backdrop-filter:blur(18px) saturate(150%);
+  border-radius:999px;
+  border:1px solid rgba(255,252,245,0.6);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.75) inset,
+    0 -1px 0 rgba(26,24,20,0.04) inset,
+    0 4px 14px -4px rgba(40,30,20,0.20);
+}
+.cal-pill .cal-day{
+  flex:1;background:transparent;border:0;cursor:pointer;
+  padding:6px 4px 7px;border-radius:999px;
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+  position:relative;
+}
+.cal-pill .cal-day .dow{
+  font-family:var(--ff-mono);font-size:0.5rem;font-weight:600;
+  letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-muted);
+}
+.cal-pill .cal-day .d{
+  font-family:var(--fh);font-weight:600;font-size:0.88rem;
+  letter-spacing:-0.02em;color:var(--ink-2);line-height:1;
+}
+.cal-pill .cal-day.today{
+  background:var(--ink-strong);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.05) inset,
+    0 3px 8px -2px rgba(26,24,20,0.30);
+}
+.cal-pill .cal-day.today .dow{color:rgba(244,236,218,0.7)}
+.cal-pill .cal-day.today .d{color:#fbf6ea}
+.cal-pill .cal-day.has-event::after{
+  content:'';position:absolute;bottom:3px;
+  width:3px;height:3px;border-radius:50%;background:var(--brass);
+}
+
+.burger-btn{
+  flex-shrink:0;width:40px;height:40px;border-radius:50%;
+  background:rgba(255,252,245,0.78);
+  backdrop-filter:blur(18px) saturate(150%);
+  -webkit-backdrop-filter:blur(18px) saturate(150%);
+  border:1px solid rgba(255,252,245,0.6);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--ink-2);cursor:pointer;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.75) inset,
+    0 -1px 0 rgba(26,24,20,0.04) inset,
+    0 4px 14px -4px rgba(40,30,20,0.20);
+}
+.burger-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+
+/* ── Bottom overlay: name block + floating stat pills ── */
+.hero-bottom{
+  position:absolute;bottom:38px;left:22px;right:22px;z-index:3;
+}
+.hero-name{margin-bottom:16px}
+.hero-name .eyebrow{margin-bottom:8px}
+.hero-name h2{
+  font-family:var(--fh);font-weight:700;
+  font-size:1.45rem;letter-spacing:-0.02em;line-height:1.1;
+  color:var(--ink-strong);word-wrap:break-word;
+}
+.hero-name .sub{font-size:0.84rem;color:var(--ink-muted);margin-top:4px}
+
+.hero-stats{display:flex;gap:8px;flex-wrap:wrap}
+.stat-pill{
+  position:relative;display:inline-flex;align-items:baseline;gap:6px;
+  padding:8px 14px 8px 24px;
+  background:rgba(255,252,245,0.82);
+  backdrop-filter:blur(16px) saturate(140%);
+  -webkit-backdrop-filter:blur(16px) saturate(140%);
+  border-radius:999px;
+  border:1px solid rgba(255,252,245,0.6);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.75) inset,
+    0 -1px 0 rgba(26,24,20,0.04) inset,
+    0 4px 10px -4px rgba(40,30,20,0.16);
+}
+.stat-pill::before{
+  content:'';position:absolute;left:7px;top:50%;
+  width:9px;height:9px;border-radius:50%;
+  background:linear-gradient(135deg,var(--brass-light) 0%,var(--brass) 60%,var(--brass-dk) 100%);
+  transform:translateY(-50%);
+  box-shadow:
+    0 1px 0 rgba(255,240,210,0.5) inset,
+    0 -1px 0 rgba(122,88,54,0.4) inset,
+    0 1px 1px rgba(0,0,0,0.12);
+}
+.stat-pill::after{
+  content:'';position:absolute;left:9px;top:50%;
+  width:5px;height:1px;background:rgba(60,38,20,0.65);
+  transform:translateY(-50%) rotate(-12deg);
+  border-radius:1px;pointer-events:none;
+}
+.stat-pill .num{
+  font-family:var(--fh);font-weight:700;font-size:0.95rem;
+  letter-spacing:-0.02em;color:var(--ink-strong);line-height:1;
+}
+.stat-pill .lab{
+  font-family:var(--ff-mono);font-size:0.52rem;font-weight:600;
+  letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-muted);
+}
+
+/* ── Pager dots at the bottom of the hero ── */
+.hero-pager{
+  position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:6px;z-index:3;
+}
+.hero-pager .pd{
+  width:5px;height:5px;border-radius:999px;
+  background:rgba(26,24,20,0.18);transition:width 0.2s ease;
+}
+.hero-pager .pd.on{background:var(--ink-strong);width:18px}
+
+/* ── Hairline between hero and content below ── */
+.hero-divider{height:1px;flex-shrink:0;border:0;margin:0;background:var(--hair-strong)}
+.content-pad{padding:18px 22px 24px;flex-shrink:0;display:flex;flex-direction:column;gap:14px}
+
+/* ── Eyebrow vocabulary (used by hero name + lifetime header) ── */
+.eyebrow{
+  font-size:0.6rem;font-weight:700;
+  letter-spacing:0.32em;text-transform:uppercase;
+  color:var(--brass);
+  display:inline-flex;align-items:center;gap:8px;
+}
+.eyebrow::before{
+  content:'';width:4px;height:4px;border-radius:50%;
+  background:var(--brass);
+  box-shadow:0 0 0 3px var(--brass-soft);
+}
 
 /* ─── HOME DASHBOARD COMPONENTS ─────────────────────────────
    Next-event card (charcoal block with date plaque) + lifetime
@@ -1002,41 +1185,115 @@ body::before{
    New vocabulary, additive to the existing home — sits beneath
    the page header alongside the tile shortcuts. */
 
-/* Charcoal "next event" card with a chamfered brass top-right
-   corner. Date plaque on the left (month above big day number),
-   eyebrow + name + location/distance line on the right. */
-.cb-next-event{display:flex;align-items:stretch;width:100%;background:linear-gradient(180deg,#1f1d18 0%,#0d0c09 100%);border:none;border-radius:var(--RL);overflow:hidden;cursor:pointer;-webkit-appearance:none;appearance:none;text-align:left;color:#f5f1e7;margin:0 0 14px;box-shadow:0 1px 0 rgba(255,255,255,0.06) inset,0 10px 24px -10px rgba(26,24,20,0.40);min-height:88px;position:relative;clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,0 100%)}
-.cb-next-event:active{opacity:0.92;transform:scale(0.99)}
-/* Brass corner diagonal at the chamfer — the same vocabulary as
-   the bingo carousel card. */
-.cb-next-event::before{content:'';position:absolute;top:-1px;right:-1px;width:26px;height:26px;background:linear-gradient(135deg,transparent 46%,var(--brass-light) 46%,var(--brass) 54%,transparent 54%);pointer-events:none;z-index:3}
-.cb-next-event .date-block{display:flex;flex-direction:column;align-items:center;justify-content:center;width:74px;padding:14px 0;border-right:1px solid rgba(166,124,82,0.30);flex-shrink:0;gap:2px}
-.cb-next-event .date-m{font-family:var(--ff-mono);font-size:0.6rem;font-weight:600;color:var(--brass-light);letter-spacing:0.18em;text-transform:uppercase;line-height:1}
-.cb-next-event .date-d{font-family:var(--fh);font-size:2.1rem;font-weight:800;color:#fdfaf2;line-height:1;letter-spacing:-0.02em;margin-top:2px}
-.cb-next-event .body{flex:1;padding:14px 18px 14px 16px;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px}
-.cb-next-event .eyebrow{font-family:var(--ff-mono);font-size:0.58rem;font-weight:600;color:var(--brass-light);letter-spacing:0.18em;text-transform:uppercase}
-.cb-next-event .name{font-family:var(--fh);font-size:1.1rem;font-weight:700;letter-spacing:-0.015em;color:#fdfaf2;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cb-next-event .loc{font-family:var(--ff-mono);font-size:0.66rem;color:rgba(245,241,231,0.60);font-weight:500;letter-spacing:0.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
-.cb-next-event .chev{display:flex;align-items:center;justify-content:center;padding:0 16px 0 6px;font-size:1.3rem;color:var(--brass-light);flex-shrink:0}
+/* Charcoal "Upcoming" / "Next event" card — exact mockup spec.
+   Brass filled triangular corner badge top-right, date block
+   left (MONTH above DAY), name + meta right, chev far right. */
+.upcoming-card{
+  position:relative;display:flex;align-items:center;gap:16px;
+  padding:14px 16px 14px 14px;
+  background:linear-gradient(155deg, #2a2620 0%, var(--ink-strong) 55%, #0c0a07 100%);
+  border-radius:14px;
+  clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+  box-shadow:
+    0 1px 0 rgba(255,252,245,0.10) inset,
+    0 -1px 0 rgba(0,0,0,0.35) inset,
+    0 4px 12px -4px rgba(20,16,10,0.20),
+    0 16px 30px -14px rgba(20,16,10,0.28);
+  cursor:pointer;text-decoration:none;color:inherit;
+  border:0;-webkit-appearance:none;appearance:none;text-align:left;
+  width:100%;font:inherit;
+  transition:transform 0.16s ease;
+}
+.upcoming-card:hover{transform:translateY(-1px)}
+/* Filled brass corner badge — the only warm accent on the dark card. */
+.upcoming-card::after{
+  content:'';position:absolute;top:-1px;right:-1px;
+  width:22px;height:22px;
+  background:linear-gradient(135deg, var(--brass-light) 0%, var(--brass) 55%, var(--brass-dk) 100%);
+  clip-path:polygon(100% 0, 100% 100%, 0 0);
+  box-shadow:0 1px 0 rgba(255,240,210,0.35) inset;
+  pointer-events:none;
+}
+.upcoming-card .date-block{
+  text-align:center;
+  border-right:1px solid rgba(255,252,245,0.12);
+  padding:4px 14px 4px 0;
+  flex-shrink:0;min-width:52px;
+}
+.upcoming-card .date-block .m{
+  font-family:var(--ff-mono);font-size:0.58rem;font-weight:700;
+  letter-spacing:0.22em;color:var(--brass-light);margin-bottom:2px;
+}
+.upcoming-card .date-block .d{
+  font-family:var(--fh);font-weight:700;font-size:1.7rem;
+  line-height:1;letter-spacing:-0.02em;color:#fbf6ea;
+}
+.upcoming-card .info{flex:1;min-width:0}
+.upcoming-card .info .top-line{
+  font-size:0.56rem;font-weight:700;
+  letter-spacing:0.24em;text-transform:uppercase;
+  color:var(--brass-light);margin-bottom:3px;
+}
+.upcoming-card .info .name{
+  font-family:var(--fh);font-weight:700;letter-spacing:-0.015em;
+  font-size:1.05rem;color:#fbf6ea;line-height:1.15;
+}
+.upcoming-card .info .meta{
+  font-size:0.78rem;color:rgba(251,246,234,0.65);margin-top:3px;
+}
+.upcoming-card .chev{
+  color:rgba(251,246,234,0.50);font-size:1.3rem;font-weight:300;
+  transition:transform 0.18s ease;flex-shrink:0;
+}
+.upcoming-card:hover .chev{transform:translateX(2px)}
 
 /* Lifetime stats — eyebrow row + three bare numbers with brass
    tally marks, mono caps labels, and a quiet sub-info line. */
-/* Lifetime stats — eyebrow + 3 bare numbers, each with a single
-   short brass accent line above (cleaner than the prior tally
-   marks). Pushed to the bottom of the home via margin-top:auto. */
-.cb-lifetime-eyebrow{display:flex;align-items:center;gap:7px;margin:auto 0 8px;padding:0 2px;font-family:var(--ff-mono);font-size:0.6rem;font-weight:600;color:var(--brass-dk);letter-spacing:0.18em;text-transform:uppercase}
-.cb-lifetime-eyebrow::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--brass);box-shadow:0 0 0 3px var(--brass-soft);flex-shrink:0}
-.cb-lifetime-eyebrow .sep{color:var(--ink-dim);margin:0 2px;letter-spacing:0}
-.cb-lifetime-eyebrow b{color:var(--ink-strong);font-weight:700}
-.cb-lifetime{display:flex;align-items:stretch;gap:0;margin:0 0 18px;padding:8px 4px 2px;border-top:1px solid var(--hair)}
-.cb-lifetime .stat{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:0 6px;min-width:0;position:relative}
-/* Single brass accent line above each stat — short horizontal
-   tick, kept to the left of the number so it reads as an underline
-   inverted. .tally container preserved for HTML compat. */
-.cb-lifetime .tally{display:block;width:16px;height:2px;background:var(--brass);border-radius:1px;margin-bottom:8px}
-.cb-lifetime .tally span{display:none}
-.cb-lifetime .num{font-family:var(--fh);font-size:1.85rem;font-weight:800;color:var(--ink-strong);letter-spacing:-0.03em;line-height:1}
-.cb-lifetime .lbl{font-family:var(--ff-mono);font-size:0.58rem;font-weight:600;color:var(--ink-muted);letter-spacing:0.18em;text-transform:uppercase;margin-top:3px;display:inline-flex;align-items:center;gap:5px}
-.cb-lifetime .glyph{width:10px;height:10px;stroke:var(--brass);fill:none;stroke-width:1.6;flex-shrink:0}
-.cb-lifetime .sub{font-family:var(--ff-mono);font-size:0.58rem;font-weight:500;color:var(--ink-dim);letter-spacing:0.04em;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.cb-lifetime .divider{width:1px;background:var(--hair);flex-shrink:0;align-self:stretch;margin:4px 0}
+/* Lifetime stats — exact mockup spec. Brass eyebrow + 3 stats
+   (mark + num + name+glyph + meta) separated by hairline dividers. */
+.lifetime{margin-top:16px;padding-top:18px;border-top:1px solid var(--hair)}
+.lifetime-lab{
+  font-size:0.6rem;font-weight:700;
+  letter-spacing:0.28em;text-transform:uppercase;color:var(--brass);
+  display:inline-flex;align-items:center;gap:8px;margin-bottom:16px;
+}
+.lifetime-lab::before{
+  content:'';width:4px;height:4px;border-radius:50%;
+  background:var(--brass);box-shadow:0 0 0 3px var(--brass-soft);
+}
+.lifetime-lab .since{
+  color:var(--ink-dim);letter-spacing:0.14em;
+  font-family:var(--ff-mono);font-weight:500;
+}
+.lifetime-row{display:flex;align-items:stretch;gap:8px}
+.lifetime .stat{
+  flex:1;display:flex;flex-direction:column;
+  align-items:flex-start;gap:6px;min-width:0;
+}
+.lifetime .stat .mark{
+  width:18px;height:1.5px;background:var(--brass);
+  margin-bottom:2px;border-radius:1px;
+}
+.lifetime .stat .num{
+  font-family:var(--fh);font-weight:700;
+  font-size:2.1rem;letter-spacing:-0.03em;line-height:1;
+  color:var(--ink-strong);
+}
+.lifetime .stat .name{
+  font-family:var(--ff-mono);font-size:0.6rem;font-weight:600;
+  letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-muted);
+  display:inline-flex;align-items:center;gap:6px;
+}
+.lifetime .stat .glyph{
+  width:11px;height:11px;
+  stroke:var(--brass);fill:none;stroke-width:1.4;flex-shrink:0;
+}
+.lifetime .stat .meta{
+  font-family:var(--ff-mono);font-size:0.58rem;font-weight:500;
+  letter-spacing:0.04em;color:var(--ink-dim);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
+}
+.lifetime .stat-divider{
+  width:1px;background:var(--hair);flex-shrink:0;
+  align-self:stretch;margin:4px 0;
+}
