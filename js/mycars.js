@@ -110,6 +110,7 @@ async function getHomeHeroCar() {
     photoUrl: heroUrl,
     photoCount: photos.length,
     logCount: Array.isArray(car.my_car_log_entries) ? car.my_car_log_entries.length : 0,
+    totalCars: cars.length,
   };
 }
 window.getHomeHeroCar = getHomeHeroCar;

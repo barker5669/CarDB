@@ -131,25 +131,12 @@
     <div class="home-scroll">
 
       <!-- ──── HIS CAR HERO ─────────────────────────────────────
-           Full-bleed photo of the first My Car, with glass cal
-           pill + burger overlaid on top and name + stat pills on
-           the bottom. renderHomeHero() populates everything. -->
+           Cream-paper hero. Top row: glass cal pill + burger.
+           Middle: photo zone (real photo if available, otherwise
+           an empty cream area with an "Add your car" CTA in the
+           empty state). Below: car info on the same paper surface
+           — eyebrow, name, meta, stat pills, pager dots. -->
       <div class="cb-hero is-empty" id="cb-hero">
-        <div class="cb-hero-photo" id="cb-hero-photo">
-          <!-- Default silhouette — replaced by an <img> when a
-               cover photo is available. -->
-          <svg viewBox="0 0 340 130" id="cb-hero-silhouette">
-            <path d="M22 96 Q 38 92 56 88 L 96 76 Q 124 56 162 56 Q 200 48 232 58 Q 256 62 282 80 L 300 88 Q 308 92 310 96 L 22 98 Z" fill="#1a1814"/>
-            <circle cx="86" cy="100" r="15" fill="#0d0c09"/>
-            <circle cx="86" cy="100" r="9"  fill="#2a261f"/>
-            <circle cx="86" cy="100" r="3"  fill="#5a544a"/>
-            <circle cx="252" cy="100" r="15" fill="#0d0c09"/>
-            <circle cx="252" cy="100" r="9"  fill="#2a261f"/>
-            <circle cx="252" cy="100" r="3"  fill="#5a544a"/>
-          </svg>
-        </div>
-        <div class="cb-hero-floor"></div>
-
         <div class="cb-hero-top">
           <button class="cb-cal-pill" id="cb-hero-cal" onclick="showUpcoming()" title="Upcoming shows"></button>
           <button class="cb-hero-burger" onclick="switchTab('settings')" title="Settings">
@@ -157,11 +144,18 @@
           </button>
         </div>
 
-        <button class="cb-hero-empty-cta" id="cb-hero-empty-cta" onclick="openAddMyCar()">＋ Add your car</button>
+        <div class="cb-hero-photo" id="cb-hero-photo">
+          <!-- Real photo gets injected here by renderHomeHero. -->
+          <button class="cb-hero-empty-cta" id="cb-hero-empty-cta" onclick="openAddMyCar()">＋ Add your car</button>
+        </div>
+        <div class="cb-hero-floor"></div>
 
-        <div class="cb-hero-bottom">
+        <div class="cb-hero-info">
+          <div class="cb-hero-eyebrow">My Car</div>
           <div class="cb-hero-name" id="cb-hero-name">—</div>
+          <div class="cb-hero-meta" id="cb-hero-meta" style="display:none"></div>
           <div class="cb-hero-stats" id="cb-hero-stats"></div>
+          <div class="cb-hero-pager" id="cb-hero-pager" style="display:none"></div>
         </div>
       </div>
 
@@ -185,12 +179,11 @@
            until renderNextEventCard finds an upcoming RSVP. -->
       <button class="cb-next-event" id="cb-next-event" style="display:none" onclick="showUpcoming()">
         <div class="date-block">
-          <div class="date-d" id="cb-ne-d">—</div>
           <div class="date-m" id="cb-ne-m">—</div>
-          <div class="date-w" id="cb-ne-w">—</div>
+          <div class="date-d" id="cb-ne-d">—</div>
         </div>
         <div class="body">
-          <div class="eyebrow">Next show</div>
+          <div class="eyebrow">Next event</div>
           <div class="name" id="cb-ne-name">—</div>
           <div class="loc"  id="cb-ne-loc">—</div>
         </div>
@@ -225,8 +218,15 @@
         <span class="home-start-arrow">›</span>
       </button>
 
-      <!-- Lifetime stats — bare numbers on the page, mono caps
-           labels with tiny brass glyphs. Populated by renderLifetimeStats. -->
+      <!-- Lifetime stats — bare numbers on the page with brass
+           tally marks + tiny SVG glyphs + a quiet sub-info line
+           ("+5 this month" / "4 this year" / "last · DB5"). The
+           eyebrow row carries "LIFETIME · SINCE '24". -->
+      <div class="cb-lifetime-eyebrow">
+        <span>Lifetime</span>
+        <span class="sep">·</span>
+        <span>Since <b id="cb-life-since-year">—</b></span>
+      </div>
       <div class="cb-lifetime" id="cb-lifetime">
         <div class="stat">
           <div class="tally"><span></span><span></span><span></span><span></span></div>
@@ -235,6 +235,7 @@
             <svg class="glyph" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>
             Spotted
           </div>
+          <div class="sub" id="cb-life-spotted-sub">—</div>
         </div>
         <div class="divider"></div>
         <div class="stat">
@@ -244,15 +245,17 @@
             <svg class="glyph" viewBox="0 0 24 24"><path d="M4 7l8-3 8 3v3l-8 3-8-3z"/><path d="M4 10v9l8 3 8-3v-9"/></svg>
             Shows
           </div>
+          <div class="sub" id="cb-life-shows-sub">—</div>
         </div>
         <div class="divider"></div>
         <div class="stat">
           <div class="tally"><span></span><span></span></div>
-          <div class="num" id="cb-life-since">—</div>
+          <div class="num" id="cb-life-legendary">0</div>
           <div class="lbl">
             <svg class="glyph" viewBox="0 0 24 24"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></svg>
-            Since
+            Legendary
           </div>
+          <div class="sub" id="cb-life-legendary-sub">—</div>
         </div>
       </div>
 

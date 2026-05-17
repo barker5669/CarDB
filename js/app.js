@@ -926,9 +926,11 @@ function updateHomeCard() {
   renderHomeHero().catch(err => console.warn('renderHomeHero:', err));
 }
 
-// Full-bleed His Car hero at the top of the dashboard. Photo from
-// the user's first My Car, with name + stats + cal pill overlaid.
-// Falls back to a silhouette + "Add your car" CTA when no cars yet.
+// Cream-paper His Car hero at the top of the dashboard. Cal pill +
+// burger float over a wide photo zone; car info (eyebrow + name +
+// meta + stat pills + pager dots) sits below the photo on the same
+// paper surface. Empty state replaces the photo with an "Add your
+// car" CTA — no silhouette placeholder.
 async function renderHomeHero() {
   const hero = document.getElementById('cb-hero');
   if (!hero) return;
@@ -942,21 +944,27 @@ async function renderHomeHero() {
 
   const photoEl = document.getElementById('cb-hero-photo');
   const nameEl  = document.getElementById('cb-hero-name');
+  const metaEl  = document.getElementById('cb-hero-meta');
   const statsEl = document.getElementById('cb-hero-stats');
+  const pagerEl = document.getElementById('cb-hero-pager');
   const ctaEl   = document.getElementById('cb-hero-empty-cta');
-  const silEl   = document.getElementById('cb-hero-silhouette');
   if (!photoEl || !nameEl || !statsEl) return;
 
+  // Helper — strip any previously-injected <img> so re-renders
+  // don't leak old photos.
+  const clearImg = () => {
+    const old = photoEl.querySelector('img');
+    if (old) old.remove();
+    photoEl.classList.remove('has-image');
+  };
+
   if (!data) {
-    // Empty state — keep silhouette, show CTA, hide name/stats.
+    // No car yet — empty state. Show the CTA, blank the photo zone.
     hero.classList.add('is-empty');
     if (ctaEl) ctaEl.style.display = '';
-    if (silEl) silEl.style.display = '';
-    // Strip any prior <img> so we don't flash an old photo.
-    const oldImg = photoEl.querySelector('img');
-    if (oldImg) oldImg.remove();
-    photoEl.classList.remove('has-image');
-    // No car → hero shouldn't act tappable.
+    if (metaEl) metaEl.style.display = 'none';
+    if (pagerEl) pagerEl.style.display = 'none';
+    clearImg();
     hero.style.cursor = '';
     hero.onclick = null;
     return;
@@ -977,30 +985,28 @@ async function renderHomeHero() {
     else switchTab('mycars');
   };
 
-  // Photo: swap the silhouette for an <img> when a hero photo exists.
-  const oldImg = photoEl.querySelector('img');
-  if (oldImg) oldImg.remove();
+  // Photo zone — inject <img> when we have one, otherwise leave the
+  // zone clean (no silhouette placeholder). The empty paper area
+  // still reads as "this is where your car will go" without shouting.
+  clearImg();
   if (data.photoUrl) {
-    if (silEl) silEl.style.display = 'none';
     const img = document.createElement('img');
     img.src = data.photoUrl;
     img.alt = data.car.name || '';
-    img.onerror = () => {
-      img.remove();
-      if (silEl) silEl.style.display = '';
-      photoEl.classList.remove('has-image');
-    };
+    img.onerror = () => { img.remove(); photoEl.classList.remove('has-image'); };
     photoEl.appendChild(img);
     photoEl.classList.add('has-image');
-  } else {
-    if (silEl) silEl.style.display = '';
-    photoEl.classList.remove('has-image');
   }
 
-  // Name: prefer the car's name; fall back to make+model.
+  // Name + meta line.
   const car  = data.car;
   const name = car.name || [car.make, car.model].filter(Boolean).join(' ') || 'My Car';
   nameEl.textContent = name;
+  const metaParts = [car.year, car.make, car.color].filter(Boolean);
+  if (metaEl) {
+    if (metaParts.length) { metaEl.textContent = metaParts.join(' · '); metaEl.style.display = ''; }
+    else { metaEl.style.display = 'none'; }
+  }
 
   // Stat pills: Year / Photos / Log entries. Skipped when zero so
   // we don't show a fake "0" on a brand-new car.
@@ -1011,6 +1017,21 @@ async function renderHomeHero() {
   statsEl.innerHTML = pills.map(p =>
     `<div class="cb-stat-pill"><span class="num">${escapeHtml(String(p.num))}</span><span class="lbl">${escapeHtml(p.lbl)}</span></div>`
   ).join('');
+
+  // Pager dots — only shown when there's actually more than one car
+  // (multi-car carousel is a follow-up; for now the dots indicate
+  // position when the carousel lands).
+  if (pagerEl) {
+    const total = data.totalCars || 1;
+    if (total > 1) {
+      pagerEl.innerHTML = Array.from({ length: total }, (_, i) =>
+        `<span class="pdot${i === 0 ? ' on' : ''}"></span>`
+      ).join('');
+      pagerEl.style.display = '';
+    } else {
+      pagerEl.style.display = 'none';
+    }
+  }
 }
 
 // 7-day calendar peek (today + 6 days ahead) for the cal pill in
@@ -1060,26 +1081,71 @@ async function renderHomeHeroCalPill() {
   `).join('');
 }
 
-// Lifetime stats — three bare numbers (Spotted, Shows, Since)
-// derived from local state. Always synchronous; never blocks on
-// a network call so the home renders instantly.
+// Lifetime stats — three bare numbers (Spotted, Shows, Legendary)
+// with a small sub-info line beneath each ("+5 this month",
+// "4 this year", "last · DB5"). The "since YY" eyebrow above the
+// row gives the time horizon at a glance. All derived from local
+// state; never blocks on a network call.
 function renderLifetimeStats() {
-  const spottedEl = document.getElementById('cb-life-spotted');
-  const showsEl   = document.getElementById('cb-life-shows');
-  const sinceEl   = document.getElementById('cb-life-since');
-  if (!spottedEl || !showsEl || !sinceEl) return;
+  const spottedEl    = document.getElementById('cb-life-spotted');
+  const showsEl      = document.getElementById('cb-life-shows');
+  const legendaryEl  = document.getElementById('cb-life-legendary');
+  const spottedSub   = document.getElementById('cb-life-spotted-sub');
+  const showsSub     = document.getElementById('cb-life-shows-sub');
+  const legendarySub = document.getElementById('cb-life-legendary-sub');
+  const sinceYearEl  = document.getElementById('cb-life-since-year');
+  if (!spottedEl || !showsEl || !legendaryEl) return;
 
-  // Unique cars across every event the user has logged. Each
-  // S.spotted entry maps to a unique car key — counting the keys
-  // overcounts duplicates across events, which we want for the
-  // "things you've spotted" totals (FIL sees the same MGB twice,
-  // that's two memories, not one).
+  // Walk every sighting once — same loop powers all three stats so
+  // the work stays cheap even with hundreds of cars logged.
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   let totalSpotted = 0;
+  let thisMonthSpotted = 0;
+  let totalLegendary = 0;
+  let lastLegendary = null;
+  let lastLegendaryTs = 0;
+  const RARITY_OF = window.CAR_RARITY_BY_NAME || {};
+  // Build a quick lookup if we have CARS list — falls back gracefully.
+  const carIndex = {};
+  if (Array.isArray(window.CARS)) {
+    for (const c of window.CARS) { if (c && c.name) carIndex[c.name] = c; }
+  }
   const allSpotted = S.spotted || {};
   for (const evName of Object.keys(allSpotted)) {
-    totalSpotted += Object.keys(allSpotted[evName] || {}).length;
+    const cars = allSpotted[evName] || {};
+    for (const key of Object.keys(cars)) {
+      const data = cars[key] || {};
+      const sightings = Array.isArray(data.sightings) ? data.sightings : [];
+      totalSpotted += 1;
+      // Find the car name: the cellKey is fil-{era}-{name}.
+      const m = /^fil-[^-]+-(.+)$/.exec(key);
+      const carName = m ? m[1] : null;
+      const car = carName ? carIndex[carName] : null;
+      const rarity = (car && car.rarity) || RARITY_OF[carName] || null;
+      const isLegendary = rarity === 'legendary';
+      if (isLegendary) totalLegendary += 1;
+      // First sighting timestamp powers the "this month" + "last seen" rolls.
+      for (const sg of sightings) {
+        if (!sg || !sg.ts) continue;
+        const d = new Date(sg.ts);
+        if (isNaN(d)) continue;
+        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (k === monthKey) thisMonthSpotted += 1;
+        if (isLegendary && d.getTime() > lastLegendaryTs) {
+          lastLegendaryTs = d.getTime();
+          lastLegendary = carName;
+        }
+        break; // count first sighting only — duplicates would inflate "this month"
+      }
+    }
   }
   spottedEl.textContent = totalSpotted;
+  if (spottedSub) {
+    spottedSub.textContent = thisMonthSpotted > 0
+      ? `+${thisMonthSpotted} this month`
+      : ' '; // non-breaking space holds line height
+  }
 
   // Shows = past events the user attended + 1 if there's a current
   // active show. PastEvents.list() is local-first.
@@ -1088,25 +1154,48 @@ function renderLifetimeStats() {
   const past = pastList.filter(e => e.name && e.name !== PERSONAL_EVENT);
   const showsCount = past.length + (S.event ? 1 : 0);
   showsEl.textContent = showsCount;
+  // "X this year" — count past events whose date is in the current year,
+  // plus the active show if it's also from this year.
+  const thisYear = now.getFullYear();
+  let thisYearShows = 0;
+  for (const e of past) {
+    if (!e.event_date) continue;
+    const d = new Date(e.event_date);
+    if (!isNaN(d) && d.getFullYear() === thisYear) thisYearShows += 1;
+  }
+  if (S.event && S.date) {
+    const d = new Date(S.date);
+    if (!isNaN(d) && d.getFullYear() === thisYear) thisYearShows += 1;
+  }
+  if (showsSub) showsSub.textContent = thisYearShows > 0 ? `${thisYearShows} this year` : ' ';
 
-  // Since = year of the earliest past event we have. Falls back
-  // to the current year if there's no history yet.
+  // Legendary count + last one's name (short form when available).
+  legendaryEl.textContent = totalLegendary;
+  if (legendarySub) {
+    if (lastLegendary) {
+      // Trim to a snappy last word ("Aston Martin DB5" → "DB5") so
+      // it fits on a narrow column. Falls back to the full name.
+      const short = lastLegendary.split(/\s+/).pop();
+      legendarySub.textContent = `last · ${short}`;
+    } else {
+      legendarySub.textContent = ' ';
+    }
+  }
+
+  // "Since YY" eyebrow above the row — earliest show year or current.
   let earliestYear = null;
   for (const e of past) {
     if (!e.event_date) continue;
     const d = new Date(e.event_date);
     if (isNaN(d)) continue;
-    const y = d.getFullYear();
-    if (earliestYear == null || y < earliestYear) earliestYear = y;
+    if (earliestYear == null || d.getFullYear() < earliestYear) earliestYear = d.getFullYear();
   }
   if (S.event && S.date) {
     const d = new Date(S.date);
-    if (!isNaN(d)) {
-      const y = d.getFullYear();
-      if (earliestYear == null || y < earliestYear) earliestYear = y;
-    }
+    if (!isNaN(d) && (earliestYear == null || d.getFullYear() < earliestYear)) earliestYear = d.getFullYear();
   }
-  sinceEl.textContent = earliestYear != null ? earliestYear : new Date().getFullYear();
+  const sinceY = earliestYear != null ? earliestYear : thisYear;
+  if (sinceYearEl) sinceYearEl.textContent = `'${String(sinceY).slice(-2)}`;
 }
 
 // Next-event preview card — first upcoming event the user has
@@ -1140,9 +1229,22 @@ async function renderNextEventCard() {
   const set = (id, text) => { const n = document.getElementById(id); if (n) n.textContent = text; };
   set('cb-ne-d', d.getDate());
   set('cb-ne-m', d.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase());
-  set('cb-ne-w', d.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase());
   set('cb-ne-name', ev.name || 'Upcoming');
-  set('cb-ne-loc',  ev.location || '');
+  // Distance line — "today" / "tomorrow" / "X days away" / "X weeks
+  // away". The location gets prefixed if present so the line reads as
+  // "Chichester · 2 weeks away".
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(d);
+  target.setHours(0, 0, 0, 0);
+  const days = Math.round((target - today) / 86400000);
+  let away;
+  if (days === 0)      away = 'today';
+  else if (days === 1) away = 'tomorrow';
+  else if (days < 14)  away = `${days} days away`;
+  else                 away = `${Math.round(days / 7)} weeks away`;
+  const locParts = [ev.location, away].filter(Boolean);
+  set('cb-ne-loc',  locParts.join(' · '));
   card.style.display = 'flex';
 }
 

@@ -906,51 +906,69 @@ body::before{
 .mc-photo.is-cover{box-shadow:0 0 0 2px var(--brass);border-radius:var(--R)}
 
 /* ─── HOME HERO (His Car) ────────────────────────────────────
-   Full-bleed photo of the user's cover car at the top of the
-   dashboard. Glass calendar pill top-left, glass burger top-right,
-   name + stat pills overlaid on the bottom of the photo. The page
-   header is hidden on home so the hero owns the top of the screen. */
+   Cream-paper hero. Cal pill top-left + burger top-right float
+   over a wide photo zone; car info (eyebrow + name + meta +
+   stat pills + pager dots) sits BELOW the photo on the same
+   paper surface — not overlaid. The page header is hidden on
+   home so the hero owns the top of the screen. */
 #s-home > .page-hdr{display:none}
 #s-home .home-scroll{padding-top:0}
-.cb-hero{position:relative;margin:-14px -14px 0;height:280px;overflow:hidden;background:linear-gradient(180deg,#1f1d18 0%,#0d0c09 100%);border-bottom:1px solid var(--hair-strong);flex-shrink:0}
-.cb-hero-photo{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#f8f3e6 0%,#e6dcc4 60%,#d8cdb2 100%)}
-.cb-hero-photo img{width:100%;height:100%;object-fit:cover;display:block}
-.cb-hero-photo svg{width:88%;max-width:340px;height:auto;filter:drop-shadow(0 8px 18px rgba(40,30,20,0.30))}
-/* Floor shadow beneath the silhouette placeholder — the same
-   "showroom" feel as the mockup. */
-.cb-hero-floor{position:absolute;left:50%;bottom:14%;transform:translateX(-50%);width:62%;height:24px;background:radial-gradient(ellipse at center,rgba(0,0,0,0.30) 0%,transparent 70%);pointer-events:none;z-index:1}
+.cb-hero{position:relative;margin:-14px -14px 14px;background:linear-gradient(180deg,var(--paper-light) 0%,var(--paper-deep) 100%);border-bottom:1px solid var(--hair);padding:calc(var(--st) + 10px) 18px 22px;display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+/* Top control row — cal pill left, burger right. Both glass on
+   the paper surface. */
+.cb-hero-top{display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:5;position:relative}
+/* Photo zone — cream gradient backdrop the car (real photo or
+   silhouette) sits on. Floor shadow lives at the bottom. */
+.cb-hero-photo{position:relative;width:100%;height:170px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:transparent}
+.cb-hero-photo img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 12px 22px rgba(40,30,20,0.25))}
+.cb-hero-photo.has-image img{object-fit:cover;filter:none}
+/* Floor shadow under the car — only when no real photo, so the
+   silhouette feels grounded. Real photos already have their own
+   composition; we don't need a fake floor under them. */
+.cb-hero-floor{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);width:62%;height:18px;background:radial-gradient(ellipse at center,rgba(40,30,20,0.18) 0%,transparent 70%);pointer-events:none;z-index:1}
+.cb-hero-photo.has-image ~ .cb-hero-floor,
 .cb-hero-photo.has-image .cb-hero-floor{display:none}
-/* Subtle vignette so the overlay UI always reads against the
-   photo, whatever the source image looks like. */
-.cb-hero::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(26,24,20,0.18) 0%,transparent 30%,transparent 55%,rgba(26,24,20,0.45) 100%);pointer-events:none;z-index:2}
-/* Top overlay row — cal pill left, burger right. Both glass. */
-.cb-hero-top{position:absolute;top:calc(var(--st) + 10px);left:14px;right:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;z-index:5}
-.cb-cal-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(254,251,242,0.62);border:1px solid rgba(255,255,255,0.40);border-radius:999px;padding:6px 10px;cursor:pointer;-webkit-appearance:none;appearance:none;backdrop-filter:blur(10px) saturate(140%);-webkit-backdrop-filter:blur(10px) saturate(140%);box-shadow:0 1px 0 rgba(255,255,255,0.55) inset,0 4px 14px -4px rgba(40,30,20,0.25)}
-.cb-cal-pill:active{transform:scale(0.96)}
-.cb-cal-day{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:18px}
-.cb-cal-day .d{font-family:var(--ff-mono);font-size:0.56rem;font-weight:600;color:var(--ink-2);letter-spacing:0.06em}
-.cb-cal-day .n{width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:0.7rem;font-weight:700;color:var(--ink-strong);line-height:1}
+/* Cal pill — wider than before with 3-letter day labels.
+   Today's number sits in a filled charcoal nub; days with an
+   RSVPd event get a small brass dot beneath. */
+.cb-cal-pill{display:inline-flex;align-items:center;gap:0;background:var(--card-surf);border:1px solid var(--hair);border-radius:999px;padding:7px 10px;cursor:pointer;-webkit-appearance:none;appearance:none;box-shadow:0 1px 0 rgba(255,255,255,0.85) inset,0 2px 8px -2px rgba(40,30,20,0.10)}
+.cb-cal-pill:active{transform:scale(0.97)}
+.cb-cal-day{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:26px;padding:0 1px}
+.cb-cal-day .d{font-family:var(--ff-mono);font-size:0.52rem;font-weight:600;color:var(--ink-muted);letter-spacing:0.10em;text-transform:uppercase;line-height:1}
+.cb-cal-day .n{width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:0.78rem;font-weight:700;color:var(--ink-strong);line-height:1;letter-spacing:-0.01em}
 .cb-cal-day.today .n{background:var(--ink-strong);color:var(--paper-light);border-radius:50%}
-.cb-cal-day .dot{width:3px;height:3px;border-radius:50%;background:var(--brass);margin-top:-1px}
+.cb-cal-day .dot{width:3px;height:3px;border-radius:50%;background:var(--brass);margin-top:1px}
 .cb-cal-day:not(.has-event) .dot{visibility:hidden}
-.cb-hero-burger{width:36px;height:36px;background:rgba(254,251,242,0.62);border:1px solid rgba(255,255,255,0.40);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-appearance:none;appearance:none;color:var(--ink-2);backdrop-filter:blur(10px) saturate(140%);-webkit-backdrop-filter:blur(10px) saturate(140%);box-shadow:0 1px 0 rgba(255,255,255,0.55) inset,0 4px 14px -4px rgba(40,30,20,0.25);flex-shrink:0}
+/* Burger — same surface as cal pill so they read as a set. */
+.cb-hero-burger{width:38px;height:38px;background:var(--card-surf);border:1px solid var(--hair);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-appearance:none;appearance:none;color:var(--ink-2);box-shadow:0 1px 0 rgba(255,255,255,0.85) inset,0 2px 8px -2px rgba(40,30,20,0.10);flex-shrink:0}
 .cb-hero-burger:active{transform:scale(0.92)}
 .cb-hero-burger svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-/* Bottom overlay — car name + floating stat pills. */
-.cb-hero-bottom{position:absolute;left:14px;right:14px;bottom:14px;z-index:5;display:flex;flex-direction:column;gap:10px}
-.cb-hero-name{font-family:var(--fh);font-size:1.55rem;font-weight:800;color:#fdfaf2;letter-spacing:-0.02em;line-height:1.1;text-shadow:0 1px 2px rgba(0,0,0,0.30),0 4px 14px rgba(0,0,0,0.30);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cb-hero-stats{display:flex;gap:6px;flex-wrap:wrap}
-.cb-stat-pill{display:inline-flex;align-items:baseline;gap:5px;background:rgba(254,251,242,0.62);border:1px solid rgba(255,255,255,0.40);border-radius:999px;padding:5px 11px 5px 9px;backdrop-filter:blur(10px) saturate(140%);-webkit-backdrop-filter:blur(10px) saturate(140%);box-shadow:0 1px 0 rgba(255,255,255,0.55) inset,0 2px 8px -2px rgba(40,30,20,0.25);position:relative}
+/* Info zone — eyebrow + big name + meta line + stat pill row +
+   pager dots. Sits below the photo on the cream surface. */
+.cb-hero-info{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.cb-hero-eyebrow{font-family:var(--ff-mono);font-size:0.6rem;font-weight:600;color:var(--brass-dk);letter-spacing:0.18em;text-transform:uppercase;display:inline-flex;align-items:center;gap:7px}
+.cb-hero-eyebrow::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--brass);box-shadow:0 0 0 3px var(--brass-soft)}
+.cb-hero-name{font-family:var(--fh);font-size:1.75rem;font-weight:800;color:var(--ink-strong);letter-spacing:-0.025em;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cb-hero-meta{font-family:var(--ff-mono);font-size:0.68rem;color:var(--ink-muted);font-weight:500;letter-spacing:0.04em;margin-top:-2px}
+.cb-hero-stats{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.cb-stat-pill{display:inline-flex;align-items:baseline;gap:6px;background:var(--card-surf);border:1px solid var(--hair);border-radius:999px;padding:6px 14px 6px 11px;box-shadow:0 1px 0 rgba(255,255,255,0.85) inset,0 1px 3px rgba(40,30,20,0.06);position:relative;min-height:30px;align-items:center}
 /* Screw-head dot — the brass detail that ties the pills to the
    mockup vocabulary (pills look like they're bolted on). */
-.cb-stat-pill::before{content:'';position:absolute;left:4px;top:50%;transform:translateY(-50%);width:5px;height:5px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--brass-light) 0%,var(--brass) 60%,var(--brass-dk) 100%);box-shadow:0 0 0 0.5px var(--brass-dk) inset,0 1px 1px rgba(0,0,0,0.20)}
-.cb-stat-pill .num{font-family:var(--fh);font-size:0.86rem;font-weight:800;color:var(--ink-strong);letter-spacing:-0.01em;line-height:1;padding-left:8px}
-.cb-stat-pill .lbl{font-family:var(--ff-mono);font-size:0.54rem;font-weight:600;color:var(--ink-muted);letter-spacing:0.14em;text-transform:uppercase;line-height:1}
-/* Empty state — when no My Car exists, the hero shows a soft
-   placeholder + a call-to-action to add one. */
-.cb-hero-empty-cta{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:5;background:var(--brass);color:#fff;border:none;border-radius:999px;font-family:var(--ff);font-size:0.86rem;font-weight:700;padding:9px 18px;cursor:pointer;-webkit-appearance:none;appearance:none;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 -1px 0 rgba(0,0,0,0.10) inset,0 4px 14px -4px rgba(166,124,82,0.45)}
-.cb-hero-empty-cta:active{transform:translateX(-50%) scale(0.96)}
-.cb-hero.is-empty .cb-hero-bottom{display:none}
+.cb-stat-pill::before{content:'';position:absolute;left:5px;top:50%;transform:translateY(-50%);width:6px;height:6px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--brass-light) 0%,var(--brass) 60%,var(--brass-dk) 100%);box-shadow:0 0 0 0.5px var(--brass-dk) inset,0 1px 1px rgba(0,0,0,0.15)}
+.cb-stat-pill .num{font-family:var(--fh);font-size:0.9rem;font-weight:800;color:var(--ink-strong);letter-spacing:-0.01em;line-height:1;padding-left:9px}
+.cb-stat-pill .lbl{font-family:var(--ff-mono);font-size:0.56rem;font-weight:600;color:var(--ink-muted);letter-spacing:0.14em;text-transform:uppercase;line-height:1}
+/* Pager dots — only shown when the user has more than one car
+   (multi-car carousel UX, not implemented yet, but the dots
+   indicate position when it lands). */
+.cb-hero-pager{display:flex;align-items:center;justify-content:flex-start;gap:5px;margin-top:6px}
+.cb-hero-pager .pdot{width:5px;height:5px;border-radius:50%;background:var(--hair-strong)}
+.cb-hero-pager .pdot.on{width:14px;border-radius:3px;background:var(--brass)}
+/* Empty state — no car yet. Photo zone shows a quiet "Add your
+   car" CTA instead of a placeholder silhouette. */
+.cb-hero.is-empty .cb-hero-info{display:none}
+.cb-hero.is-empty .cb-hero-photo::before{content:'';position:absolute;inset:0;border:1.5px dashed var(--hair-strong);border-radius:12px;pointer-events:none}
+.cb-hero-empty-cta{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;background:var(--brass);color:#fff;border:none;border-radius:999px;font-family:var(--ff);font-size:0.86rem;font-weight:700;padding:10px 20px;cursor:pointer;-webkit-appearance:none;appearance:none;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 -1px 0 rgba(0,0,0,0.10) inset,0 4px 14px -4px rgba(166,124,82,0.45)}
+.cb-hero-empty-cta:active{transform:translate(-50%,-50%) scale(0.96)}
 
 /* ─── HOME DASHBOARD COMPONENTS ─────────────────────────────
    Next-event card (charcoal block with date plaque) + lifetime
@@ -958,33 +976,35 @@ body::before{
    New vocabulary, additive to the existing home — sits beneath
    the page header alongside the tile shortcuts. */
 
-/* Charcoal "next show" card. Like the show-active-card but a
-   different mode: this is the date+name of the next show on the
-   calendar (not the active one). High contrast against the cream
-   page so the eye lands on it immediately. */
-.cb-next-event{display:flex;align-items:stretch;width:100%;background:linear-gradient(180deg,#1f1d18 0%,#0d0c09 100%);border:none;border-radius:var(--RL);overflow:hidden;cursor:pointer;-webkit-appearance:none;appearance:none;text-align:left;color:#f5f1e7;margin:0 0 14px;box-shadow:0 1px 0 rgba(255,255,255,0.06) inset,0 10px 24px -10px rgba(26,24,20,0.40);min-height:78px}
+/* Charcoal "next event" card with a chamfered brass top-right
+   corner. Date plaque on the left (month above big day number),
+   eyebrow + name + location/distance line on the right. */
+.cb-next-event{display:flex;align-items:stretch;width:100%;background:linear-gradient(180deg,#1f1d18 0%,#0d0c09 100%);border:none;border-radius:var(--RL);overflow:hidden;cursor:pointer;-webkit-appearance:none;appearance:none;text-align:left;color:#f5f1e7;margin:0 0 14px;box-shadow:0 1px 0 rgba(255,255,255,0.06) inset,0 10px 24px -10px rgba(26,24,20,0.40);min-height:88px;position:relative;clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,0 100%)}
 .cb-next-event:active{opacity:0.92;transform:scale(0.99)}
-.cb-next-event .date-block{display:flex;flex-direction:column;align-items:center;justify-content:center;width:78px;padding:12px 0;border-right:1px solid rgba(245,241,231,0.10);flex-shrink:0;position:relative}
-.cb-next-event .date-block::after{content:'';position:absolute;top:14px;bottom:14px;right:-1px;width:1px;background:rgba(166,124,82,0.30)}
-.cb-next-event .date-d{font-family:var(--fh);font-size:2rem;font-weight:800;color:var(--brass-light);line-height:1;letter-spacing:-0.02em}
-.cb-next-event .date-m{font-family:var(--ff-mono);font-size:0.6rem;font-weight:600;color:rgba(245,241,231,0.55);letter-spacing:0.16em;text-transform:uppercase;margin-top:5px}
-.cb-next-event .date-w{font-family:var(--ff-mono);font-size:0.56rem;font-weight:500;color:rgba(245,241,231,0.40);letter-spacing:0.12em;text-transform:uppercase;margin-top:2px}
-.cb-next-event .body{flex:1;padding:14px 16px;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px}
-.cb-next-event .eyebrow{font-family:var(--ff-mono);font-size:0.58rem;font-weight:600;color:var(--brass-light);letter-spacing:0.18em;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px}
-.cb-next-event .eyebrow::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--brass)}
-.cb-next-event .name{font-size:1.02rem;font-weight:700;letter-spacing:-0.01em;color:#fdfaf2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cb-next-event .loc{font-family:var(--ff-mono);font-size:0.66rem;color:rgba(245,241,231,0.55);font-weight:500;letter-spacing:0.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cb-next-event .chev{display:flex;align-items:center;justify-content:center;padding-right:16px;font-size:1.3rem;color:var(--brass-light);flex-shrink:0}
+/* Brass corner diagonal at the chamfer — the same vocabulary as
+   the bingo carousel card. */
+.cb-next-event::before{content:'';position:absolute;top:-1px;right:-1px;width:26px;height:26px;background:linear-gradient(135deg,transparent 46%,var(--brass-light) 46%,var(--brass) 54%,transparent 54%);pointer-events:none;z-index:3}
+.cb-next-event .date-block{display:flex;flex-direction:column;align-items:center;justify-content:center;width:74px;padding:14px 0;border-right:1px solid rgba(166,124,82,0.30);flex-shrink:0;gap:2px}
+.cb-next-event .date-m{font-family:var(--ff-mono);font-size:0.6rem;font-weight:600;color:var(--brass-light);letter-spacing:0.18em;text-transform:uppercase;line-height:1}
+.cb-next-event .date-d{font-family:var(--fh);font-size:2.1rem;font-weight:800;color:#fdfaf2;line-height:1;letter-spacing:-0.02em;margin-top:2px}
+.cb-next-event .body{flex:1;padding:14px 18px 14px 16px;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px}
+.cb-next-event .eyebrow{font-family:var(--ff-mono);font-size:0.58rem;font-weight:600;color:var(--brass-light);letter-spacing:0.18em;text-transform:uppercase}
+.cb-next-event .name{font-family:var(--fh);font-size:1.1rem;font-weight:700;letter-spacing:-0.015em;color:#fdfaf2;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cb-next-event .loc{font-family:var(--ff-mono);font-size:0.66rem;color:rgba(245,241,231,0.60);font-weight:500;letter-spacing:0.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.cb-next-event .chev{display:flex;align-items:center;justify-content:center;padding:0 16px 0 6px;font-size:1.3rem;color:var(--brass-light);flex-shrink:0}
 
-/* Lifetime stats — three bare numbers on the page (no card).
-   Brass tally marks accent each block, mono caps label beneath.
-   Sits at the foot of the home as a quiet "this is what you've
-   done" line. */
-.cb-lifetime{display:flex;align-items:stretch;gap:0;margin:18px 0 14px;padding:14px 4px 6px;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
-.cb-lifetime .stat{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:0 6px}
+/* Lifetime stats — eyebrow row + three bare numbers with brass
+   tally marks, mono caps labels, and a quiet sub-info line. */
+.cb-lifetime-eyebrow{display:flex;align-items:center;gap:7px;margin:14px 0 6px;font-family:var(--ff-mono);font-size:0.6rem;font-weight:600;color:var(--brass-dk);letter-spacing:0.18em;text-transform:uppercase}
+.cb-lifetime-eyebrow::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--brass);box-shadow:0 0 0 3px var(--brass-soft)}
+.cb-lifetime-eyebrow .sep{color:var(--ink-dim);margin:0 2px;letter-spacing:0}
+.cb-lifetime-eyebrow b{color:var(--ink-strong);font-weight:700}
+.cb-lifetime{display:flex;align-items:stretch;gap:0;margin:0 0 18px;padding:6px 4px 2px}
+.cb-lifetime .stat{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:0 6px;min-width:0}
 .cb-lifetime .tally{display:flex;gap:2px;margin-bottom:5px}
 .cb-lifetime .tally span{display:block;width:2px;height:9px;background:var(--brass);border-radius:1px}
 .cb-lifetime .num{font-family:var(--fh);font-size:1.85rem;font-weight:800;color:var(--ink-strong);letter-spacing:-0.03em;line-height:1}
 .cb-lifetime .lbl{font-family:var(--ff-mono);font-size:0.58rem;font-weight:600;color:var(--ink-muted);letter-spacing:0.18em;text-transform:uppercase;margin-top:3px;display:inline-flex;align-items:center;gap:5px}
 .cb-lifetime .glyph{width:10px;height:10px;stroke:var(--brass);fill:none;stroke-width:1.6;flex-shrink:0}
+.cb-lifetime .sub{font-family:var(--ff-mono);font-size:0.58rem;font-weight:500;color:var(--ink-dim);letter-spacing:0.04em;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .cb-lifetime .divider{width:1px;background:var(--hair);flex-shrink:0;align-self:stretch;margin:4px 0}
