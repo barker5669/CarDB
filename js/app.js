@@ -1193,22 +1193,22 @@ function renderLifetimeStats() {
   if (sinceYearEl) sinceYearEl.textContent = `'${String(sinceY).slice(-2)}`;
 }
 
-// Next-event preview card — first upcoming event the user has
-// RSVPd "going" to. Best-effort over the network; hidden when
-// nothing's coming up so the home stays clean.
+// Next-event preview card — toggles between "real upcoming event"
+// and a "+ Add an event" CTA. Card is always visible; only its
+// content/state changes. Tap handler routes accordingly via
+// onNextEventTap (set on the card element in HTML).
+let _nextEventState = 'empty';  // 'empty' or 'event'
 async function renderNextEventCard() {
   const card = document.getElementById('cb-next-event');
   if (!card) return;
-  // Default hidden; if the query succeeds we'll show it.
-  card.style.display = 'none';
+  // Start with the empty state visible — if DB.upcoming.list comes
+  // back with something, we'll flip it.
+  _setNextEventEmpty();
   if (!window.DB || !DB.upcoming || typeof DB.upcoming.list !== 'function') return;
-
   let events;
   try { events = await _raceTimeout(DB.upcoming.list(), 'Next event', 6000); }
   catch { return; }
   if (!Array.isArray(events) || !events.length) return;
-
-  // Find the next event the user is attending, dated from today.
   const me = currentUserId();
   const todayIso = new Date().toISOString().slice(0, 10);
   const candidates = events
@@ -1217,21 +1217,12 @@ async function renderNextEventCard() {
                  e.upcoming_event_attendees.some(a => a.user_id === me))
     .sort((a, b) => a.event_date.localeCompare(b.event_date));
   if (!candidates.length) return;
-
   const ev = candidates[0];
   const d  = new Date(ev.event_date);
   if (isNaN(d)) return;
-  const set = (id, text) => { const n = document.getElementById(id); if (n) n.textContent = text; };
-  set('cb-ne-d', d.getDate());
-  set('cb-ne-m', d.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase());
-  set('cb-ne-name', ev.name || 'Upcoming');
-  // Distance line — "today" / "tomorrow" / "X days away" / "X weeks
-  // away". The location gets prefixed if present so the line reads as
-  // "Chichester · 2 weeks away".
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(d);
-  target.setHours(0, 0, 0, 0);
+  // "today" / "tomorrow" / "X days away" / "X weeks away" subtitle.
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = new Date(d); target.setHours(0,0,0,0);
   const days = Math.round((target - today) / 86400000);
   let away;
   if (days === 0)      away = 'today';
@@ -1239,8 +1230,45 @@ async function renderNextEventCard() {
   else if (days < 14)  away = `${days} days away`;
   else                 away = `${Math.round(days / 7)} weeks away`;
   const locParts = [ev.location, away].filter(Boolean);
-  set('cb-ne-loc',  locParts.join(' · '));
-  card.style.display = 'flex';
+  _setNextEventFilled({
+    m: d.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase(),
+    d: d.getDate(),
+    name: ev.name || 'Upcoming',
+    meta: locParts.join(' · '),
+  });
+}
+
+function _setNextEventEmpty() {
+  _nextEventState = 'empty';
+  const card = document.getElementById('cb-next-event');
+  if (card) card.classList.add('is-empty');
+  const set = (id, text) => { const n = document.getElementById(id); if (n) n.textContent = text; };
+  set('cb-ne-eyebrow', 'Next event');
+  set('cb-ne-name', 'No event scheduled');
+  set('cb-ne-meta', 'Tap to add one');
+  set('cb-ne-loc',  'Tap to add one');
+  set('cb-ne-m', '');
+  set('cb-ne-d', '+');
+  set('cb-ne-chev', '＋');
+}
+function _setNextEventFilled({ m, d, name, meta }) {
+  _nextEventState = 'event';
+  const card = document.getElementById('cb-next-event');
+  if (card) card.classList.remove('is-empty');
+  const set = (id, text) => { const n = document.getElementById(id); if (n) n.textContent = text; };
+  set('cb-ne-eyebrow', 'Next event');
+  set('cb-ne-m', m);
+  set('cb-ne-d', d);
+  set('cb-ne-name', name);
+  set('cb-ne-loc',  meta);
+  set('cb-ne-chev', '›');
+}
+function onNextEventTap() {
+  if (_nextEventState === 'empty' && typeof openAddUpcoming === 'function') {
+    openAddUpcoming();
+  } else if (typeof showUpcoming === 'function') {
+    showUpcoming();
+  }
 }
 
 function showGoLive() {

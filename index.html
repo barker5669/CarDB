@@ -145,8 +145,9 @@
           </button>
         </div>
 
-        <!-- Car silhouette — refined coupe profile. Swapped for the
-             user's cover photo when one exists. -->
+        <!-- Car silhouette — refined coupe profile. Only visible when
+             we HAVE a car but no photo yet; in empty state (no car at
+             all) it's hidden and the brass CTA takes its place. -->
         <svg class="car-display" id="cb-hero-svg" viewBox="0 0 340 130">
           <path d="M22 96 Q 38 92 56 88 L 96 76 Q 124 56 162 56 Q 200 48 232 58 Q 256 62 282 80 L 300 88 Q 310 92 312 96 L 22 98 Z"
                 fill="#1a1814" stroke="#c79569" stroke-width="0.6" stroke-opacity="0.30"/>
@@ -161,6 +162,10 @@
         <div class="car-photo" id="cb-hero-photo" style="display:none">
           <img id="cb-hero-img" alt="">
         </div>
+        <!-- Empty-state CTA — centred brass button shown only when
+             no car exists. Hidden via CSS when .car-hero-full isn't
+             .is-empty. -->
+        <button class="hero-add-btn" id="cb-hero-add-btn" onclick="openAddMyCar()">＋ Add your car</button>
 
         <!-- Bottom overlay: name + floating stat pills -->
         <div class="hero-bottom">
@@ -196,18 +201,20 @@
       </div>
 
       <!-- Next event preview — charcoal card with brass corner badge.
-           Hidden until renderNextEventCard finds an upcoming RSVP. -->
-      <a class="upcoming-card" id="cb-next-event" style="display:none" onclick="showUpcoming()">
-        <div class="date-block">
+           Shows the next upcoming RSVPd event when one exists, or an
+           "+ Add an event" CTA when none. renderNextEventCard toggles
+           between the two states. -->
+      <a class="upcoming-card" id="cb-next-event" onclick="onNextEventTap()">
+        <div class="date-block" id="cb-ne-date">
           <div class="m" id="cb-ne-m">—</div>
           <div class="d" id="cb-ne-d">—</div>
         </div>
         <div class="info">
-          <div class="top-line">Next event</div>
-          <div class="name" id="cb-ne-name">—</div>
-          <div class="meta" id="cb-ne-loc">—</div>
+          <div class="top-line" id="cb-ne-eyebrow">Next event</div>
+          <div class="name" id="cb-ne-name">No event scheduled</div>
+          <div class="meta" id="cb-ne-loc">Tap to add one</div>
         </div>
-        <div class="chev">›</div>
+        <div class="chev" id="cb-ne-chev">＋</div>
       </a>
 
       <!-- Photos to sort banner — shown only when there are pending photos -->
@@ -762,6 +769,39 @@ if ('serviceWorker' in navigator) {
       window.location.reload();
     });
   });
+}
+</script>
+<script>
+// Cal-pill render runs the moment the DOM is parsed, BEFORE the
+// rest of the app boots. The pill stays visible even if app.js
+// stalls on a slow network. Updated again later by renderHomeHero
+// when upcoming events come back (event-dot enrichment).
+(function fillCalPillNow() {
+  const pill = document.getElementById('cb-hero-cal');
+  if (!pill || pill.children.length) return;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const parts = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const dow = d.toLocaleDateString('en-GB', { weekday: 'short' });
+    const day = d.getDate();
+    const iso = d.toISOString().slice(0, 10);
+    const cls = i === 0 ? 'cal-day today' : 'cal-day';
+    parts.push(
+      '<button class="' + cls + '" data-iso="' + iso + '" onclick="onCalDayTap(\'' + iso + '\')">' +
+      '<span class="dow">' + dow + '</span>' +
+      '<span class="d">' + day + '</span>' +
+      '</button>'
+    );
+  }
+  pill.innerHTML = parts.join('');
+})();
+// Tap handler — for now jumps to Upcoming so the user gets event
+// context. A richer day-detail sheet (events + spotted that day) is
+// a follow-up; this at least makes the days feel interactive.
+function onCalDayTap(iso) {
+  if (typeof showUpcoming === 'function') showUpcoming();
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
