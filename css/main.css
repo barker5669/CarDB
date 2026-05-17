@@ -1050,6 +1050,10 @@ body::before{
     radial-gradient(120% 70% at 50% 18%, #fefbef 0%, #f5ece0 55%, #e6dac3 100%),
     var(--paper);
 }
+/* Empty state is more compact — the "+ Add your car" CTA doesn't
+   need 520px of cream around it. Populated state stays tall so
+   the photo + info zone fit comfortably. */
+.car-hero-full.is-empty{height:360px}
 /* Floor shadow positioned right under where the wheels sit. */
 .car-hero-full::before{
   content:'';position:absolute;top:160px;left:14%;right:14%;height:6px;

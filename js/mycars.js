@@ -87,22 +87,38 @@ window.addEventListener('localphotos:warmed', () => {
   } catch {}
 });
 
+const _REMOTE_MYCARS_CACHE_KEY = 'cb-remote-mycars-cache-v1';
+
 async function _loadMyCars(force = false) {
   if (!force && _myCars) return _myCars;
   // Local cars are always read first — instant, never blocks. Remote
-  // sync is best-effort and swallowed on failure (the backend is
-  // currently flaky; the user is migrating off it anyway).
+  // sync is best-effort and falls back to the LAST successful remote
+  // payload (cached to localStorage) so cars added via the old
+  // Supabase path don't vanish when the backend is unreachable.
   const local = LocalMyCars.list();
   let remote = [];
+  let remoteOk = false;
   try {
     const wrap = (typeof _raceTimeout === 'function')
       ? _raceTimeout(DB.myCars.list(), 'My cars', 8000)
       : DB.myCars.list();
-    remote = await wrap;
-    if (!Array.isArray(remote)) remote = [];
+    const fetched = await wrap;
+    if (Array.isArray(fetched)) {
+      remote = fetched;
+      remoteOk = true;
+      // Cache for next time — survives Supabase outages.
+      try { localStorage.setItem(_REMOTE_MYCARS_CACHE_KEY, JSON.stringify(remote)); }
+      catch (e) { console.warn('myCars cache save:', e); }
+    }
   } catch (err) {
-    console.warn('myCars.list failed (using local only):', err);
-    remote = [];
+    console.warn('myCars.list failed (will use cached remote):', err);
+  }
+  if (!remoteOk) {
+    // Fall back to the last successful remote response.
+    try {
+      const cached = JSON.parse(localStorage.getItem(_REMOTE_MYCARS_CACHE_KEY) || '[]');
+      if (Array.isArray(cached)) remote = cached;
+    } catch {}
   }
   // Local entries come first — these are the cars the user added on
   // this device. Remote entries follow, deduped by id so we don't
