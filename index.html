@@ -305,17 +305,32 @@
       <button class="bne-btn" onclick="openNewShowSheet()">＋ Start a new show</button>
     </div>
     <div id="bingo-live" style="display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0">
-      <div class="era-scroller" id="era-scroller"></div>
-      <div class="score-strip">
-        <div class="bingo-progress">
-          <div class="bingo-progress-fill" id="bingo-progress-fill"></div>
-          <div class="bingo-progress-text" id="score-txt">0 of 9 spotted</div>
-        </div>
+      <!-- Inline event + score line. Score replaces the old progress bar. -->
+      <div class="bingo-meta">
+        <div class="event" id="bingo-ev-meta">—</div>
+        <div class="score" id="bingo-score-meta"><b>0</b>/<b>0</b></div>
       </div>
+      <!-- Section label above the grid -->
+      <div class="section-lab">Cars to spot <span class="right">Tap any to view</span></div>
+      <!-- Grid lives in the upper half; tap a card to set the
+           featured one below. Modal still available via the
+           detail button on the featured card. -->
       <div class="car-list" id="car-list"></div>
-      <div class="bingo-extra">
-        <button class="bingo-extra-btn" onclick="openPicker()">📋&nbsp; Spot another car</button>
-        <button class="bingo-extra-btn-secondary" onclick="openEventSummary()">📊&nbsp; Event summary</button>
+      <!-- BOTTOM: featured car (the one currently selected in the
+           grid above). Big image + name + meta + I've spotted it. -->
+      <div class="featured-bottom" id="featured-bottom" style="display:none">
+        <div class="hero-image" id="featured-image"></div>
+        <div class="hero-details">
+          <div class="text-block">
+            <div class="eyebrow-mini" id="featured-eyebrow"><span class="dot"></span><span id="featured-rarity-text">—</span></div>
+            <h2 id="featured-name">—</h2>
+            <div class="meta-line" id="featured-meta">—</div>
+          </div>
+          <button class="spot-btn" id="featured-spot-btn" onclick="spotFeaturedCar()">
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            <span id="featured-spot-label">I've spotted it</span>
+          </button>
+        </div>
       </div>
     </div>
     <nav class="bottom-nav" id="nav-bingo-bar"></nav>

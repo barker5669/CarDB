@@ -1492,6 +1492,8 @@ function renderList() {
   const unique = [...new Map(cars.map(c => [c.name, c])).values()];
   if (!unique.length) {
     list.innerHTML = `<div class="bingo-empty">No cars on this board yet.</div>`;
+    const fb = document.getElementById('featured-bottom');
+    if (fb) fb.style.display = 'none';
     updateScore();
     return;
   }
@@ -1504,15 +1506,101 @@ function renderList() {
     const cells = unique.map((car, i) => bingoCellHTML(car, i)).join('');
     list.innerHTML = `<div class="bingo-grid">${cells}</div>`;
   }
-  // Delegated click — survives re-renders from preloadEraImages, and
-  // handles both views with one selector.
+  // Pick a featured car — keep the user's last choice if it's still
+  // on the board; otherwise default to the first un-spotted car.
+  const sp = currentSpotted();
+  let featuredCar = unique.find(c => c.name === S.bingoFeatured);
+  if (!featuredCar) {
+    featuredCar = unique.find(c => !sp[cellKey(c.era, c.name)]) || unique[0];
+    S.bingoFeatured = featuredCar.name;
+  }
+  renderBingoFeatured(featuredCar);
+  // Delegated click — tap a cell to select it as the featured car
+  // in the bottom hero (replaces the old "tap → open modal" flow).
   list.onclick = (e) => {
     const cell = e.target.closest('.bingo-cell[data-name],.bingo-card[data-name]');
     if (!cell) return;
     const car = unique.find(c => c.name === cell.dataset.name);
-    if (car) openModal(car, cellKey(car.era, car.name));
+    if (!car) return;
+    S.bingoFeatured = car.name;
+    renderBingoFeatured(car);
+    // Highlight the selected card so the user sees which one drives the hero.
+    list.querySelectorAll('.is-featured').forEach(n => n.classList.remove('is-featured'));
+    cell.classList.add('is-featured');
   };
+  // Initial highlight for whichever card is featured.
+  const initEl = list.querySelector(`.bingo-cell[data-name="${escapeAttr(featuredCar.name)}"],.bingo-card[data-name="${escapeAttr(featuredCar.name)}"]`);
+  if (initEl) initEl.classList.add('is-featured');
   updateScore();
+}
+
+// Populate the featured-bottom hero from a car object. Photo (real
+// or wiki thumb) sits on the showroom-backdrop hero-image zone; name
+// + meta + spot button sit in the hero-details zone below.
+function renderBingoFeatured(car) {
+  const fb = document.getElementById('featured-bottom');
+  if (!fb || !car) return;
+  fb.style.display = '';
+  const key  = cellKey(car.era, car.name);
+  const sp   = currentSpotted();
+  const data = sp[key];
+  const count = data ? data.sightings.length : 0;
+  const spotted = count > 0;
+
+  const photoEl = document.getElementById('featured-image');
+  if (photoEl) {
+    const sightingPhoto = photoUrl(data?.sightings?.find(sg => sg.photos?.length > 0)?.photos[0]);
+    const wikiPic = imgCache[car.name];
+    const src = sightingPhoto || wikiPic;
+    if (src) {
+      photoEl.innerHTML = `<img src="${escapeAttr(src)}" alt="${escapeAttr(car.name)}">`;
+    } else {
+      // No photo — show the country flag as a soft placeholder.
+      photoEl.innerHTML = `<span class="ph">${car.flag || '🚗'}</span>`;
+    }
+  }
+  const nameEl    = document.getElementById('featured-name');
+  const rarityEl  = document.getElementById('featured-rarity-text');
+  const metaEl    = document.getElementById('featured-meta');
+  const spotBtn   = document.getElementById('featured-spot-btn');
+  const spotLabel = document.getElementById('featured-spot-label');
+  if (nameEl)   nameEl.textContent   = car.name || '';
+  if (rarityEl) {
+    const label = (typeof RARITY_LABELS !== 'undefined' && RARITY_LABELS[car.rarity]) || car.rarity || '';
+    rarityEl.textContent = [label, car.country].filter(Boolean).join(' · ');
+  }
+  if (metaEl) {
+    const parts = [car.years, car.make].filter(Boolean);
+    metaEl.textContent = parts.join(' · ');
+  }
+  if (spotBtn) {
+    spotBtn.classList.toggle('is-spotted', spotted);
+    spotBtn.dataset.carName = car.name;
+  }
+  if (spotLabel) {
+    spotLabel.textContent = spotted
+      ? (count > 1 ? `Spotted ×${count}` : 'Spotted')
+      : "I've spotted it";
+  }
+}
+
+// Spot the currently-featured car. Reuses the same path the modal
+// uses, so sighting counts / photos / bingo toasts all still work.
+function spotFeaturedCar() {
+  const name = S.bingoFeatured;
+  if (!name) return;
+  const cars = Array.isArray(S.board) ? S.board : [];
+  const car = cars.find(c => c.name === name);
+  if (!car) return;
+  // openModal sets up state and then addSighting fires off the
+  // sighting + photo flow. Keeping the modal-driven path makes
+  // sure the celebration / photo capture wiring stays consistent.
+  if (typeof openModal === 'function') openModal(car, cellKey(car.era, car.name));
+  // Fire the spot immediately so the user doesn't have to tap a
+  // second time once the modal opens.
+  if (typeof addSighting === 'function') {
+    setTimeout(() => { try { addSighting(); } catch (e) { console.warn('addSighting:', e); } }, 50);
+  }
 }
 
 function bingoCarouselCardHTML(car, idx) {
@@ -1587,6 +1675,17 @@ function updateScore() {
   const spotted = unique.filter(c => sp[cellKey(c.era, c.name)]).length;
   const el = document.getElementById('score-txt');
   if (el) el.textContent = total ? `${spotted} of ${total} spotted` : '';
+  // New bingo-meta line — event name + score in mono caps.
+  const evMeta = document.getElementById('bingo-ev-meta');
+  if (evMeta) evMeta.textContent = S.event || '';
+  const scoreMeta = document.getElementById('bingo-score-meta');
+  if (scoreMeta) scoreMeta.innerHTML = `<b>${spotted}</b>/<b>${total}</b> spotted`;
+  // After spotting, the featured-bottom may need its label refreshed
+  // (was the just-spotted car the featured one?). Cheap, idempotent.
+  if (S.bingoFeatured) {
+    const car = unique.find(c => c.name === S.bingoFeatured);
+    if (car) renderBingoFeatured(car);
+  }
   const fill = document.getElementById('bingo-progress-fill');
   if (fill) fill.style.width = (total ? Math.round(spotted / total * 100) : 0) + '%';
 }

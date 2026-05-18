@@ -800,13 +800,46 @@ body::before{
 .car-card.pending::after,.gcar.pending::after,.ev-seen-card.pending::after{content:'syncing…';position:absolute;top:8px;right:8px;background:rgba(40,90,140,0.85);color:var(--ink);font-size:0.62rem;font-weight:800;padding:2px 7px;border-radius:8px;letter-spacing:0.4px;pointer-events:none}
 .s-thumb.pending{filter:saturate(0.5) brightness(0.85)}
 
+/* BINGO LAYOUT — grid in the upper half, featured car hero in the
+   lower half. .car-list is the grid container (shorter now since
+   it shares height with the featured-bottom). */
+.bingo-meta{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:8px 18px;border-bottom:1px solid var(--hair);flex-shrink:0;background:var(--paper-light)}
+.bingo-meta .event{font-family:var(--ff-mono);font-size:0.62rem;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-2);display:inline-flex;align-items:center;gap:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.bingo-meta .event::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--brass);flex-shrink:0}
+.bingo-meta .score{font-family:var(--ff-mono);font-size:0.7rem;font-weight:600;color:var(--ink-muted);letter-spacing:0.06em;flex-shrink:0}
+.bingo-meta .score b{color:var(--ink-strong);font-weight:700}
+.bingo-meta .score .sep{color:var(--ink-dim);margin:0 4px}
+.section-lab{display:flex;align-items:center;gap:8px;font-family:var(--ff-mono);font-size:0.58rem;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--brass);padding:10px 18px 6px;flex-shrink:0}
+.section-lab::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--brass);box-shadow:0 0 0 3px var(--brass-soft)}
+.section-lab .right{margin-left:auto;color:var(--ink-muted);font-family:var(--ff-mono);font-size:0.56rem;letter-spacing:0.16em;font-weight:500}
+
+/* Featured zone — appears at the bottom of the bingo screen,
+   showing the car currently selected in the grid above. Image on
+   top half, text + spot button on bottom half. */
+.featured-bottom{position:relative;border-top:1px solid var(--hair-strong);flex-shrink:0;display:flex;flex-direction:column;background:var(--paper)}
+.featured-bottom .hero-image{position:relative;height:140px;padding:14px 22px 8px;background:radial-gradient(ellipse at 50% 70%, rgba(255,252,240,0.95) 0%, rgba(232,222,200,0.85) 65%, rgba(212,200,178,0.55) 100%);box-shadow:0 1px 0 rgba(255,255,255,0.6) inset;display:flex;flex-direction:column;justify-content:center;align-items:center;overflow:hidden}
+.featured-bottom .hero-image svg.big-car{width:88%;max-width:380px;height:auto;display:block;filter:drop-shadow(0 6px 14px rgba(40,30,20,0.32))}
+.featured-bottom .hero-image img{max-width:100%;max-height:120px;width:auto;height:auto;object-fit:contain;display:block;border-radius:8px;filter:drop-shadow(0 6px 14px rgba(40,30,20,0.32))}
+.featured-bottom .hero-image .floor{width:62%;height:6px;background:radial-gradient(ellipse,rgba(40,30,20,0.28) 0%,transparent 70%);filter:blur(3px);margin-top:-2px}
+.featured-bottom .hero-image .ph{font-size:3rem;line-height:1;opacity:0.55}
+.featured-bottom .hero-details{position:relative;padding:12px 18px calc(var(--sb) + 14px);background:linear-gradient(180deg,var(--paper) 0%,var(--paper-deep) 100%);border-top:1px solid var(--hair-strong);box-shadow:0 1px 0 rgba(255,255,255,0.65) inset;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.featured-bottom .text-block{min-width:0;flex:1}
+.featured-bottom .eyebrow-mini{font-family:var(--ff-mono);font-size:0.58rem;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--brass);margin-bottom:3px;display:inline-flex;align-items:center;gap:6px}
+.featured-bottom .eyebrow-mini .dot{width:4px;height:4px;border-radius:50%;background:var(--brass)}
+.featured-bottom h2{font-family:var(--fh);font-weight:700;font-size:1.25rem;letter-spacing:-0.02em;line-height:1.05;color:var(--ink-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.featured-bottom .meta-line{font-family:var(--ff-mono);font-size:0.66rem;color:var(--ink-muted);font-weight:500;letter-spacing:0.04em;margin-top:3px}
+.featured-bottom .spot-btn{display:inline-flex;align-items:center;gap:7px;padding:10px 16px;background:var(--ink-strong);color:#fbf6ea;border-radius:999px;border:0;font-family:var(--ff);font-weight:600;font-size:0.82rem;letter-spacing:0.01em;cursor:pointer;-webkit-appearance:none;appearance:none;box-shadow:0 1px 0 rgba(255,255,255,0.06) inset,0 6px 14px -4px rgba(26,24,20,0.30);flex-shrink:0;min-height:auto}
+.featured-bottom .spot-btn:active{transform:scale(0.96)}
+.featured-bottom .spot-btn svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.featured-bottom .spot-btn.is-spotted{background:transparent;color:var(--brass-dk);box-shadow:0 0 0 1px var(--brass-line) inset}
+
 /* BINGO GRID — chamfered premium cards with rarity-tinted
    outlines. Image fills the cell; a name strip sits at the foot.
    Spotted cells press IN (depressed inset shadow) instead of UP
    (raised drop shadow) so the state difference is felt, not just
    seen. The chamfered top-right corner carries a rarity-coloured
    diagonal hairline — itself a rarity indicator. */
-.bingo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:12px 14px calc(var(--sb) + 14px)}
+.bingo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:10px 14px 14px}
 .bingo-cell{position:relative;background:linear-gradient(180deg,var(--card-surf) 0%,var(--card-deep) 100%);border:0;border-radius:9px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;aspect-ratio:1/1.18;-webkit-appearance:none;appearance:none;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%);transition:transform 0.12s;box-shadow:0 0 0 1px var(--hair) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.10)}
 .bingo-cell:active{transform:scale(0.96)}
 /* Rarity-tinted outline + chamfer diagonal — colour cues that
@@ -835,6 +868,10 @@ body::before{
 .bingo-cell.spotted.legendary{box-shadow:inset 0 2px 5px rgba(40,30,20,0.18),inset 0 1px 0 rgba(26,24,20,0.10),inset 0 -1px 0 rgba(255,240,220,0.50),0 0 0 1px var(--brass-line) inset}
 .bingo-cell.spotted .bingo-cell-img::after{content:none}
 .bingo-cell.spotted .bingo-cell-name{color:rgba(26,24,20,0.55);background:transparent;border-top:1px solid rgba(26,24,20,0.10)}
+/* Featured — the card that drives the hero below. Brass outline
+   over any rarity/spotted state so it always reads as selected. */
+.bingo-cell.is-featured{box-shadow:0 0 0 2px var(--brass) inset,0 1px 0 rgba(255,240,220,0.85) inset,0 6px 18px -6px rgba(166,124,82,0.45)}
+.bingo-cell.is-featured.spotted{box-shadow:0 0 0 2px var(--brass) inset,inset 0 2px 5px rgba(40,30,20,0.18),inset 0 -1px 0 rgba(255,240,220,0.50)}
 /* Spotted tick — small brass disc bottom-right of the image
    zone. Replaces the rotated "BINGO" stamp. */
 .bingo-stamp{position:absolute;bottom:36px;right:8px;background:var(--brass);color:#fff;font-family:var(--ff-mono);font-size:0.6rem;font-weight:700;letter-spacing:0.08em;padding:3px 8px;border-radius:999px;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 1px 3px rgba(0,0,0,0.18);transform:none;z-index:4}
