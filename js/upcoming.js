@@ -106,8 +106,9 @@ async function _paintUpcoming(body, events) {
               ${others.length ? `<div class="up-others">Also going: ${escapeHtml(others.join(', '))}</div>` : ''}
             </div>
             <div class="up-actions">
-              <button class="up-rsvp ${iAmGoing?'up-rsvp-on':''}" onclick="toggleUpcomingRSVP(${e.id}, ${iAmGoing})">${iAmGoing?'✓ Going':'＋ Going'}</button>
-              ${e.created_by === me ? `<button class="up-del" onclick="confirmDeleteUpcoming(${e.id})" title="Delete">✕</button>` : ''}
+              <button class="up-start" onclick="startShowFromUpcoming('${escapeJsSq(String(e.id))}')" title="Start a bingo show for this event">▶ Start show</button>
+              <button class="up-rsvp ${iAmGoing?'up-rsvp-on':''}" onclick="toggleUpcomingRSVP('${escapeJsSq(String(e.id))}', ${iAmGoing})">${iAmGoing?'✓ Going':'＋ Going'}</button>
+              ${e.created_by === me ? `<button class="up-del" onclick="confirmDeleteUpcoming('${escapeJsSq(String(e.id))}')" title="Delete">✕</button>` : ''}
             </div>
           </div>`;
         }).join('')}
@@ -213,6 +214,27 @@ async function toggleUpcomingRSVP(id, currentlyGoing) {
   } catch (err) {
     console.warn('RSVP sync failed:', err);
   }
+}
+
+// Pre-fills the "Start a new show" sheet with the upcoming event's
+// name, location and date so the user can start spotting against
+// that show in one tap. They can still tweak the form before
+// confirming — the underlying startEvent reads from the inputs.
+function startShowFromUpcoming(id) {
+  const list = (typeof _loadCachedUpcoming === 'function') ? _loadCachedUpcoming() : [];
+  const ev = list.find(e => e && String(e.id) === String(id));
+  if (!ev) { showSnack('Event not found'); return; }
+  if (typeof openNewShowSheet === 'function') openNewShowSheet();
+  // The sheet has a slide-in animation; wait for it to settle then
+  // populate the inputs so the user sees the prefilled values.
+  setTimeout(() => {
+    const nameEl = document.getElementById('ev-input');
+    const locEl  = document.getElementById('loc-input');
+    const dateEl = document.getElementById('date-input');
+    if (nameEl) nameEl.value = ev.name || '';
+    if (locEl)  locEl.value  = ev.location || '';
+    if (dateEl) dateEl.value = ev.event_date || '';
+  }, 60);
 }
 
 async function confirmDeleteUpcoming(id) {
