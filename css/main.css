@@ -800,6 +800,11 @@ body::before{
 .car-card.pending::after,.gcar.pending::after,.ev-seen-card.pending::after{content:'syncing…';position:absolute;top:8px;right:8px;background:rgba(40,90,140,0.85);color:var(--ink);font-size:0.62rem;font-weight:800;padding:2px 7px;border-radius:8px;letter-spacing:0.4px;pointer-events:none}
 .s-thumb.pending{filter:saturate(0.5) brightness(0.85)}
 
+/* Minimum top padding on any page-hdr so the title isn't pinned
+   to the screen edge on browsers where env(safe-area-inset-top)
+   returns 0 (desktop). max() means iOS still honours the notch. */
+.page-hdr{padding-top:max(14px, var(--st))}
+
 /* BINGO LAYOUT — grid in the upper half, featured car hero in the
    lower half. .car-list is the grid container (shorter now since
    it shares height with the featured-bottom). */
@@ -820,11 +825,17 @@ body::before{
    below. Total featured-bottom shares the half-screen with the
    grid above. */
 .featured-bottom{position:relative;border-top:1px solid var(--hair-strong);flex:1 1 50%;min-height:240px;display:flex;flex-direction:column;background:var(--paper);overflow:hidden}
-.featured-bottom .hero-image{position:relative;flex:1;min-height:120px;padding:14px 22px 6px;background:radial-gradient(ellipse at 50% 70%, rgba(255,252,240,0.95) 0%, rgba(232,222,200,0.85) 65%, rgba(212,200,178,0.55) 100%);box-shadow:0 1px 0 rgba(255,255,255,0.6) inset;display:flex;flex-direction:column;justify-content:center;align-items:center;overflow:hidden}
+/* Hero image — full bleed, edge to edge. Image fills the entire
+   zone with object-fit:cover so it crops handsomely whatever the
+   shape. Top + bottom fade into the cream paper via luminance
+   mask so it emerges from the page rather than sitting on it as
+   a hard rectangle (same trick as the dashboard's car-photo).
+   Tap → full-screen lightbox. */
+.featured-bottom .hero-image{position:relative;flex:1;min-height:160px;padding:0;background:linear-gradient(180deg, var(--paper) 0%, var(--paper-deep) 100%);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:zoom-in;-webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 8%,#000 100%);mask-image:linear-gradient(180deg,transparent 0%,#000 8%,#000 100%)}
 .featured-bottom .hero-image svg.big-car{width:88%;max-width:380px;height:auto;display:block;filter:drop-shadow(0 6px 14px rgba(40,30,20,0.32))}
-.featured-bottom .hero-image img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;border-radius:8px;filter:drop-shadow(0 6px 14px rgba(40,30,20,0.32))}
-.featured-bottom .hero-image .floor{width:62%;height:6px;background:radial-gradient(ellipse,rgba(40,30,20,0.28) 0%,transparent 70%);filter:blur(3px);margin-top:-2px}
-.featured-bottom .hero-image .ph{font-size:3rem;line-height:1;opacity:0.55}
+.featured-bottom .hero-image img{width:100%;height:100%;object-fit:cover;display:block;border-radius:0;filter:none}
+.featured-bottom .hero-image .floor{display:none}
+.featured-bottom .hero-image .ph{font-size:3rem;line-height:1;opacity:0.55;cursor:default}
 .featured-bottom .hero-details{position:relative;flex-shrink:0;padding:12px 18px 14px;background:linear-gradient(180deg,var(--paper) 0%,var(--paper-deep) 100%);border-top:1px solid var(--hair-strong);box-shadow:0 1px 0 rgba(255,255,255,0.65) inset;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .featured-bottom .text-block{min-width:0;flex:1}
 .featured-bottom .eyebrow-mini{font-family:var(--ff-mono);font-size:0.56rem;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--brass);margin-bottom:3px;display:inline-flex;align-items:center;gap:6px}
@@ -841,14 +852,12 @@ body::before{
 .featured-bottom .spot-btn svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 .featured-bottom .spot-btn.is-spotted{background:transparent;color:var(--brass-dk);box-shadow:0 0 0 1px var(--brass-line) inset}
 
-/* BINGO GRID — chamfered premium cards with rarity-tinted
-   outlines. Image fills the cell; a name strip sits at the foot.
-   Spotted cells press IN (depressed inset shadow) instead of UP
-   (raised drop shadow) so the state difference is felt, not just
-   seen. The chamfered top-right corner carries a rarity-coloured
-   diagonal hairline — itself a rarity indicator. */
-.bingo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:10px 14px 14px}
-.bingo-cell{position:relative;background:linear-gradient(180deg,var(--card-surf) 0%,var(--card-deep) 100%);border:0;border-radius:9px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;aspect-ratio:1/1.18;-webkit-appearance:none;appearance:none;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%);transition:transform 0.12s;box-shadow:0 0 0 1px var(--hair) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.10)}
+/* BINGO GRID — compact text-only cards. Chamfered top-right with
+   rarity-coloured corner diagonal; name on top, rarity tag on the
+   bottom; brass tick badge bottom-right when spotted. Real image
+   lives in the featured-bottom zone (tap a cell to swap it). */
+.bingo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:8px 14px 12px}
+.bingo-cell{position:relative;background:linear-gradient(180deg,var(--card-surf) 0%,var(--card-deep) 100%);border:0;border-radius:9px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:6px;padding:11px 11px 10px;min-height:78px;font:inherit;text-align:left;color:inherit;-webkit-appearance:none;appearance:none;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%);transition:transform 0.12s;box-shadow:0 0 0 1px var(--hair) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.10)}
 .bingo-cell:active{transform:scale(0.96)}
 /* Rarity-tinted outline + chamfer diagonal — colour cues that
    work whether the photo is there yet or not. */
@@ -863,7 +872,16 @@ body::before{
 .bingo-cell-img{flex:1;background:linear-gradient(180deg,var(--paper-deep) 0%,var(--paper) 100%);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
 .bingo-cell-img img{width:100%;height:100%;object-fit:cover;display:block}
 .bingo-cell-flag{font-size:2.4rem;line-height:1;color:var(--ink-dim);opacity:0.55}
-.bingo-cell-name{font-family:var(--fh);font-size:0.72rem;font-weight:700;color:var(--ink-strong);padding:6px 8px;line-height:1.15;letter-spacing:-0.01em;text-align:left;background:linear-gradient(180deg,var(--card-surf),var(--card-deep));min-height:30px;display:flex;align-items:center;text-overflow:ellipsis;overflow:hidden;border-top:1px solid var(--hair)}
+.bingo-cell-name{font-family:var(--fh);font-size:0.84rem;font-weight:700;color:var(--ink-strong);padding:0 16px 0 0;line-height:1.1;letter-spacing:-0.015em;text-align:left;background:transparent;min-height:0;display:block;text-overflow:ellipsis;overflow:hidden;border:0;word-wrap:break-word}
+.bingo-cell-rarity{font-family:var(--ff-mono);font-size:0.54rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;display:inline-flex;align-items:center;gap:5px;color:var(--ink-muted)}
+.bingo-cell-rarity .dot{width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 0 2px rgba(139,130,120,0.20)}
+.bingo-cell.rare .bingo-cell-rarity{color:#4d7eb0}
+.bingo-cell.rare .bingo-cell-rarity .dot{box-shadow:0 0 0 2px rgba(77,126,176,0.20)}
+.bingo-cell.epic .bingo-cell-rarity{color:#8a5fbf}
+.bingo-cell.epic .bingo-cell-rarity .dot{box-shadow:0 0 0 2px rgba(138,95,191,0.20)}
+.bingo-cell.legendary .bingo-cell-rarity{color:var(--brass-dk)}
+.bingo-cell.legendary .bingo-cell-rarity .dot{background:var(--brass);box-shadow:0 0 0 2px rgba(166,124,82,0.28)}
+.bingo-cell.spotted .bingo-cell-rarity{opacity:0.50}
 /* SPOTTED — depressed/pressed-in. Background shifts to a slightly
    darker paper; shadow direction reverses (inset top + bright
    bottom rim) so it reads as set INTO the page. Rarity outline is
@@ -875,14 +893,13 @@ body::before{
 .bingo-cell.spotted.epic     {box-shadow:inset 0 2px 5px rgba(40,30,20,0.18),inset 0 1px 0 rgba(26,24,20,0.10),inset 0 -1px 0 rgba(255,252,240,0.50),0 0 0 1px rgba(138,95,191,0.38) inset}
 .bingo-cell.spotted.legendary{box-shadow:inset 0 2px 5px rgba(40,30,20,0.18),inset 0 1px 0 rgba(26,24,20,0.10),inset 0 -1px 0 rgba(255,240,220,0.50),0 0 0 1px var(--brass-line) inset}
 .bingo-cell.spotted .bingo-cell-img::after{content:none}
-.bingo-cell.spotted .bingo-cell-name{color:rgba(26,24,20,0.55);background:transparent;border-top:1px solid rgba(26,24,20,0.10)}
+.bingo-cell.spotted .bingo-cell-name{color:rgba(26,24,20,0.55);background:transparent;border:0;text-decoration:line-through;text-decoration-thickness:1px;text-decoration-color:rgba(26,24,20,0.40)}
 /* Featured — the card that drives the hero below. Brass outline
    over any rarity/spotted state so it always reads as selected. */
 .bingo-cell.is-featured{box-shadow:0 0 0 2px var(--brass) inset,0 1px 0 rgba(255,240,220,0.85) inset,0 6px 18px -6px rgba(166,124,82,0.45)}
 .bingo-cell.is-featured.spotted{box-shadow:0 0 0 2px var(--brass) inset,inset 0 2px 5px rgba(40,30,20,0.18),inset 0 -1px 0 rgba(255,240,220,0.50)}
-/* Spotted tick — small brass disc bottom-right of the image
-   zone. Replaces the rotated "BINGO" stamp. */
-.bingo-stamp{position:absolute;bottom:36px;right:8px;background:var(--brass);color:#fff;font-family:var(--ff-mono);font-size:0.6rem;font-weight:700;letter-spacing:0.08em;padding:3px 8px;border-radius:999px;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 1px 3px rgba(0,0,0,0.18);transform:none;z-index:4}
+/* Spotted tick — small brass disc bottom-right of the cell. */
+.bingo-stamp{position:absolute;bottom:7px;right:8px;background:var(--brass);color:#fff;font-family:var(--ff-mono);font-size:0.6rem;font-weight:700;letter-spacing:0.08em;width:18px;height:18px;display:flex;align-items:center;justify-content:center;padding:0;border-radius:50%;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 1px 3px rgba(0,0,0,0.18);transform:none;z-index:4}
 .bingo-cell.pending{opacity:0.78}
 .bingo-cell.pending::after{content:'syncing…';position:absolute;top:7px;left:9px;background:rgba(77,126,176,0.85);color:#fff;font-family:var(--ff-mono);font-size:0.58rem;font-weight:700;letter-spacing:0.08em;padding:2px 7px;border-radius:8px;z-index:4}
 .bingo-empty{padding:48px 24px;text-align:center;font-size:0.92rem;color:var(--ink-muted);font-weight:500}

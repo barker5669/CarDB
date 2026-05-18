@@ -1584,6 +1584,27 @@ function renderBingoFeatured(car) {
   }
 }
 
+// Open the featured car's image in the lightbox (full-screen view).
+// Uses the same openLightbox function the rest of the app uses for
+// photo previews. Falls back silently if there's no image to show.
+function openFeaturedImageFullscreen() {
+  const name = S.bingoFeatured;
+  if (!name) return;
+  const cars = Array.isArray(S.board) ? S.board : [];
+  const car = cars.find(c => c.name === name);
+  if (!car) return;
+  const key  = cellKey(car.era, car.name);
+  const sp   = currentSpotted();
+  const data = sp[key];
+  const sightingPhoto = photoUrl(data?.sightings?.find(sg => sg.photos?.length > 0)?.photos[0]);
+  const wikiPic = imgCache[car.name];
+  const src = sightingPhoto || wikiPic;
+  if (!src) return; // No image to expand — silently do nothing.
+  if (typeof openLightbox === 'function') {
+    openLightbox(src, car.name);
+  }
+}
+
 // Spot the currently-featured car. Reuses the same path the modal
 // uses, so sighting counts / photos / bingo toasts all still work.
 function spotFeaturedCar() {
@@ -1637,7 +1658,10 @@ function bingoCarouselCardHTML(car, idx) {
 }
 
 function bingoCellHTML(car, idx) {
-  // Key uses car.era (board mixes eras now, so S.era is meaningless here).
+  // Text-only cell — name + rarity tag, with a brass tick badge
+  // when spotted and a chamfered corner diagonal for the rarity.
+  // The image lives in the featured-bottom hero zone now, so the
+  // grid stays compact and 9–16 cards fit without scrolling.
   const key   = cellKey(car.era, car.name);
   const sp    = currentSpotted();
   const data  = sp[key];
@@ -1645,26 +1669,18 @@ function bingoCellHTML(car, idx) {
   const spotted = count > 0;
   const isPending = (data?.sightings || []).some(s => String(s.id || '').startsWith('local-'));
   const justSpotted = S.justSpotted === key;
-  const sightingPhoto = photoUrl(data?.sightings?.find(sg => sg.photos?.length > 0)?.photos[0]);
-  const wikiPic = imgCache[car.name];
-  const displaySrc = sightingPhoto || wikiPic;
-  const imgHTML = displaySrc
-    ? `<img src="${escapeAttr(displaySrc)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-    : '';
   const stamp = spotted
-    ? `<div class="bingo-stamp">✓${count > 1 ? ` ×${count}` : ''}</div>`
+    ? `<div class="bingo-stamp">${count > 1 ? '×' + count : '✓'}</div>`
     : '';
   const pendCls = isPending    ? ' pending'      : '';
   const spotCls = spotted      ? ' spotted'      : '';
   const flashCls = justSpotted ? ' just-spotted' : '';
-  return `<div class="bingo-cell ${car.rarity}${spotCls}${pendCls}${flashCls}" data-name="${escapeAttr(car.name)}" data-idx="${idx}">
-    <div class="bingo-cell-img">
-      ${imgHTML}<div class="bingo-cell-flag" style="${displaySrc?'display:none':''}">${car.flag}</div>
-      <div class="bingo-cell-era">${escapeHtml(car.era)}</div>
-    </div>
-    ${stamp}
+  const rarityLabel = (typeof RARITY_LABELS !== 'undefined' && RARITY_LABELS[car.rarity]) || car.rarity || '';
+  return `<button class="bingo-cell ${car.rarity}${spotCls}${pendCls}${flashCls}" data-name="${escapeAttr(car.name)}" data-idx="${idx}" type="button">
     <div class="bingo-cell-name">${escapeHtml(car.name)}</div>
-  </div>`;
+    <div class="bingo-cell-rarity"><span class="dot"></span>${escapeHtml(rarityLabel)}</div>
+    ${stamp}
+  </button>`;
 }
 
 function updateScore() {
