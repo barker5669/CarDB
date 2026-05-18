@@ -818,25 +818,58 @@ async function startEvent() {
   const date = document.getElementById('date-input').value;  // "YYYY-MM-DD" or ""
   if (!ev) { document.getElementById('ev-input').focus(); return; }
 
+  // Local-first: build the show entirely from local state so the user
+  // lands on the bingo board instantly. Supabase create happens in
+  // the background — its result swaps the local-style id for the
+  // canonical remote one when it succeeds, but the show works
+  // regardless. Same pattern as openAddMyCar / openAddUpcoming.
+  const localId = 'local-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+  S.event   = ev;
+  S.eventId = localId;
+  S.loc     = loc || '';
+  S.date    = date
+    ? new Date(date).toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })
+    : '';
+  const userId = (typeof currentUserId === 'function') ? currentUserId() : 'local-user';
+  S.rolls = 0;
+  S.board = buildBoard(localId, userId, S.rolls, S.boardEras, S.boardCarCount);
+  if (!S.spotted[ev]) S.spotted[ev] = {};
+  _resetBingoFiredForEvent();
+  // Persist the show + board to localStorage (the save() function
+  // writes to store.events[ev] which resumeEvent reads back).
+  save();
+  // Record into PastEvents too so it appears in the Shows tab even
+  // before the remote create lands.
   try {
-    const eventRow = await _findOrCreateEvent(ev, loc, date || null);
-    PastEvents.upsert(eventRow);
-    S.event   = eventRow.name;
-    S.eventId = eventRow.id;
-    S.loc     = eventRow.location || '';
-    S.date    = eventRow.event_date
-      ? new Date(eventRow.event_date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})
-      : '';
-    await DB.attendees.join(eventRow.id);
-    await _loadOrCreateBoard(eventRow);
-    if (!S.spotted[eventRow.name]) S.spotted[eventRow.name] = {};
-    _resetBingoFiredForEvent();
-    save();
-    _invalidateEventsCache();
-    closeNewShowSheet();
-    launch();
-  } catch (err) {
-    showErr('Could not start show', err);
+    PastEvents.upsert({
+      id:         localId,
+      name:       ev,
+      location:   loc || null,
+      event_date: date || null,
+    });
+  } catch {}
+  closeNewShowSheet();
+  launch();
+
+  // Background Supabase sync — best effort. If it succeeds, swap
+  // the local-style id for the canonical remote one and migrate
+  // the board's persisted entry under the new id (board contents
+  // are the same).
+  if (window.DB && DB.events && typeof DB.events.create === 'function') {
+    (async () => {
+      try {
+        const eventRow = await _raceTimeout(_findOrCreateEvent(ev, loc, date || null), 'Start show', 10000);
+        if (!eventRow || eventRow.id == null) return;
+        PastEvents.upsert(eventRow);
+        S.eventId = eventRow.id;
+        try { await DB.attendees.join(eventRow.id); } catch (e) { console.warn('attendees.join:', e); }
+        try { await _loadOrCreateBoard(eventRow); } catch (e) { console.warn('_loadOrCreateBoard:', e); }
+        save();
+        _invalidateEventsCache();
+      } catch (err) {
+        console.warn('Background show sync failed:', err);
+      }
+    })();
   }
 }
 
