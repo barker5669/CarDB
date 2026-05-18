@@ -382,7 +382,7 @@ body::before{
 /* CAR CARDS — list view used inside the bingo screen (#car-list).
    Same vocabulary as the Spotted/Garage rows. Spotted cars get a
    brass tick badge over the thumb. */
-.car-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 14px 14px}
+.car-list{flex:1 1 50%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 14px 14px;min-height:0}
 .car-list::-webkit-scrollbar{display:none}
 .list-section-hdr{font-family:var(--ff-mono);font-size:0.58rem;font-weight:700;letter-spacing:0.22em;color:var(--ink-muted);text-transform:uppercase;padding:14px 2px 6px;display:flex;align-items:center;gap:8px}
 .list-section-hdr::after{content:'';flex:1;height:1px;background:var(--hair)}
@@ -814,21 +814,29 @@ body::before{
 .section-lab .right{margin-left:auto;color:var(--ink-muted);font-family:var(--ff-mono);font-size:0.56rem;letter-spacing:0.16em;font-weight:500}
 
 /* Featured zone — appears at the bottom of the bingo screen,
-   showing the car currently selected in the grid above. Image on
-   top half, text + spot button on bottom half. */
-.featured-bottom{position:relative;border-top:1px solid var(--hair-strong);flex-shrink:0;display:flex;flex-direction:column;background:var(--paper)}
-.featured-bottom .hero-image{position:relative;height:140px;padding:14px 22px 8px;background:radial-gradient(ellipse at 50% 70%, rgba(255,252,240,0.95) 0%, rgba(232,222,200,0.85) 65%, rgba(212,200,178,0.55) 100%);box-shadow:0 1px 0 rgba(255,255,255,0.6) inset;display:flex;flex-direction:column;justify-content:center;align-items:center;overflow:hidden}
+   showing the car currently selected in the grid above. Image
+   zone fills as much vertical space as the screen allows
+   (flex:1); text + spot button sit in a compact details zone
+   below. Total featured-bottom shares the half-screen with the
+   grid above. */
+.featured-bottom{position:relative;border-top:1px solid var(--hair-strong);flex:1 1 50%;min-height:240px;display:flex;flex-direction:column;background:var(--paper);overflow:hidden}
+.featured-bottom .hero-image{position:relative;flex:1;min-height:120px;padding:14px 22px 6px;background:radial-gradient(ellipse at 50% 70%, rgba(255,252,240,0.95) 0%, rgba(232,222,200,0.85) 65%, rgba(212,200,178,0.55) 100%);box-shadow:0 1px 0 rgba(255,255,255,0.6) inset;display:flex;flex-direction:column;justify-content:center;align-items:center;overflow:hidden}
 .featured-bottom .hero-image svg.big-car{width:88%;max-width:380px;height:auto;display:block;filter:drop-shadow(0 6px 14px rgba(40,30,20,0.32))}
-.featured-bottom .hero-image img{max-width:100%;max-height:120px;width:auto;height:auto;object-fit:contain;display:block;border-radius:8px;filter:drop-shadow(0 6px 14px rgba(40,30,20,0.32))}
+.featured-bottom .hero-image img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;border-radius:8px;filter:drop-shadow(0 6px 14px rgba(40,30,20,0.32))}
 .featured-bottom .hero-image .floor{width:62%;height:6px;background:radial-gradient(ellipse,rgba(40,30,20,0.28) 0%,transparent 70%);filter:blur(3px);margin-top:-2px}
 .featured-bottom .hero-image .ph{font-size:3rem;line-height:1;opacity:0.55}
-.featured-bottom .hero-details{position:relative;padding:12px 18px calc(var(--sb) + 14px);background:linear-gradient(180deg,var(--paper) 0%,var(--paper-deep) 100%);border-top:1px solid var(--hair-strong);box-shadow:0 1px 0 rgba(255,255,255,0.65) inset;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.featured-bottom .hero-details{position:relative;flex-shrink:0;padding:12px 18px 14px;background:linear-gradient(180deg,var(--paper) 0%,var(--paper-deep) 100%);border-top:1px solid var(--hair-strong);box-shadow:0 1px 0 rgba(255,255,255,0.65) inset;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .featured-bottom .text-block{min-width:0;flex:1}
-.featured-bottom .eyebrow-mini{font-family:var(--ff-mono);font-size:0.58rem;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--brass);margin-bottom:3px;display:inline-flex;align-items:center;gap:6px}
+.featured-bottom .eyebrow-mini{font-family:var(--ff-mono);font-size:0.56rem;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:var(--brass);margin-bottom:3px;display:inline-flex;align-items:center;gap:6px}
 .featured-bottom .eyebrow-mini .dot{width:4px;height:4px;border-radius:50%;background:var(--brass)}
-.featured-bottom h2{font-family:var(--fh);font-weight:700;font-size:1.25rem;letter-spacing:-0.02em;line-height:1.05;color:var(--ink-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.featured-bottom .meta-line{font-family:var(--ff-mono);font-size:0.66rem;color:var(--ink-muted);font-weight:500;letter-spacing:0.04em;margin-top:3px}
-.featured-bottom .spot-btn{display:inline-flex;align-items:center;gap:7px;padding:10px 16px;background:var(--ink-strong);color:#fbf6ea;border-radius:999px;border:0;font-family:var(--ff);font-weight:600;font-size:0.82rem;letter-spacing:0.01em;cursor:pointer;-webkit-appearance:none;appearance:none;box-shadow:0 1px 0 rgba(255,255,255,0.06) inset,0 6px 14px -4px rgba(26,24,20,0.30);flex-shrink:0;min-height:auto}
+.featured-bottom h2{font-family:var(--fh);font-weight:700;font-size:1.2rem;letter-spacing:-0.02em;line-height:1.05;color:var(--ink-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.featured-bottom .meta-line{font-family:var(--ff-mono);font-size:0.62rem;color:var(--ink-muted);font-weight:500;letter-spacing:0.04em;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Spot pill — small inline button in hero-details. Overrides the
+   global .spot-btn which is sized for the modal (full-width, 64px
+   tall). Higher specificity selectors plus explicit width:auto +
+   min-height:0 so the global rules don't seep through. */
+#featured-bottom .spot-btn,
+.featured-bottom .spot-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 14px;width:auto;min-height:0;margin:0;background:var(--ink-strong);color:#fbf6ea;border-radius:999px;border:0;font-family:var(--ff);font-weight:600;font-size:0.78rem;letter-spacing:0.01em;cursor:pointer;-webkit-appearance:none;appearance:none;box-shadow:0 1px 0 rgba(255,255,255,0.06) inset,0 6px 14px -4px rgba(26,24,20,0.30);flex-shrink:0;white-space:nowrap}
 .featured-bottom .spot-btn:active{transform:scale(0.96)}
 .featured-bottom .spot-btn svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 .featured-bottom .spot-btn.is-spotted{background:transparent;color:var(--brass-dk);box-shadow:0 0 0 1px var(--brass-line) inset}
