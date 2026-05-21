@@ -194,13 +194,16 @@ const Queue = {
       _setIndicator();
       return;
     }
-    try { await DB.sightings.remove(id); }
-    catch (err) {
-      if (!_isNetErr(err) && navigator.onLine) throw err;
-      _qLoad();
-      _qState.push({ kind: 'sighting.delete', id, ts: Date.now() });
-      _qSave();
-      _setIndicator();
+    // Local-first delete for real ids — queue the deletion and
+    // return immediately. Doesn't wait on Supabase. Background
+    // drain() replays the delete when the network is available.
+    // Same pattern as sightingCreate.
+    _qLoad();
+    _qState.push({ kind: 'sighting.delete', id, ts: Date.now() });
+    _qSave();
+    _setIndicator();
+    if (navigator.onLine) {
+      setTimeout(() => Queue.drain().catch(() => {}), 0);
     }
   },
 
