@@ -857,19 +857,26 @@ body::before{
    rarity-coloured corner diagonal; name on top, rarity tag on the
    bottom; brass tick badge bottom-right when spotted. Real image
    lives in the featured-bottom zone (tap a cell to swap it). */
-.bingo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:8px 14px 12px}
-.bingo-cell{position:relative;background:linear-gradient(180deg,var(--card-surf) 0%,var(--card-deep) 100%);border:0;border-radius:9px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:6px;padding:11px 11px 10px;min-height:78px;font:inherit;text-align:left;color:inherit;-webkit-appearance:none;appearance:none;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%);transition:transform 0.12s;box-shadow:0 0 0 1px var(--hair) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.10)}
+.bingo-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:9px;padding:8px 14px 12px}
+/* Cells are explicitly square-ish via aspect-ratio so every card
+   has the same footprint regardless of how long its name is. Long
+   names wrap inside the fixed box. */
+.bingo-cell{position:relative;aspect-ratio:1/0.95;background:linear-gradient(180deg,var(--card-surf) 0%,var(--card-deep) 100%);border:0;border-radius:9px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:6px;padding:11px 11px 10px;min-height:78px;font:inherit;text-align:left;color:inherit;-webkit-appearance:none;appearance:none;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%);transition:transform 0.12s;box-shadow:0 0 0 1.5px rgba(139,130,120,0.30) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.10)}
 .bingo-cell:active{transform:scale(0.96)}
-/* Rarity-tinted outline + chamfer diagonal — colour cues that
-   work whether the photo is there yet or not. */
-.bingo-cell.common      {box-shadow:0 0 0 1px var(--hair) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.10)}
-.bingo-cell.rare        {box-shadow:0 0 0 1px rgba(77,126,176,0.35) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.10)}
-.bingo-cell.epic        {box-shadow:0 0 0 1px rgba(138,95,191,0.38) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.10)}
-.bingo-cell.legendary   {box-shadow:0 0 0 1px var(--brass-line) inset,0 1px 0 rgba(255,240,220,0.85) inset,0 -1px 0 rgba(122,88,54,0.10) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.12),0 8px 20px -8px rgba(166,124,82,0.28)}
-.bingo-cell::before{content:'';position:absolute;top:-1px;right:-1px;width:18px;height:18px;background:linear-gradient(135deg,transparent 47%,rgba(139,130,120,0.55) 47%,rgba(139,130,120,0.55) 53%,transparent 53%);pointer-events:none;z-index:3;width:auto;left:auto;bottom:auto}
-.bingo-cell.rare::before     {background:linear-gradient(135deg,transparent 46%,rgba(77,126,176,0.75) 46%,rgba(77,126,176,0.75) 54%,transparent 54%)}
-.bingo-cell.epic::before     {background:linear-gradient(135deg,transparent 46%,rgba(138,95,191,0.80) 46%,rgba(138,95,191,0.80) 54%,transparent 54%)}
-.bingo-cell.legendary::before{width:20px;height:20px;background:linear-gradient(135deg,transparent 45%,var(--brass-light) 45%,var(--brass) 55%,transparent 55%)}
+/* Rarity-tinted outline + chamfer diagonal — stronger 1.5px inset
+   border in the rarity colour so the tier reads at a glance,
+   even without focusing on the dot+label. */
+.bingo-cell.common      {box-shadow:0 0 0 1.5px rgba(139,130,120,0.35) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.10)}
+.bingo-cell.rare        {box-shadow:0 0 0 1.5px rgba(77,126,176,0.55) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.10),0 4px 14px -6px rgba(77,126,176,0.20)}
+.bingo-cell.epic        {box-shadow:0 0 0 1.5px rgba(138,95,191,0.55) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.10),0 4px 14px -6px rgba(138,95,191,0.22)}
+.bingo-cell.legendary   {box-shadow:0 0 0 1.5px var(--brass) inset,0 1px 0 rgba(255,240,220,0.85) inset,0 -1px 0 rgba(122,88,54,0.10) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.12),0 8px 22px -8px rgba(166,124,82,0.45)}
+/* Chamfered top-right corner — fully filled rarity-coloured
+   triangle, much more visible than the previous thin diagonal
+   stripe. */
+.bingo-cell::before{content:'';position:absolute;top:-1px;right:-1px;width:22px;height:22px;background:linear-gradient(135deg,transparent 50%,rgba(139,130,120,0.85) 50%);pointer-events:none;z-index:3;left:auto;bottom:auto}
+.bingo-cell.rare::before     {background:linear-gradient(135deg,transparent 50%,#4d7eb0 50%)}
+.bingo-cell.epic::before     {background:linear-gradient(135deg,transparent 50%,#8a5fbf 50%)}
+.bingo-cell.legendary::before{width:26px;height:26px;background:linear-gradient(135deg,transparent 50%,var(--brass-light) 50%,var(--brass-dk) 95%)}
 .bingo-cell-img{flex:1;background:linear-gradient(180deg,var(--paper-deep) 0%,var(--paper) 100%);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
 .bingo-cell-img img{width:100%;height:100%;object-fit:cover;display:block}
 .bingo-cell-flag{font-size:2.4rem;line-height:1;color:var(--ink-dim);opacity:0.55}
@@ -889,10 +896,10 @@ body::before{
    preserved on top of the depressed look. */
 .bingo-cell.spotted{background:linear-gradient(180deg,#ebe2cc 0%,#ddd2b7 100%)}
 .bingo-cell.spotted,
-.bingo-cell.spotted.common{box-shadow:inset 0 2px 5px rgba(40,30,20,0.18),inset 0 1px 0 rgba(26,24,20,0.10),inset 0 -1px 0 rgba(255,252,240,0.50),0 0 0 1px var(--hair) inset}
-.bingo-cell.spotted.rare     {box-shadow:inset 0 2px 5px rgba(40,30,20,0.18),inset 0 1px 0 rgba(26,24,20,0.10),inset 0 -1px 0 rgba(255,252,240,0.50),0 0 0 1px rgba(77,126,176,0.35) inset}
-.bingo-cell.spotted.epic     {box-shadow:inset 0 2px 5px rgba(40,30,20,0.18),inset 0 1px 0 rgba(26,24,20,0.10),inset 0 -1px 0 rgba(255,252,240,0.50),0 0 0 1px rgba(138,95,191,0.38) inset}
-.bingo-cell.spotted.legendary{box-shadow:inset 0 2px 5px rgba(40,30,20,0.18),inset 0 1px 0 rgba(26,24,20,0.10),inset 0 -1px 0 rgba(255,240,220,0.50),0 0 0 1px var(--brass-line) inset}
+.bingo-cell.spotted.common{box-shadow:inset 0 2px 5px rgba(40,30,20,0.18),inset 0 1px 0 rgba(26,24,20,0.10),inset 0 -1px 0 rgba(255,252,240,0.50),0 0 0 1.5px rgba(139,130,120,0.35) inset}
+.bingo-cell.spotted.rare     {box-shadow:inset 0 2px 5px rgba(40,30,20,0.18),inset 0 1px 0 rgba(26,24,20,0.10),inset 0 -1px 0 rgba(255,252,240,0.50),0 0 0 1.5px rgba(77,126,176,0.55) inset}
+.bingo-cell.spotted.epic     {box-shadow:inset 0 2px 5px rgba(40,30,20,0.18),inset 0 1px 0 rgba(26,24,20,0.10),inset 0 -1px 0 rgba(255,252,240,0.50),0 0 0 1.5px rgba(138,95,191,0.55) inset}
+.bingo-cell.spotted.legendary{box-shadow:inset 0 2px 5px rgba(40,30,20,0.18),inset 0 1px 0 rgba(26,24,20,0.10),inset 0 -1px 0 rgba(255,240,220,0.50),0 0 0 1.5px var(--brass) inset}
 .bingo-cell.spotted .bingo-cell-img::after{content:none}
 .bingo-cell.spotted .bingo-cell-name{color:rgba(26,24,20,0.55);background:transparent;border:0;text-decoration:line-through;text-decoration-thickness:1px;text-decoration-color:rgba(26,24,20,0.40)}
 /* Featured — the card that drives the hero below. Brass outline
