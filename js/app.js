@@ -1009,7 +1009,6 @@ async function renderHomeHero() {
   const nameEl  = document.getElementById('cb-hero-name');
   const metaEl  = document.getElementById('cb-hero-meta');
   const statsEl = document.getElementById('cb-hero-stats');
-  const pagerEl = document.getElementById('cb-hero-pager');
   if (!nameEl || !statsEl) return;
 
   if (!data) {
@@ -1022,7 +1021,6 @@ async function renderHomeHero() {
     nameEl.textContent = 'Add your car';
     if (metaEl) metaEl.textContent = 'Tap to get started';
     statsEl.innerHTML = '';
-    if (pagerEl) pagerEl.style.display = 'none';
     hero.onclick = (e) => {
       if (e.target.closest('button')) return;
       if (typeof openAddMyCar === 'function') openAddMyCar();
@@ -1077,18 +1075,6 @@ async function renderHomeHero() {
     `<div class="stat-pill"><span class="num">${escapeHtml(String(p.num))}</span><span class="lab">${escapeHtml(p.lab)}</span></div>`
   ).join('');
 
-  // Pager dots — only when >1 car.
-  if (pagerEl) {
-    const total = data.totalCars || 1;
-    if (total > 1) {
-      pagerEl.innerHTML = Array.from({ length: total }, (_, i) =>
-        `<span class="pd${i === 0 ? ' on' : ''}"></span>`
-      ).join('');
-      pagerEl.style.display = '';
-    } else {
-      pagerEl.style.display = 'none';
-    }
-  }
 }
 
 // 7-day calendar peek (today + 6 days ahead) for the cal pill on
