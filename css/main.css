@@ -862,7 +862,7 @@ body::before{
    column width) AND a min-height as a floor so they never
    collapse to nothing if the flex parent runs out of vertical
    space. Long names wrap inside the fixed box. */
-.bingo-cell{position:relative;aspect-ratio:1/0.78;background:linear-gradient(180deg,var(--card-surf) 0%,var(--card-deep) 100%);border:0;border-radius:9px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:4px;padding:10px 10px 9px;min-height:78px;font:inherit;text-align:left;color:inherit;-webkit-appearance:none;appearance:none;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%);transition:transform 0.12s;box-shadow:0 0 0 1.5px rgba(139,130,120,0.30) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.10)}
+.bingo-cell{position:relative;aspect-ratio:1/0.78;background:linear-gradient(180deg,var(--card-surf) 0%,var(--card-deep) 100%);border:0;border-radius:9px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:4px;padding:10px 10px 9px;min-height:78px;font:inherit;text-align:left;color:inherit;-webkit-appearance:none;appearance:none;transition:transform 0.12s;box-shadow:0 0 0 1.5px rgba(139,130,120,0.30) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.10)}
 .bingo-cell:active{transform:scale(0.96)}
 /* Rarity-tinted outline + chamfer diagonal — stronger 1.5px inset
    border in the rarity colour so the tier reads at a glance,
@@ -871,15 +871,14 @@ body::before{
 .bingo-cell.rare        {box-shadow:0 0 0 1.5px rgba(77,126,176,0.55) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.10),0 4px 14px -6px rgba(77,126,176,0.20)}
 .bingo-cell.epic        {box-shadow:0 0 0 1.5px rgba(138,95,191,0.55) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.10),0 4px 14px -6px rgba(138,95,191,0.22)}
 .bingo-cell.legendary   {box-shadow:0 0 0 1.5px var(--brass) inset,0 1px 0 rgba(255,240,220,0.85) inset,0 -1px 0 rgba(122,88,54,0.10) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.12),0 8px 22px -8px rgba(166,124,82,0.45)}
-/* Chamfered top-right corner — thin diagonal rarity stripe sitting
-   right ON the cut edge (the visible "fold mark"). 135deg gradient
-   axis is perpendicular to the chamfer line, so the colour band
-   (perpendicular to the axis) runs parallel to the cut. Band is
-   thin (47–53%) and the ::before is 18px so it hugs the corner. */
-.bingo-cell::before{content:'';position:absolute;top:-1px;right:-1px;width:18px;height:18px;background:linear-gradient(135deg,transparent 47%,rgba(139,130,120,0.85) 47%,rgba(139,130,120,0.85) 53%,transparent 53%);pointer-events:none;z-index:3;left:auto;bottom:auto}
-.bingo-cell.rare::before     {background:linear-gradient(135deg,transparent 47%,#4d7eb0 47%,#4d7eb0 53%,transparent 53%)}
-.bingo-cell.epic::before     {background:linear-gradient(135deg,transparent 47%,#8a5fbf 47%,#8a5fbf 53%,transparent 53%)}
-.bingo-cell.legendary::before{width:22px;height:22px;background:linear-gradient(135deg,transparent 45%,var(--brass-light) 45%,var(--brass-dk) 55%,transparent 55%)}
+/* Dog-ear corner badge — a filled rarity-coloured triangle in the
+   top-right of each card, like a folded page corner. The triangle
+   sits FLUSH with the cell's top + right edges and its hypotenuse
+   makes the "fold line" diagonal. */
+.bingo-cell::before{content:'';position:absolute;top:0;right:0;width:18px;height:18px;background:rgba(139,130,120,0.85);clip-path:polygon(100% 0,100% 100%,0 0);pointer-events:none;z-index:3;border-top-right-radius:9px}
+.bingo-cell.rare::before     {background:#4d7eb0}
+.bingo-cell.epic::before     {background:#8a5fbf}
+.bingo-cell.legendary::before{width:22px;height:22px;background:linear-gradient(135deg,var(--brass-light),var(--brass-dk))}
 .bingo-cell-img{flex:1;background:linear-gradient(180deg,var(--paper-deep) 0%,var(--paper) 100%);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
 .bingo-cell-img img{width:100%;height:100%;object-fit:cover;display:block}
 .bingo-cell-flag{font-size:2.4rem;line-height:1;color:var(--ink-dim);opacity:0.55}
