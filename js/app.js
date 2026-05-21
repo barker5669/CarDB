@@ -971,7 +971,17 @@ function updateHomeCard() {
     const metaEl  = document.getElementById('home-show-meta');
     const badgeEl = document.getElementById('home-show-badge');
     if (nameEl)  nameEl.textContent  = S.event;
-    if (metaEl)  metaEl.textContent  = (S.loc ? S.loc + ' · ' : '') + (S.date || '');
+    if (metaEl)  {
+      // Format the date as "4 May 2026" if it came in raw ISO
+      // (resumeEvent path) so the meta line stays short and
+      // doesn't wrap inside the card.
+      let dateStr = S.date || '';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        const d = new Date(dateStr);
+        if (!isNaN(d)) dateStr = d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+      }
+      metaEl.textContent = (S.loc ? S.loc + ' · ' : '') + dateStr;
+    }
     if (badgeEl) {
       const count = Object.keys(currentSpotted()).length;
       badgeEl.textContent = count + ' spotted';

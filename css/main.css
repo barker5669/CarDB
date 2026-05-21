@@ -269,15 +269,16 @@ body::before{
 /* Active show card — premium card with brass left bar accent
    indicating "this is your current thing". */
 .show-active-card{background:linear-gradient(180deg,var(--card-surf) 0%,var(--card-deep) 100%);border:1px solid var(--hair);border-radius:var(--R);margin-bottom:14px;overflow:hidden;box-shadow:0 1px 0 rgba(255,255,255,0.85) inset,0 4px 12px -4px rgba(40,30,20,0.10),inset 4px 0 0 0 var(--brass)}
-.show-active-btn{display:flex;align-items:center;gap:12px;padding:15px 16px 15px 19px;cursor:pointer;background:none;border:none;width:100%;text-align:left;-webkit-appearance:none;appearance:none}
+.show-active-btn{display:flex;align-items:center;gap:12px;padding:13px 14px 13px 17px;cursor:pointer;background:none;border:none;width:100%;text-align:left;-webkit-appearance:none;appearance:none}
 .show-active-btn:active{opacity:0.78}
-.sab-icon{width:24px;height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--brass-dk)}
+.sab-icon{width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--brass-dk)}
 .sab-icon svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .sab-body{flex:1;min-width:0}
-.sab-name{font-size:1rem;font-weight:700;color:var(--ink-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-0.01em}
-.sab-meta{font-family:var(--ff-mono);font-size:0.66rem;color:var(--ink-muted);font-weight:500;letter-spacing:0.06em;margin-top:3px}
-.sab-badge{background:var(--brass);color:#fff;font-family:var(--ff-mono);font-size:0.62rem;font-weight:700;letter-spacing:0.06em;padding:3px 8px;border-radius:6px;flex-shrink:0;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset}
-.sab-arrow{font-size:1.3rem;color:var(--brass);flex-shrink:0}
+.sab-name{font-size:0.98rem;font-weight:700;color:var(--ink-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-0.01em}
+.sab-meta{font-family:var(--ff-mono);font-size:0.62rem;color:var(--ink-muted);font-weight:500;letter-spacing:0.04em;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sab-eyebrow{font-family:var(--ff-mono);font-size:0.58rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--brass-dk);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sab-badge{background:var(--brass);color:#fff;font-family:var(--ff-mono);font-size:0.58rem;font-weight:700;letter-spacing:0.05em;padding:3px 7px;border-radius:999px;flex-shrink:0;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset;white-space:nowrap}
+.sab-arrow{font-size:1.2rem;color:var(--brass);flex-shrink:0;line-height:1}
 /* Board config (still used inside the new-show sheet) */
 .bc-label{font-size:0.72rem;font-weight:800;color:var(--dim);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px}
 .bc-label strong{color:var(--ink2);font-size:0.97rem;letter-spacing:0}
