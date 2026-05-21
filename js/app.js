@@ -236,13 +236,32 @@ function _quotaFor(n) {
 
 // Returns a single flat array of cars mixed across the selected eras.
 // eventKey + userId fold into the seed so the same event yields a
-// different card per user (you and FIL get different boards).
+// different card per user (you and FIL get different boards). Cars
+// the user has spotted on a previous show are PUSHED to the back of
+// each rarity pool, so a fresh board prefers cars the user has yet
+// to see and only repeats once the unseen pool is exhausted.
 function buildBoard(eventKey, userId, roll, eras, totalCount) {
-  const defaults = (typeof loadBingoDefaults === 'function') ? loadBingoDefaults() : { eras: [...ERAS], carCount: 16 };
+  const defaults = (typeof loadBingoDefaults === 'function') ? loadBingoDefaults() : { eras: [...ERAS], carCount: 9 };
   eras       = (eras && eras.length) ? eras : defaults.eras;
   totalCount = totalCount || defaults.carCount;
   roll       = (roll !== undefined) ? roll : (S.rolls || 0);
   const baseSeed = strSeed(`${eventKey || 'default'}::${userId || 'anon'}::r${roll}`);
+
+  // Cars the user has spotted at least once across any past event.
+  // S.spotted[event][cellKey] where cellKey is fil-{era}-{name}.
+  const seen = new Set();
+  const allSp = S.spotted || {};
+  for (const evName of Object.keys(allSp)) {
+    for (const key of Object.keys(allSp[evName] || {})) {
+      const m = /^fil-[^-]+-(.+)$/.exec(key);
+      if (m) seen.add(m[1]);
+    }
+  }
+  const orderUnseenFirst = (arr) => {
+    const unseen = arr.filter(c => !seen.has(c.name));
+    const haveSeen = arr.filter(c => seen.has(c.name));
+    return [...unseen, ...haveSeen];
+  };
 
   const quota = _quotaFor(totalCount);
   const byR   = { legendary:[], epic:[], rare:[], common:[] };
@@ -251,17 +270,18 @@ function buildBoard(eventKey, userId, roll, eras, totalCount) {
 
   const picks = [];
   Object.entries(quota).forEach(([rarity, q]) => {
-    const pool = seededShuffle(byR[rarity], baseSeed + rarity.length * 31);
+    const shuffled = seededShuffle(byR[rarity], baseSeed + rarity.length * 31);
+    const pool     = orderUnseenFirst(shuffled);
     for (let i = 0; i < q && i < pool.length; i++) picks.push(pool[i]);
   });
   // Fill any shortfall (small pools, or carCount > sum of quota).
   if (picks.length < totalCount) {
     const used = new Set(picks.map(c => c.name));
-    const filler = seededShuffle(
+    const fillerPool = orderUnseenFirst(seededShuffle(
       CAR_DB.filter(c => eras.includes(c.era) && !used.has(c.name)),
       baseSeed + 99991
-    ).slice(0, totalCount - picks.length);
-    picks.push(...filler);
+    ));
+    picks.push(...fillerPool.slice(0, totalCount - picks.length));
   }
   return seededShuffle(picks, baseSeed + 12345);
 }
@@ -823,6 +843,15 @@ async function startEvent() {
   // the background — its result swaps the local-style id for the
   // canonical remote one when it succeeds, but the show works
   // regardless. Same pattern as openAddMyCar / openAddUpcoming.
+  // Always pull the latest settings (eras + carCount) from the
+  // BingoDefaults store — S.* values can be stale from a previous
+  // show, which is why brand-new shows were sometimes getting 16
+  // cards when the user had set the slider to 9.
+  const settings = (typeof loadBingoDefaults === 'function') ? loadBingoDefaults() : null;
+  if (settings) {
+    S.boardEras     = (Array.isArray(settings.eras) && settings.eras.length) ? settings.eras : S.boardEras;
+    S.boardCarCount = Number.isFinite(settings.carCount) ? settings.carCount : S.boardCarCount;
+  }
   const localId = 'local-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
   S.event   = ev;
   S.eventId = localId;
@@ -2433,20 +2462,16 @@ function checkBingo() {
   const cars = S.board;
   const spotted = new Set(cars.filter(c => sp[cellKey(c.era, c.name)]).map(c => c.name));
   const allComplete = cars.length > 0 && spotted.size === cars.length;
-  const lines = _detectLines(cars, spotted);
 
+  // Only the full-board win still fires a celebration. The "3 in
+  // a row" toast was popping up over the camera flow during a
+  // photo capture and breaking the user's focus — the user asked
+  // for it gone. Line detection isn't run anymore for that reason.
   const fk = `${S.event || ''}`;
   if (allComplete && !S._fired.boardWin) {
     S._fired.boardWin = true;
     fireBingoToast('🏆<br>FULL BOARD!<br><span style="font-size:0.7em">Every car spotted</span>', 'big');
     fireConfetti();
-    return;
-  }
-  if (lines.length > 0 && !S._fired[`line:${fk}`]) {
-    S._fired[`line:${fk}`] = true;
-    bingoShown = true;
-    fireBingoToast('🎯<br>BINGO!<br><span style="font-size:0.7em">3 in a row</span>', 'small');
-    fireConfetti({ count: 18 });
     return;
   }
 }
