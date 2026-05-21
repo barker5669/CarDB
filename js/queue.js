@@ -145,32 +145,39 @@ const Queue = {
   // DB row. Offline: synthetic with a temp id (.id.startsWith('local-'))
   // and ._pending = true.
   async sightingCreate(payload) {
-    try {
-      return await _withTimeout(DB.sightings.create(payload), 5000);
-    } catch (err) {
-      if (!_isNetErr(err) && navigator.onLine) throw err;
-      _qLoad();
-      const tempId = _genTempId();
-      const synthetic = {
-        id:         tempId,
-        event_id:   payload.event_id ?? null,
-        user_id:    currentUserId(),
-        car_name:   payload.car_name,
-        car_era:    payload.car_era,
-        car_make:   payload.car_make ?? null,
-        car_rarity: payload.car_rarity ?? null,
-        score:      payload.score ?? null,
-        notes:      payload.notes ?? null,
-        location:   payload.location ?? null,
-        spotted_at: new Date().toISOString(),
-        sighting_photos: [],
-        _pending:   true,
-      };
-      _qState.push({ kind: 'sighting.create', payload, tempId, ts: Date.now() });
-      _qSave();
-      _setIndicator();
-      return synthetic;
+    // Local-first: ALWAYS return a synthetic record immediately.
+    // The photo save flow needs a sighting id RIGHT NOW (to attach
+    // the blob to via LocalPhotos.add), and waiting on Supabase
+    // means iOS Safari loses the user-gesture context for the
+    // camera. The synthetic stays "pending" until the background
+    // drain() replays it to the server (if available) and swaps
+    // the temp id for the canonical one via _tempMap.
+    _qLoad();
+    const tempId = _genTempId();
+    const synthetic = {
+      id:         tempId,
+      event_id:   payload.event_id ?? null,
+      user_id:    currentUserId(),
+      car_name:   payload.car_name,
+      car_era:    payload.car_era,
+      car_make:   payload.car_make ?? null,
+      car_rarity: payload.car_rarity ?? null,
+      score:      payload.score ?? null,
+      notes:      payload.notes ?? null,
+      location:   payload.location ?? null,
+      spotted_at: new Date().toISOString(),
+      sighting_photos: [],
+      _pending:   true,
+    };
+    _qState.push({ kind: 'sighting.create', payload, tempId, ts: Date.now() });
+    _qSave();
+    _setIndicator();
+    // Best-effort background sync — fire and forget. The drain
+    // retry loop handles failures and offline transitions.
+    if (navigator.onLine) {
+      setTimeout(() => Queue.drain().catch(() => {}), 0);
     }
+    return synthetic;
   },
 
   async sightingDelete(id) {
