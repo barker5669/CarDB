@@ -183,40 +183,53 @@
       <hr class="hero-divider">
       <div class="content-pad">
 
-      <!-- Active show card (only shown when there's a current event) -->
-      <div id="home-active-show" style="display:none">
-        <div class="show-active-card">
-          <button class="show-active-btn" onclick="showGoLive()">
-            <div class="sab-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M4 21V3M4 4h13l-3 4 3 4H4"/></svg>
-            </div>
-            <div class="sab-body">
-              <div class="sab-eyebrow">Current show</div>
-              <div class="sab-name" id="home-show-name">—</div>
-              <div class="sab-meta" id="home-show-meta">Tap to continue spotting</div>
-            </div>
-            <div class="sab-badge" id="home-show-badge">0</div>
-            <div class="sab-arrow">›</div>
-          </button>
+      <!-- Dashboard carousel — current show + next event on a
+           single horizontal-scroll-snap line. With a current
+           show, that card is the default visible slide; swipe
+           right to reveal the next event. Without a current
+           show, only the next-event card renders. -->
+      <div class="dash-carousel" id="dash-carousel">
+        <!-- Active show card (only shown when there's a current event) -->
+        <div id="home-active-show" class="dash-slide" style="display:none">
+          <div class="show-active-card">
+            <button class="show-active-btn" onclick="showGoLive()">
+              <div class="sab-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 21V3M4 4h13l-3 4 3 4H4"/></svg>
+              </div>
+              <div class="sab-body">
+                <div class="sab-eyebrow">Current show</div>
+                <div class="sab-name" id="home-show-name">—</div>
+                <div class="sab-meta" id="home-show-meta">Tap to continue spotting</div>
+              </div>
+              <div class="sab-badge" id="home-show-badge">0</div>
+              <div class="sab-arrow">›</div>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <!-- Next event preview — charcoal card with brass corner badge.
-           Shows the next upcoming RSVPd event when one exists, or an
-           "+ Add an event" CTA when none. renderNextEventCard toggles
-           between the two states. -->
-      <a class="upcoming-card" id="cb-next-event" onclick="onNextEventTap()">
-        <div class="date-block" id="cb-ne-date">
-          <div class="m" id="cb-ne-m">—</div>
-          <div class="d" id="cb-ne-d">—</div>
-        </div>
-        <div class="info">
-          <div class="top-line" id="cb-ne-eyebrow">Next event</div>
-          <div class="name" id="cb-ne-name">No event scheduled</div>
-          <div class="meta" id="cb-ne-loc">Tap to add one</div>
-        </div>
-        <div class="chev" id="cb-ne-chev">＋</div>
-      </a>
+        <!-- Next event preview — charcoal card with brass corner
+             badge. Filled when there's an RSVPd upcoming event,
+             "+ Add an event" empty state otherwise. -->
+        <a class="upcoming-card dash-slide" id="cb-next-event" onclick="onNextEventTap()">
+          <div class="date-block" id="cb-ne-date">
+            <div class="m" id="cb-ne-m">—</div>
+            <div class="d" id="cb-ne-d">—</div>
+          </div>
+          <div class="info">
+            <div class="top-line" id="cb-ne-eyebrow">Next event</div>
+            <div class="name" id="cb-ne-name">No event scheduled</div>
+            <div class="meta" id="cb-ne-loc">Tap to add one</div>
+          </div>
+          <div class="chev" id="cb-ne-chev">＋</div>
+        </a>
+      </div>
+      <!-- Pager dots under the carousel — only shown when BOTH
+           slides exist (active show + next event). Tap a dot to
+           jump to that slide. -->
+      <div class="dash-carousel-pager" id="dash-carousel-pager" style="display:none">
+        <span class="pd on" data-idx="0"></span>
+        <span class="pd"    data-idx="1"></span>
+      </div>
 
       <!-- Photos to sort banner — shown only when there are pending photos -->
       <button class="home-sort-banner" id="home-sort-banner" style="display:none" onclick="showPhotoSort()">

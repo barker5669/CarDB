@@ -981,6 +981,10 @@ function updateBingoState() {
 function updateHomeCard() {
   const activeDiv = document.getElementById('home-active-show');
   if (!activeDiv) return;
+  // Sync the dashboard carousel pager dots: only show them when
+  // BOTH active-show + next-event are rendered, and reflect which
+  // slide is currently scrolled into view.
+  refreshDashCarousel();
   // Friendly greeting in the header sub-line.
   const greeting = document.getElementById('home-greeting');
   if (greeting && typeof currentDisplayName === 'function') {
@@ -1025,6 +1029,41 @@ function updateHomeCard() {
   renderLifetimeStats();
   renderNextEventCard().catch(err => console.warn('renderNextEventCard:', err));
   renderHomeHero().catch(err => console.warn('renderHomeHero:', err));
+}
+
+// Dashboard carousel — shows the pager dots only when both the
+// active-show card and the next-event card are visible. Tapping a
+// dot jumps to that slide; scrolling the carousel highlights the
+// matching dot. One-time wire (idempotent via _wired flag on the
+// carousel element).
+function refreshDashCarousel() {
+  const car  = document.getElementById('dash-carousel');
+  const pager = document.getElementById('dash-carousel-pager');
+  const active = document.getElementById('home-active-show');
+  const next   = document.getElementById('cb-next-event');
+  if (!car || !pager || !active || !next) return;
+  const activeVisible = active.style.display !== 'none';
+  const showPager     = activeVisible && next.style.display !== 'none';
+  pager.style.display = showPager ? 'flex' : 'none';
+  if (!showPager) return;
+  // Snap to the active-show slide so the user lands on "current
+  // show" by default; they can swipe right to see the next event.
+  requestAnimationFrame(() => { car.scrollLeft = 0; });
+  if (car._wired) return;
+  car._wired = true;
+  pager.querySelectorAll('.pd').forEach(d => {
+    d.onclick = () => {
+      const idx = parseInt(d.dataset.idx || '0', 10);
+      const slides = car.querySelectorAll('.dash-slide');
+      const target = slides[idx];
+      if (target) car.scrollTo({ left: target.offsetLeft - car.offsetLeft, behavior: 'smooth' });
+    };
+  });
+  car.addEventListener('scroll', () => {
+    const w = car.clientWidth || 1;
+    const idx = Math.round(car.scrollLeft / w);
+    pager.querySelectorAll('.pd').forEach((d, i) => d.classList.toggle('on', i === idx));
+  });
 }
 
 // Dashboard hero — exact mockup structure. Cal pill + burger float

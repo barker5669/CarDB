@@ -266,9 +266,24 @@ body::before{
 .home-scroll::-webkit-scrollbar{display:none}
 .home-section-lbl{font-size:0.66rem;font-weight:800;letter-spacing:3px;color:var(--dim);text-transform:uppercase;padding:0 2px 9px;margin-top:4px}
 
+/* Dashboard carousel — active show + next event share one line.
+   Horizontal scroll-snap so the user swipes between them like a
+   compact card stack. When only one slide is visible (no current
+   show), the carousel sizes itself to that single card. */
+.dash-carousel{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;margin:0 -22px;padding:2px 22px;-webkit-overflow-scrolling:touch}
+.dash-carousel::-webkit-scrollbar{display:none}
+.dash-slide{flex:0 0 100%;scroll-snap-align:start;min-width:0}
+/* Override the .upcoming-card's existing display:flex inside the
+   slide wrapper — it still needs to behave as a flex row inside
+   its own slide. */
+.dash-carousel .upcoming-card{display:flex;width:100%}
+.dash-carousel-pager{display:flex;justify-content:center;align-items:center;gap:6px;margin:6px 0 0;height:10px}
+.dash-carousel-pager .pd{width:5px;height:5px;border-radius:50%;background:var(--hair-strong);transition:width 0.2s ease,background 0.2s ease;cursor:pointer}
+.dash-carousel-pager .pd.on{width:14px;border-radius:3px;background:var(--brass)}
+
 /* Active show card — premium card with brass left bar accent
    indicating "this is your current thing". */
-.show-active-card{background:linear-gradient(180deg,var(--card-surf) 0%,var(--card-deep) 100%);border:1px solid var(--hair);border-radius:var(--R);margin-bottom:14px;overflow:hidden;box-shadow:0 1px 0 rgba(255,255,255,0.85) inset,0 4px 12px -4px rgba(40,30,20,0.10),inset 4px 0 0 0 var(--brass)}
+.show-active-card{background:linear-gradient(180deg,var(--card-surf) 0%,var(--card-deep) 100%);border:1px solid var(--hair);border-radius:var(--R);margin-bottom:0;overflow:hidden;box-shadow:0 1px 0 rgba(255,255,255,0.85) inset,0 4px 12px -4px rgba(40,30,20,0.10),inset 4px 0 0 0 var(--brass)}
 .show-active-btn{display:flex;align-items:center;gap:12px;padding:13px 14px 13px 17px;cursor:pointer;background:none;border:none;width:100%;text-align:left;-webkit-appearance:none;appearance:none}
 .show-active-btn:active{opacity:0.78}
 .sab-icon{width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--brass-dk)}
@@ -1361,7 +1376,7 @@ body::before{
     0 16px 30px -14px rgba(20,16,10,0.28);
   cursor:pointer;text-decoration:none;color:inherit;
   border:0;-webkit-appearance:none;appearance:none;text-align:left;
-  width:100%;font:inherit;
+  width:100%;font:inherit;margin:0;
   transition:transform 0.16s ease;
 }
 .upcoming-card:hover{transform:translateY(-1px)}
