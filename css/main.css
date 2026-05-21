@@ -857,11 +857,12 @@ body::before{
    rarity-coloured corner diagonal; name on top, rarity tag on the
    bottom; brass tick badge bottom-right when spotted. Real image
    lives in the featured-bottom zone (tap a cell to swap it). */
-.bingo-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:9px;padding:8px 14px 12px}
-/* Cells are explicitly squat (wider than tall) via aspect-ratio
-   so a 3x3 grid of 9 cars fits in the upper half without needing
-   to scroll. Long names wrap inside the fixed box. */
-.bingo-cell{position:relative;aspect-ratio:1/0.78;background:linear-gradient(180deg,var(--card-surf) 0%,var(--card-deep) 100%);border:0;border-radius:9px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:4px;padding:10px 10px 9px;min-height:0;font:inherit;text-align:left;color:inherit;-webkit-appearance:none;appearance:none;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%);transition:transform 0.12s;box-shadow:0 0 0 1.5px rgba(139,130,120,0.30) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.10)}
+.bingo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:8px 14px 12px}
+/* Cells use aspect-ratio to stay uniform (height derived from
+   column width) AND a min-height as a floor so they never
+   collapse to nothing if the flex parent runs out of vertical
+   space. Long names wrap inside the fixed box. */
+.bingo-cell{position:relative;aspect-ratio:1/0.78;background:linear-gradient(180deg,var(--card-surf) 0%,var(--card-deep) 100%);border:0;border-radius:9px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:4px;padding:10px 10px 9px;min-height:78px;font:inherit;text-align:left;color:inherit;-webkit-appearance:none;appearance:none;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%);transition:transform 0.12s;box-shadow:0 0 0 1.5px rgba(139,130,120,0.30) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 1px 2px rgba(40,30,20,0.04),0 4px 10px -4px rgba(40,30,20,0.10)}
 .bingo-cell:active{transform:scale(0.96)}
 /* Rarity-tinted outline + chamfer diagonal — stronger 1.5px inset
    border in the rarity colour so the tier reads at a glance,
