@@ -70,7 +70,23 @@ function _isNetErr(err) {
       || m.includes('networkerror')
       || m.includes('load failed')
       || m.includes('network request failed')
+      || m.includes('timed out')   // _raceTimeout's marker
       || err.name === 'TypeError';  // fetch throws TypeError on offline
+}
+
+// Tiny inline timeout — Queue can't depend on app.js's _raceTimeout
+// (script-order: queue loads first). If a DB call hangs forever
+// because Supabase is unreachable, the spot/photo flow would sit on
+// "Saving photo…" with no further feedback. 5s is enough for a
+// reachable backend to respond; longer than that we fall back to
+// the local synthetic record and queue for replay.
+function _withTimeout(promise, ms = 5000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('timed out')), ms)
+    ),
+  ]);
 }
 
 function _setIndicator() {
@@ -130,7 +146,7 @@ const Queue = {
   // and ._pending = true.
   async sightingCreate(payload) {
     try {
-      return await DB.sightings.create(payload);
+      return await _withTimeout(DB.sightings.create(payload), 5000);
     } catch (err) {
       if (!_isNetErr(err) && navigator.onLine) throw err;
       _qLoad();
