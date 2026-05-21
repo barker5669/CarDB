@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Car Bingo — tests</title>
+<style>
+  body{font-family:ui-monospace,monospace;margin:24px;background:#1a1814;color:#fdfaf2}
+  h1{font-family:sans-serif;font-weight:700;letter-spacing:-0.02em;color:#c79569;margin-bottom:8px}
+  .summary{font-size:1.1rem;margin-bottom:18px}
+  .summary .pass{color:#5d8350}
+  .summary .fail{color:#c4533e}
+  .case{padding:6px 10px;margin:4px 0;border-radius:6px;border-left:3px solid #2f2b25}
+  .case.ok  {border-left-color:#5d8350;color:#a9c89a}
+  .case.bad {border-left-color:#c4533e;color:#e8a499}
+  .case .lbl{font-weight:600}
+  .case .why{font-size:0.85rem;opacity:0.85;margin-top:2px}
+  .group{margin-top:18px;color:#aea89e;font-size:0.85rem;letter-spacing:0.18em;text-transform:uppercase}
+  a{color:#c79569}
+</style>
+</head>
+<body>
+<h1>Car Bingo — test harness</h1>
+<p>Headless assertions for the bits that ship as classic scripts. Reload to re-run. <a href="/">Back to app</a>.</p>
+<div class="summary" id="summary">Running…</div>
+<div id="results"></div>
+
+<!-- Pull in the app's globals so we can call buildBoard, cellKey,
+     carNameFromCellKey, loadBingoDefaults, _quotaFor etc. directly. -->
+<script src="js/cars.js"></script>
+<script>
+  // Minimal stubs so app.js loads in test mode — it expects a few
+  // globals from auth/supabase/db modules at parse time. None of
+  // these test cases hit the network.
+  window.SB = { from: () => ({ select: () => ({ data: null, error: null }) }) };
+  window.CURRENT_SESSION = null;
+  window.CURRENT_PROFILE = null;
+  function currentUserId() { return 'test-user'; }
+  function currentDisplayName() { return 'Tester'; }
+  function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function escapeAttr(s) { return escapeHtml(s); }
+  function escapeJsSq(s) { return String(s ?? '').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+  // Stub showSnack / showErr / save / DB etc. so app.js doesn't
+  // explode when it tries to touch the DOM-less harness.
+  function showSnack() {}
+  function showErr()   {}
+  function save()      {}
+  function loadStore() { return {}; }
+  function buildEraTabs(){}
+  function renderList(){}
+  function renderEventList(){}
+  function refreshHomeShortcuts(){}
+  function refreshBingoSettingsRow(){}
+  function _setIndicator(){}
+  window.DB = {
+    sightings: { create:()=>Promise.reject('stub'), remove:()=>Promise.reject('stub') },
+    boards:    { get:()=>Promise.reject('stub'), upsert:()=>Promise.reject('stub') },
+    upcoming:  { list:()=>Promise.reject('stub') },
+    events:    { create:()=>Promise.reject('stub') },
+    myCars:    { list:()=>Promise.reject('stub'), create:()=>Promise.reject('stub') },
+    storage:   { publicUrl:()=>'' },
+  };
+  window.Queue = { drain:()=>Promise.resolve() };
+</script>
+<script src="js/app.js"></script>
+<script>
+  // ───────── tiny test runner ────────────────────────────────
+  const results = [];
+  function group(name) { results.push({ kind:'group', name }); }
+  function test(name, fn) {
+    try { fn(); results.push({ kind:'case', name, ok:true }); }
+    catch (e) { results.push({ kind:'case', name, ok:false, why: e && e.message ? e.message : String(e) }); }
+  }
+  function eq(a, b, label) {
+    const aj = JSON.stringify(a), bj = JSON.stringify(b);
+    if (aj !== bj) throw new Error(`${label || 'eq'}: expected ${bj}, got ${aj}`);
+  }
+  function truthy(v, label) { if (!v) throw new Error(`${label || 'truthy'}: got ${JSON.stringify(v)}`); }
+
+  // ───────── cellKey / carNameFromCellKey ────────────────────
+  group('cellKey / carNameFromCellKey');
+  test('cellKey builds fil-{era}-{name}', () => {
+    eq(cellKey('1960s', 'MGB Roadster'), 'fil-1960s-MGB Roadster');
+  });
+  test('carNameFromCellKey handles plain era', () => {
+    eq(carNameFromCellKey('fil-1960s-MGB Roadster'), 'MGB Roadster');
+  });
+  test('carNameFromCellKey handles hyphenated era Pre-War', () => {
+    eq(carNameFromCellKey('fil-Pre-War-Bentley 4½ Litre'), 'Bentley 4½ Litre');
+  });
+  test('carNameFromCellKey handles 70s-80s', () => {
+    eq(carNameFromCellKey('fil-70s–80s-Lamborghini Diablo'), 'Lamborghini Diablo');
+  });
+
+  // ───────── buildBoard ──────────────────────────────────────
+  group('buildBoard');
+  test('respects carCount from arg (9 cards in, 9 out)', () => {
+    // Empty S.spotted so seen-set is empty; build a fresh 9-card board.
+    S.spotted = {};
+    const board = buildBoard('test-1', 'test-user', 0, ERAS, 9);
+    eq(board.length, 9, 'board length');
+  });
+  test('respects carCount = 16', () => {
+    S.spotted = {};
+    const board = buildBoard('test-2', 'test-user', 0, ERAS, 16);
+    eq(board.length, 16, 'board length');
+  });
+  test('default carCount falls back to settings (9)', () => {
+    S.spotted = {};
+    localStorage.removeItem('cb-bingo-defaults-v1');
+    const board = buildBoard('test-3', 'test-user', 0, ERAS, undefined);
+    eq(board.length, 9, 'default board length');
+  });
+  test('quota: 9-card board has 1 legendary, ~2 epic, ~4 rare, rest common', () => {
+    const q = _quotaFor(9);
+    eq(q.legendary, 1);
+    truthy(q.epic >= 1);
+    truthy(q.rare >= 1);
+    truthy(q.legendary + q.epic + q.rare + q.common === 9, 'quotas sum to 9');
+  });
+  test('prefers unseen cars over already-spotted ones', () => {
+    // Mark every Pre-War car (rarer pool) as spotted in a fake event.
+    // The new board should still pick unseen cars from other eras
+    // before falling back to those.
+    const allPreWar = CAR_DB.filter(c => c.era === 'Pre-War');
+    S.spotted = { 'old-event': {} };
+    for (const c of allPreWar) {
+      S.spotted['old-event'][cellKey(c.era, c.name)] = {
+        event: 'old-event', loc: '', ts: new Date().toISOString(), sightings: [{ id:'x' }],
+      };
+    }
+    const board = buildBoard('test-4', 'test-user', 0, ERAS, 9);
+    const seenNames = new Set(allPreWar.map(c => c.name));
+    const overlap = board.filter(c => seenNames.has(c.name));
+    truthy(overlap.length === 0, `expected 0 Pre-War (seen) cars on new board, got ${overlap.length}`);
+  });
+  test('all 9 cards are unique', () => {
+    S.spotted = {};
+    const board = buildBoard('test-5', 'test-user', 0, ERAS, 9);
+    const names = new Set(board.map(c => c.name));
+    eq(names.size, board.length, 'card names unique');
+  });
+  test('same seed → same board (deterministic)', () => {
+    S.spotted = {};
+    const a = buildBoard('same', 'same-user', 0, ERAS, 9).map(c => c.name);
+    const b = buildBoard('same', 'same-user', 0, ERAS, 9).map(c => c.name);
+    eq(a, b, 'deterministic by seed');
+  });
+  test('different event seeds → different boards', () => {
+    S.spotted = {};
+    const a = buildBoard('event-a', 'same-user', 0, ERAS, 9).map(c => c.name).sort();
+    const b = buildBoard('event-b', 'same-user', 0, ERAS, 9).map(c => c.name).sort();
+    truthy(JSON.stringify(a) !== JSON.stringify(b), 'different seeds should produce different boards');
+  });
+
+  // ───────── loadBingoDefaults ───────────────────────────────
+  group('loadBingoDefaults');
+  test('falls back to {eras: ERAS, carCount: 9}', () => {
+    localStorage.removeItem('cb-bingo-defaults-v1');
+    const d = loadBingoDefaults();
+    eq(d.carCount, 9, 'fallback carCount');
+    truthy(Array.isArray(d.eras) && d.eras.length, 'fallback eras');
+  });
+  test('reads stored carCount', () => {
+    localStorage.setItem('cb-bingo-defaults-v1', JSON.stringify({ eras: ERAS, carCount: 12 }));
+    eq(loadBingoDefaults().carCount, 12);
+  });
+  test('coerces invalid carCount to fallback', () => {
+    localStorage.setItem('cb-bingo-defaults-v1', JSON.stringify({ eras: ERAS, carCount: 'eleventy' }));
+    eq(loadBingoDefaults().carCount, 9);
+  });
+
+  // ───────── render results ──────────────────────────────────
+  const sum  = document.getElementById('summary');
+  const rEl  = document.getElementById('results');
+  const cases = results.filter(r => r.kind === 'case');
+  const passed = cases.filter(r => r.ok).length;
+  const failed = cases.length - passed;
+  sum.innerHTML = `<span class="pass">${passed} passed</span> · `
+                + `<span class="fail">${failed} failed</span> · `
+                + `${cases.length} total`;
+  rEl.innerHTML = results.map(r => {
+    if (r.kind === 'group') return `<div class="group">${escapeHtml(r.name)}</div>`;
+    return `<div class="case ${r.ok ? 'ok' : 'bad'}">`
+         +   `<div class="lbl">${r.ok ? '✓' : '✗'} ${escapeHtml(r.name)}</div>`
+         +   (r.why ? `<div class="why">${escapeHtml(r.why)}</div>` : '')
+         + `</div>`;
+  }).join('');
+</script>
+</body>
+</html>

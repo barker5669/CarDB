@@ -20,7 +20,7 @@
 
 <!-- AUTH GATE -->
 <div class="screen active" id="s-auth">
-  <div class="auth-emblem">🏎</div>
+  <div class="auth-emblem" aria-hidden="true"><svg viewBox="0 0 24 24" width="56" height="56" stroke="currentColor" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l1.5-4.5A2 2 0 0 1 6.4 7h11.2a2 2 0 0 1 1.9 1.5L21 13"/><path d="M3 13h18v4H3z"/><circle cx="7" cy="17" r="1.5"/><circle cx="17" cy="17" r="1.5"/></svg></div>
   <div class="auth-title">Car <em>Bingo</em></div>
 
   <!-- SIGN IN (default) -->
@@ -56,7 +56,7 @@
 
   <!-- FORGOT / FIRST-TIME PASSWORD RESET -->
   <div class="auth-view" id="auth-reset-view" style="display:none">
-    <div class="auth-big-emoji">🔑</div>
+    <div class="auth-big-emoji" aria-hidden="true"></div>
     <div class="auth-hint">Set or reset password</div>
     <form class="auth-form" id="auth-reset-form" onsubmit="handleAuthResetSubmit(event)">
       <input
@@ -80,7 +80,7 @@
 
   <!-- CHECK EMAIL — confirmation that the reset link was sent -->
   <div class="auth-view" id="auth-check-view" style="display:none">
-    <div class="auth-big-emoji">📬</div>
+    <div class="auth-big-emoji" aria-hidden="true"></div>
     <div class="auth-hint">Check your email</div>
     <div class="auth-sub">We've sent a reset link to<br><strong id="auth-sent-to"></strong></div>
     <div class="auth-sub auth-sub-soft">Open it on this device — you'll be able to choose a password.</div>
@@ -89,7 +89,7 @@
 
   <!-- SET PASSWORD — appears after the user clicks the reset link -->
   <div class="auth-view" id="auth-setpw-view" style="display:none">
-    <div class="auth-big-emoji">🔒</div>
+    <div class="auth-big-emoji" aria-hidden="true"></div>
     <div class="auth-hint">Choose a password</div>
     <form class="auth-form" id="auth-setpw-form" onsubmit="handleAuthSetPasswordSubmit(event)">
       <input
@@ -305,11 +305,11 @@
         <div class="page-hdr-sub" id="bingo-ev-sub"></div>
       </div>
       <button class="hdr-pill-btn hdr-view-toggle" id="view-toggle-btn" onclick="toggleBingoView()" title="Toggle view"><span id="view-toggle-icon">▦</span></button>
-      <button class="hdr-pill-btn" id="reroll-btn" onclick="rerollBoard()">🎲 3 left</button>
+      <button class="hdr-pill-btn" id="reroll-btn" onclick="rerollBoard()">Reroll · 3</button>
     </div>
     <!-- no-event state OR live board -->
     <div class="bingo-no-event" id="bingo-no-event">
-      <div class="bne-icon">🏁</div>
+      <div class="bne-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="40" height="40" stroke="currentColor" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V3M4 4h13l-3 4 3 4H4"/></svg></div>
       <div class="bne-title">No show running</div>
       <div class="bne-body">Start a new show to build a bingo card, or jump back into a previous show from the <strong>Shows</strong> tab.</div>
       <button class="bne-btn" onclick="openNewShowSheet()">＋ Start a new show</button>
@@ -500,41 +500,41 @@
     <div class="settings-scroll">
       <div class="settings-group-lbl">Account</div>
       <button class="settings-row" id="sr-account-info" onclick="showAccountInfo()">
-        <span class="sr-icon">👤</span>
+        <span class="sr-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>
         <div class="sr-body"><div class="sr-label" id="sr-account-name">Signed in</div><div class="sr-sub" id="sr-account-email">—</div></div>
         <span class="sr-arrow">›</span>
       </button>
       <button class="settings-row sr-danger" onclick="doSignOut()">
-        <span class="sr-icon">🚪</span>
-        <div class="sr-body"><div class="sr-label">Sign Out</div><div class="sr-sub">You'll need a new sign-in link to return</div></div>
+        <span class="sr-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4"/><path d="M10 17l-5-5 5-5"/><line x1="5" y1="12" x2="15" y2="12"/></svg></span>
+        <div class="sr-body"><div class="sr-label">Sign out</div><div class="sr-sub">You'll need a new sign-in link to return</div></div>
         <span class="sr-arrow">›</span>
       </button>
       <div class="settings-group-lbl">Bingo</div>
       <button class="settings-row" onclick="openBingoSettings()">
-        <span class="sr-icon">🎯</span>
-        <div class="sr-body"><div class="sr-label">Bingo Card</div><div class="sr-sub" id="sr-bingo-sub">All eras · 16 cars</div></div>
+        <span class="sr-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg></span>
+        <div class="sr-body"><div class="sr-label">Bingo card</div><div class="sr-sub" id="sr-bingo-sub">All eras · 9 cars</div></div>
         <span class="sr-arrow">›</span>
       </button>
       <div class="settings-group-lbl">App</div>
       <button class="settings-row" onclick="showInstallInfo()">
-        <span class="sr-icon">📲</span>
-        <div class="sr-body"><div class="sr-label">Install App</div><div class="sr-sub">Add to home screen for best experience</div></div>
+        <span class="sr-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg></span>
+        <div class="sr-body"><div class="sr-label">Install app</div><div class="sr-sub">Add to home screen for the best experience</div></div>
         <span class="sr-arrow">›</span>
       </button>
       <button class="settings-row" onclick="showAbout()">
-        <span class="sr-icon">ℹ️</span>
+        <span class="sr-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="8.01"/><line x1="12" y1="12" x2="12" y2="16"/></svg></span>
         <div class="sr-body"><div class="sr-label">About Car Bingo</div><div class="sr-sub">Version &amp; how to use</div></div>
         <span class="sr-arrow">›</span>
       </button>
       <div class="settings-group-lbl">Data</div>
       <button class="settings-row" onclick="exportData()">
-        <span class="sr-icon">📤</span>
-        <div class="sr-body"><div class="sr-label">Export My Data</div><div class="sr-sub">Download all sightings as JSON</div></div>
+        <span class="sr-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+        <div class="sr-body"><div class="sr-label">Export my data</div><div class="sr-sub">Download all sightings as JSON</div></div>
         <span class="sr-arrow">›</span>
       </button>
       <button class="settings-row sr-danger" onclick="confirmClearData()">
-        <span class="sr-icon">🗑️</span>
-        <div class="sr-body"><div class="sr-label">Clear All Data</div><div class="sr-sub">Wipe all events and sightings</div></div>
+        <span class="sr-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></span>
+        <div class="sr-body"><div class="sr-label">Clear all data</div><div class="sr-sub">Wipe all events and sightings</div></div>
         <span class="sr-arrow">›</span>
       </button>
     </div>
@@ -560,7 +560,10 @@
       </div>
 
       <!-- Primary action: huge, first thing FIL sees ────────── -->
-      <button class="spot-btn" id="spot-btn" onclick="addSighting()">📷  I Spotted It!</button>
+      <button class="spot-btn" id="spot-btn" onclick="addSighting()">
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        I spotted it
+      </button>
       <div class="spot-counter" id="spot-counter" style="display:none">
         <span id="spot-counter-text"></span>
         <button class="spot-undo" id="spot-undo" onclick="changeCount(-1)">Undo last</button>
@@ -576,7 +579,7 @@
       <div class="modal-details">
         <div class="modal-stats" id="m-stats"></div>
         <div class="modal-desc"  id="m-desc"></div>
-        <a class="hagerty-btn" id="m-hagerty" href="#" target="_blank" rel="noopener">📈 Hagerty Valuation</a>
+        <a class="hagerty-btn" id="m-hagerty" href="#" target="_blank" rel="noopener">Hagerty valuation ↗</a>
       </div>
 
       <div class="modal-close-row"><button class="modal-close-full" onclick="closeModal()">Done</button></div>
@@ -594,9 +597,9 @@
   <div class="action-sheet">
     <div class="picker-handle" style="margin-bottom:4px"></div>
     <div class="action-sheet-title">Change Show</div>
-    <button class="action-btn" onclick="goToNewEvent()">＋ Start a New Show</button>
-    <button class="action-btn" onclick="goToSwitchEvent()">▶ Continue Another Show</button>
-    <button class="action-btn action-btn-danger" onclick="endCurrentShow()">🏁 End This Show</button>
+    <button class="action-btn" onclick="goToNewEvent()">＋ Start a new show</button>
+    <button class="action-btn" onclick="goToSwitchEvent()">Continue another show</button>
+    <button class="action-btn action-btn-danger" onclick="endCurrentShow()">End this show</button>
     <button class="action-btn action-btn-cancel" onclick="closeEventMenu()">Cancel</button>
   </div>
 </div>
@@ -608,10 +611,10 @@
     <div class="action-sheet-title">Photo captured — attach it to:</div>
     <img class="cam-preview-img" id="cam-preview-img" src="" alt="">
     <button class="action-btn" id="cam-attach-event-btn" onclick="camAttachToEvent()">
-      🏁 Current Show — <span id="cam-attach-show-name">No show</span>
+      Current show — <span id="cam-attach-show-name">No show</span>
     </button>
-    <button class="action-btn" onclick="camAttachToCollection()">📖 My Collection (not at a show)</button>
-    <button class="action-btn" onclick="camAttachToLater()">💾 Save for later (sort it after)</button>
+    <button class="action-btn" onclick="camAttachToCollection()">My collection (not at a show)</button>
+    <button class="action-btn" onclick="camAttachToLater()">Save for later</button>
     <button class="action-btn action-btn-cancel" onclick="camAttachDiscard()">Discard photo</button>
   </div>
 </div>
@@ -646,8 +649,8 @@
     </div>
     <div class="garage-add-loc-wrap">
       <div class="garage-add-loc-row">
-        <input class="picker-search" id="garage-add-loc" type="text" placeholder="📍 Where did you see it? (optional)" autocomplete="off" style="flex:1;margin-bottom:0" />
-        <button class="loc-detect-btn" id="loc-detect-btn" onclick="detectLocation()">📡</button>
+        <input class="picker-search" id="garage-add-loc" type="text" placeholder="Where did you see it? (optional)" autocomplete="off" style="flex:1;margin-bottom:0" />
+        <button class="loc-detect-btn" id="loc-detect-btn" onclick="detectLocation()" aria-label="Detect location"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg></button>
       </div>
       <div class="loc-status" id="loc-status"></div>
     </div>
@@ -683,7 +686,7 @@
       <div class="form-hint">Your bingo card builds itself from your <strong>Settings</strong> defaults — eras and card size.</div>
     </div>
     <div class="form-action">
-      <button class="primary-btn" type="button" onclick="startEvent()">🏁&nbsp; Start show</button>
+      <button class="primary-btn" type="button" onclick="startEvent()">Start show</button>
     </div>
   </div>
 </div>
@@ -719,7 +722,7 @@
           <img id="mce-photo-img" alt="">
           <button type="button" class="mce-photo-remove" onclick="clearMyCarEntryPhoto()">✕ Remove</button>
         </div>
-        <button type="button" class="mce-photo-btn" onclick="triggerMyCarEntryPhoto()">📷 Add a photo</button>
+        <button type="button" class="mce-photo-btn" onclick="triggerMyCarEntryPhoto()"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Add a photo</button>
       </div>
     </div>
     <div class="form-action">
@@ -792,9 +795,9 @@
   </div>
 </div>
 
-<div class="offline-banner"   id="offline-banner">⚡ Offline — changes will sync when you're back</div>
+<div class="offline-banner"   id="offline-banner">Offline — changes will sync when you're back</div>
 <div class="queue-indicator"  id="queue-indicator"></div>
-<div class="bingo-toast" id="bingo-toast">🏆<br>BINGO!</div>
+<div class="bingo-toast" id="bingo-toast">BINGO</div>
 <div class="snackbar" id="snackbar"></div>
 <input type="file" id="camInput"             accept="image/*" capture="environment" onchange="handlePhoto(event)">
 <input type="file" id="camInputFirst"        accept="image/*" capture="environment" onchange="handlePhotoFirst(event)">

@@ -138,7 +138,7 @@ function currentSpotted() {
 function showErr(prefix, err) {
   console.error(prefix, err);
   const detail = err?.message || err?.error_description || err?.hint || (typeof err === 'string' ? err : 'Unknown error');
-  showSnack(`⚠️ ${prefix}: ${detail}`);
+  showSnack(`${prefix}: ${detail}`);
 }
 
 // Promise.race wrapper: any DB call wrapped in this rejects after `ms`
@@ -200,7 +200,7 @@ function save() {
     console.warn('save() cache failed:', e);
     if (!_quotaWarned && typeof showSnack === 'function') {
       _quotaWarned = true;
-      showSnack('⚠️ Local cache full — your data is still saved online');
+      showSnack('Local cache full — your data is still saved online');
     }
   }
 }
@@ -248,13 +248,14 @@ function buildBoard(eventKey, userId, roll, eras, totalCount) {
   const baseSeed = strSeed(`${eventKey || 'default'}::${userId || 'anon'}::r${roll}`);
 
   // Cars the user has spotted at least once across any past event.
-  // S.spotted[event][cellKey] where cellKey is fil-{era}-{name}.
+  // S.spotted[event][cellKey] where cellKey is fil-{era}-{name};
+  // era names contain hyphens, so use carNameFromCellKey not regex.
   const seen = new Set();
   const allSp = S.spotted || {};
   for (const evName of Object.keys(allSp)) {
     for (const key of Object.keys(allSp[evName] || {})) {
-      const m = /^fil-[^-]+-(.+)$/.exec(key);
-      if (m) seen.add(m[1]);
+      const name = carNameFromCellKey(key);
+      if (name) seen.add(name);
     }
   }
   const orderUnseenFirst = (arr) => {
@@ -459,7 +460,7 @@ async function rerollBoard() {
   S._fired = {};   // milestones reset for the new card
   save();
   buildEraTabs(); renderList();
-  showSnack(`🎲 New board! (${3 - S.rolls} reroll${3-S.rolls===1?'':'s'} remaining)`);
+  showSnack(`New board · ${3 - S.rolls} reroll${3-S.rolls===1?'':'s'} remaining`);
 }
 
 // ══════════════════════════════════════════════
@@ -532,12 +533,12 @@ async function renderPastEvents() {
     const meta = [e.location, fmtDate(e.event_date)].filter(Boolean).join(' · ');
     const count = countFor(e.name);
     return `<button class="past-btn" onclick="resumeEvent('${escapeJsSq(e.name)}')">
-      <span class="pb-icon">🏁</span>
+      <span class="pb-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 21V3M4 4h13l-3 4 3 4H4"/></svg></span>
       <div class="pb-body">
         <div class="pb-name">${escapeHtml(e.name)}</div>
         ${meta ? `<div class="pb-meta">${escapeHtml(meta)}</div>` : ''}
       </div>
-      ${count > 0 ? `<span style="background:var(--gold);color:var(--bg);font-size:0.68rem;font-weight:900;padding:2px 8px;border-radius:6px;flex-shrink:0">${count} spotted</span>` : ''}
+      ${count > 0 ? `<span class="pb-count">${count} spotted</span>` : ''}
       <span class="pb-arrow">›</span>
     </button>`;
   }).join('');
@@ -564,7 +565,7 @@ function renderShowsList() {
   if (!events.length) {
     body.innerHTML = `
       <div class="shows-empty">
-        <div class="shows-empty-icon">🏁</div>
+        <div class="shows-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 21V3M4 4h13l-3 4 3 4H4"/></svg></div>
         <h3>No shows yet</h3>
         <p>Start a show from Home and it'll show up here when you end it.</p>
       </div>`;
@@ -586,7 +587,7 @@ function renderShowsList() {
     const meta  = [e.location, fmtDate(e.event_date)].filter(Boolean).join(' · ');
     const count = countFor(e.name);
     return `<button class="shows-row" onclick="resumeEvent('${escapeJsSq(e.name)}')">
-      <span class="shows-row-icon">🏁</span>
+      <span class="shows-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 21V3M4 4h13l-3 4 3 4H4"/></svg></span>
       <div class="shows-row-body">
         <div class="shows-row-name">${escapeHtml(e.name)}</div>
         ${meta ? `<div class="shows-row-meta">${escapeHtml(meta)}</div>` : ''}
@@ -687,7 +688,7 @@ async function hydrateSightingsFromDB() {
   try { rows = await DB.sightings.listMine(); }
   catch (err) {
     console.error('hydrateSightingsFromDB:', err);
-    showSnack('⚠️ Could not load your sightings');
+    showSnack('Could not load your sightings');
     return;
   }
 
@@ -841,17 +842,18 @@ async function startEvent() {
   // Local-first: build the show entirely from local state so the user
   // lands on the bingo board instantly. Supabase create happens in
   // the background — its result swaps the local-style id for the
-  // canonical remote one when it succeeds, but the show works
-  // regardless. Same pattern as openAddMyCar / openAddUpcoming.
-  // Always pull the latest settings (eras + carCount) from the
-  // BingoDefaults store — S.* values can be stale from a previous
-  // show, which is why brand-new shows were sometimes getting 16
-  // cards when the user had set the slider to 9.
-  const settings = (typeof loadBingoDefaults === 'function') ? loadBingoDefaults() : null;
-  if (settings) {
-    S.boardEras     = (Array.isArray(settings.eras) && settings.eras.length) ? settings.eras : S.boardEras;
-    S.boardCarCount = Number.isFinite(settings.carCount) ? settings.carCount : S.boardCarCount;
-  }
+  // canonical remote one when it succeeds.
+  //
+  // ALWAYS pull the latest settings (eras + carCount) from the
+  // BingoDefaults store. S.* values can carry over from a resumed
+  // show (resumeEvent sets S.boardCarCount to whatever that show
+  // had), so trusting them gives 16-card boards even when the user
+  // has the slider set to 9. Read from loadBingoDefaults directly.
+  const settings  = loadBingoDefaults();
+  const erasList  = (Array.isArray(settings.eras) && settings.eras.length) ? settings.eras : ERAS.slice();
+  const carCount  = (Number.isInteger(settings.carCount) && settings.carCount > 0) ? settings.carCount : 9;
+  S.boardEras     = erasList;
+  S.boardCarCount = carCount;
   const localId = 'local-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
   S.event   = ev;
   S.eventId = localId;
@@ -861,7 +863,7 @@ async function startEvent() {
     : '';
   const userId = (typeof currentUserId === 'function') ? currentUserId() : 'local-user';
   S.rolls = 0;
-  S.board = buildBoard(localId, userId, S.rolls, S.boardEras, S.boardCarCount);
+  S.board = buildBoard(localId, userId, 0, erasList, carCount);
   if (!S.spotted[ev]) S.spotted[ev] = {};
   _resetBingoFiredForEvent();
   // Persist the show + board to localStorage (the save() function
@@ -1267,9 +1269,9 @@ function renderLifetimeStats() {
       const data = cars[key] || {};
       const sightings = Array.isArray(data.sightings) ? data.sightings : [];
       totalSpotted += 1;
-      // Find the car name: the cellKey is fil-{era}-{name}.
-      const m = /^fil-[^-]+-(.+)$/.exec(key);
-      const carName = m ? m[1] : null;
+      // Find the car name via the helper that handles hyphenated
+      // era names ("Pre-War", "70s–80s") correctly.
+      const carName = carNameFromCellKey(key);
       const car = carName ? carIndex[carName] : null;
       const isLegendary = !!(car && car.rarity === 'legendary');
       if (isLegendary) totalLegendary += 1;
@@ -1507,6 +1509,23 @@ function showGoLive() {
 // ══════════════════════════════════════════════
 function cellKey(era, name) { return `fil-${era}-${name}`; }
 
+// Reverse of cellKey — pulls the car name back out of a cellKey
+// string. Era names contain hyphens ("Pre-War", "70s–80s") so a
+// naive `/^fil-[^-]+-(.+)$/` regex extracts the wrong portion.
+// Instead, try each known era as a prefix.
+function carNameFromCellKey(key) {
+  if (!key || typeof key !== 'string') return null;
+  if (typeof ERAS !== 'undefined' && Array.isArray(ERAS)) {
+    for (const era of ERAS) {
+      const prefix = `fil-${era}-`;
+      if (key.startsWith(prefix)) return key.slice(prefix.length);
+    }
+  }
+  // Fallback if ERAS isn't loaded — still better than nothing.
+  const m = /^fil-(.+?)-(.+)$/.exec(key);
+  return m ? m[2] : null;
+}
+
 function buildEraTabs() {
   // Header subtitle (event name · location · date)
   const ev = S.event + (S.loc ? ' · '+S.loc : '') + (S.date ? ' · '+S.date : '');
@@ -1516,7 +1535,7 @@ function buildEraTabs() {
   const rb = document.getElementById('reroll-btn');
   if (rb) {
     const left = 3 - (S.rolls || 0);
-    rb.textContent = left > 0 ? `🎲 ${left}` : '🎲✕';
+    rb.textContent = left > 0 ? `Reroll · ${left}` : 'Reroll · 0';
     rb.title = left > 0 ? `Reroll board (${left} left)` : 'No rerolls remaining';
     rb.classList.toggle('exhausted', left <= 0);
   }
@@ -1672,20 +1691,21 @@ function openFeaturedImageFullscreen() {
 
 // Spot the currently-featured car. Reuses the same path the modal
 // uses, so sighting counts / photos / bingo toasts all still work.
-function spotFeaturedCar() {
+async function spotFeaturedCar() {
   const name = S.bingoFeatured;
   if (!name) return;
   const cars = Array.isArray(S.board) ? S.board : [];
   const car = cars.find(c => c.name === name);
   if (!car) return;
-  // openModal sets up state and then addSighting fires off the
-  // sighting + photo flow. Keeping the modal-driven path makes
-  // sure the celebration / photo capture wiring stays consistent.
-  if (typeof openModal === 'function') openModal(car, cellKey(car.era, car.name));
-  // Fire the spot immediately so the user doesn't have to tap a
-  // second time once the modal opens.
+  // Set the same state addSighting + handlePhoto read (S.modalKey,
+  // S.modalCar) WITHOUT opening the detail modal. The user stays on
+  // the bingo grid, the camera fires immediately, the photo saves,
+  // and the cell flips to spotted — no big modal in the way.
+  S.modalKey = cellKey(car.era, car.name);
+  S.modalCar = car;
+  S.pendingSightingId = null;
   if (typeof addSighting === 'function') {
-    setTimeout(() => { try { addSighting(); } catch (e) { console.warn('addSighting:', e); } }, 50);
+    try { await addSighting(); } catch (e) { console.warn('addSighting:', e); }
   }
 }
 
@@ -1815,9 +1835,9 @@ function buildEvFilters() {
   document.getElementById('ev-rarity-row').innerHTML =
     rarities.map(([v,l]) => `<button class="fchip fc-${v}${EV_F.rarity===v?' active':''}" onclick="evSetRarity('${v}')">${l}</button>`).join('');
   const evMakes = ['All', ...new Set(CAR_DB.map(c=>c.make))].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
-  document.getElementById('ev-make-row').innerHTML = pillSelect('ev-make-sel', evMakes.map(m=>({value:m,label:m})), EV_F.make, 'evSetMake', '🏭 All Makes');
+  document.getElementById('ev-make-row').innerHTML = pillSelect('ev-make-sel', evMakes.map(m=>({value:m,label:m})), EV_F.make, 'evSetMake', 'All Makes');
   const evCountries = ['All', ...new Set(CAR_DB.map(c=>c.country))].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
-  document.getElementById('ev-country-row').innerHTML = pillSelect('ev-country-sel', evCountries.map(c=>({value:c,label:c})), EV_F.country, 'evSetCountry', '🌍 All Countries');
+  document.getElementById('ev-country-row').innerHTML = pillSelect('ev-country-sel', evCountries.map(c=>({value:c,label:c})), EV_F.country, 'evSetCountry', 'All Countries');
   document.getElementById('ev-tog-seen').classList.toggle('active', EV_F.showSeen);
   document.getElementById('ev-tog-unseen').classList.toggle('active', EV_F.showUnseen);
 }
@@ -1839,7 +1859,7 @@ function renderEventList() {
   if (!S.event) {
     if (listEl) listEl.innerHTML = `
       <div class="no-event-prompt">
-        <div class="nep-icon">🏁</div>
+        <div class="nep-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 21V3M4 4h13l-3 4 3 4H4"/></svg></div>
         <h3>No show selected</h3>
         <p>Head back to the home screen to start a new show, then your spotted cars will appear here.</p>
         <button class="nep-btn" onclick="goToNewEvent()">Choose a Show</button>
@@ -1875,14 +1895,14 @@ function renderEventList() {
 
   let html = '';
   if (!EV_F.showSeen && !EV_F.showUnseen) {
-    html = `<div class="ev-empty"><div class="icon">🔍</div><p>Both filters hidden.</p></div>`;
+    html = `<div class="ev-empty"><p>Both filters hidden.</p></div>`;
   } else if (!seenCars.length && !unseenCars.length) {
-    html = `<div class="ev-empty"><div class="icon">🚗</div><p>No cars match this filter.</p></div>`;
+    html = `<div class="ev-empty"><p>No cars match this filter.</p></div>`;
   } else {
     if (EV_F.showSeen) {
       if (!seenCars.length && EV_F.showUnseen) { /* nothing */ }
       else if (!seenCars.length) {
-        html += `<div class="ev-section-hdr">Spotted at this event (0)</div><div class="ev-empty"><div class="icon">👀</div><p>Nothing spotted yet.<br>Tap <strong>Add Car</strong> or spot on Bingo tab.</p><button class="ev-empty-btn" onclick="openPicker()">＋ Add a Car</button></div>`;
+        html += `<div class="ev-section-hdr">Spotted at this event (0)</div><div class="ev-empty"><p>Nothing spotted yet.<br>Tap <strong>Add Car</strong> or spot on the Bingo tab.</p><button class="ev-empty-btn" onclick="openPicker()">＋ Add a car</button></div>`;
       } else {
         html += `<div class="ev-section-hdr">Spotted at this event (${seenCars.length})</div>`;
         html += seenCars.map(c => evSeenCardHTML(c, spottedMap[c.name])).join('');
@@ -1966,7 +1986,7 @@ async function quickAddSighting(car) {
     if (!sp[key]) sp[key] = { event:S.event, loc:S.loc, ts:row.spotted_at, sightings:[] };
     sp[key].sightings.push({ id:row.id, event:S.event, loc:S.loc, ts:row.spotted_at, photos:[] });
     save(); renderEventList(); renderList(); buildEraTabs(); updateScore();
-    showSnack(`🎯 ${car.name} spotted!`);
+    showSnack(`${car.name} spotted`);
     checkBingo();
     await attachWaitingPhoto(key);
     return;
@@ -1977,7 +1997,7 @@ async function quickAddSighting(car) {
   S.modalKey = key;
   S.pendingSightingPromise = sightingPromise;
   document.getElementById('camInput').click();
-  showSnack(`🎯 ${car.name} spotted!`);
+  showSnack(`${car.name} spotted`);
 
   let row;
   try { row = await sightingPromise; }
@@ -2065,11 +2085,11 @@ function buildGarageFilters() {
   document.getElementById('g-rarity-row').innerHTML =
     rarities.map(([v,l]) => `<button class="fchip fc-${v}${G_F.rarity===v?' active':''}" onclick="gSetRarity('${v}')">${l}</button>`).join('');
   const makes = ['All', ...new Set(CAR_DB.map(c=>c.make))].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
-  document.getElementById('g-make-row').innerHTML = pillSelect('g-make-sel', makes.map(m=>({value:m,label:m})), G_F.make, 'gSetMake', '🏭 All Makes');
+  document.getElementById('g-make-row').innerHTML = pillSelect('g-make-sel', makes.map(m=>({value:m,label:m})), G_F.make, 'gSetMake', 'All Makes');
   const countries = ['All', ...new Set(CAR_DB.map(c=>c.country))].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
-  document.getElementById('g-country-row').innerHTML = pillSelect('g-country-sel', countries.map(c=>({value:c,label:c})), G_F.country, 'gSetCountry', '🌍 All Countries');
+  document.getElementById('g-country-row').innerHTML = pillSelect('g-country-sel', countries.map(c=>({value:c,label:c})), G_F.country, 'gSetCountry', 'All Countries');
   const evNames = ['All', ...Object.keys(S.spotted).filter(ev=>Object.keys(S.spotted[ev]||{}).length>0)].sort((a,b)=>a==='All'?-1:a.localeCompare(b));
-  document.getElementById('g-event-row').innerHTML = pillSelect('g-event-sel', evNames.map(e=>({value:e,label:e})), G_F.event, 'gSetEvent', '📋 All Events');
+  document.getElementById('g-event-row').innerHTML = pillSelect('g-event-sel', evNames.map(e=>({value:e,label:e})), G_F.event, 'gSetEvent', 'All Events');
   document.getElementById('g-tog-seen').classList.toggle('active', G_F.showSeen);
   document.getElementById('g-tog-unseen').classList.toggle('active', G_F.showUnseen);
 }
@@ -2324,7 +2344,7 @@ async function addSighting() {
   });
   S.pendingSightingPromise = sightingPromise;
   document.getElementById('camInput').click();
-  showSnack('🎯 Spotted! Opening camera…');
+  showSnack('Spotted · opening camera');
 
   let row;
   try { row = await sightingPromise; }
@@ -2509,7 +2529,7 @@ function checkBingo() {
   const fk = `${S.event || ''}`;
   if (allComplete && !S._fired.boardWin) {
     S._fired.boardWin = true;
-    fireBingoToast('🏆<br>FULL BOARD!<br><span style="font-size:0.7em">Every car spotted</span>', 'big');
+    fireBingoToast('FULL BOARD<br><span style="font-size:0.45em;letter-spacing:0.15em">Every car spotted</span>', 'big');
     fireConfetti();
     return;
   }
@@ -2520,16 +2540,20 @@ function checkBingo() {
 // Cheap and cheerful: a handful of DOM elements that float down with
 // CSS animation and self-clean. No SVG canvas, no audio, no library.
 // ══════════════════════════════════════════════
-function fireConfetti({ count = 36 } = {}) {
+function fireConfetti({ count = 32 } = {}) {
   const root = document.body;
   if (!root) return;
-  const emojis = ['🎉','🏆','⭐','🎊','🚗','🏁','✨'];
+  // Brass / ink particles instead of emoji. Cheap and on-brand.
+  const palettes = ['#a67c52','#c79569','#7a5836','#1a1814'];
   for (let i = 0; i < count; i++) {
     const p = document.createElement('div');
     p.className = 'confetti';
-    p.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-    p.style.left            = (Math.random() * 100) + '%';
-    p.style.fontSize        = (1.2 + Math.random() * 1.6) + 'rem';
+    p.style.left              = (Math.random() * 100) + '%';
+    const size = 4 + Math.random() * 6;
+    p.style.width             = size + 'px';
+    p.style.height            = size + 'px';
+    p.style.background        = palettes[Math.floor(Math.random() * palettes.length)];
+    p.style.borderRadius      = Math.random() < 0.5 ? '50%' : '1px';
     p.style.animationDuration = (1.6 + Math.random() * 1.4) + 's';
     p.style.animationDelay    = (Math.random() * 0.4) + 's';
     root.appendChild(p);

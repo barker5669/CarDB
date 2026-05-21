@@ -13,7 +13,7 @@ let _myCarsActive = null;   // currently-viewed car id
 let _mcLogFilter  = 'all';  // 'all' | one of MC_LOG_KINDS
 
 const MC_LOG_KINDS = ['service','mod','drive','note','photo'];
-const MC_LOG_LABEL = { service:'🔧 Service', mod:'⚙️ Mod', drive:'🛣️ Drive', note:'📝 Note', photo:'📷 Photo' };
+const MC_LOG_LABEL = { service:'Service', mod:'Mod', drive:'Drive', note:'Note', photo:'Photo' };
 
 // ─── Local-only photo wiring ────────────────────────────────────────
 //
