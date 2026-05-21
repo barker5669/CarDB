@@ -1170,7 +1170,7 @@ body::before{
 .car-hero-full .car-photo{
   position:absolute;
   top:calc(var(--st) + 66px);
-  left:0;right:0;height:200px;
+  left:0;right:0;height:240px;
   overflow:hidden;
   -webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 10%,#000 92%,transparent 100%);
           mask-image:linear-gradient(180deg,transparent 0%,#000 10%,#000 92%,transparent 100%);
@@ -1184,7 +1184,7 @@ body::before{
    bottom edge instead of overlapping it. The pager dots stay
    anchored to the bottom of the hero. */
 .car-hero-full.has-photo .hero-bottom{
-  top:calc(var(--st) + 66px + 200px + 10px);
+  top:calc(var(--st) + 66px + 240px + 6px);
   bottom:auto;
 }
 
@@ -1251,18 +1251,18 @@ body::before{
 
 /* ── Bottom overlay: name block + floating stat pills ── */
 .hero-bottom{
-  position:absolute;bottom:26px;left:22px;right:22px;z-index:3;
+  position:absolute;bottom:14px;left:22px;right:22px;z-index:3;
 }
-.hero-name{margin-bottom:8px}
-.hero-name .eyebrow{margin-bottom:5px}
+.hero-name{margin-bottom:6px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.hero-name .eyebrow{margin-bottom:0;flex-basis:100%}
 .hero-name h2{
   font-family:var(--fh);font-weight:700;
-  font-size:1.2rem;letter-spacing:-0.02em;line-height:1.05;
+  font-size:1.1rem;letter-spacing:-0.02em;line-height:1.05;
   color:var(--ink-strong);word-wrap:break-word;
 }
-.hero-name .sub{font-size:0.78rem;color:var(--ink-muted);margin-top:2px}
+.hero-name .sub{font-size:0.72rem;color:var(--ink-muted);margin-top:0;font-family:var(--ff-mono);letter-spacing:0.04em}
 
-.hero-stats{display:flex;gap:8px;flex-wrap:wrap}
+.hero-stats{display:flex;gap:6px;flex-wrap:wrap;margin-top:0}
 .stat-pill{
   position:relative;display:inline-flex;align-items:baseline;gap:5px;
   padding:6px 12px 6px 22px;

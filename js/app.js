@@ -1060,11 +1060,12 @@ async function renderHomeHero() {
     hero.classList.remove('has-photo');
   }
 
-  // Name + meta line.
+  // Name + meta line. Year is shown in the stat pill below so we
+  // drop it from the meta to keep the inline name/meta row short.
   const car  = data.car;
   const name = car.name || [car.make, car.model].filter(Boolean).join(' ') || 'My Car';
   nameEl.textContent = name;
-  const metaParts = [car.year, car.make, car.color].filter(Boolean);
+  const metaParts = [car.make, car.color].filter(Boolean);
   if (metaEl) metaEl.textContent = metaParts.join(' · ');
 
   // Stat pills — mockup uses .stat-pill with .num and .lab (lowercase).
