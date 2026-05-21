@@ -1114,7 +1114,7 @@ body::before{
 #s-home > .page-hdr{display:none}
 #s-home .home-scroll{padding:0;display:flex;flex-direction:column}
 .car-hero-full{
-  position:relative;height:420px;flex-shrink:0;overflow:hidden;
+  position:relative;height:395px;flex-shrink:0;overflow:hidden;
   background:
     radial-gradient(120% 70% at 50% 18%, #fefbef 0%, #f5ece0 55%, #e6dac3 100%),
     var(--paper);
