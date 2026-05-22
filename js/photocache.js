@@ -135,6 +135,24 @@ async function PhotoCache_warmAll(paths, { fetchMissing = true } = {}) {
   }
 }
 
+// Dump every cached photo blob — used by the backup/export feature.
+async function PhotoCache_dumpAll() {
+  try {
+    const db = await _phcDb();
+    return await new Promise((res, rej) => {
+      const out = [];
+      const tx  = db.transaction(_PHC_STORE, 'readonly');
+      const cur = tx.objectStore(_PHC_STORE).openCursor();
+      cur.onsuccess = () => {
+        const c = cur.result;
+        if (c) { out.push({ path: c.key, blob: c.value }); c.continue(); }
+        else res(out);
+      };
+      cur.onerror = () => rej(cur.error);
+    });
+  } catch (e) { console.warn('PhotoCache.dumpAll:', e); return []; }
+}
+
 window.PhotoCache = {
   save:        PhotoCache_save,
   getUrlSync:  PhotoCache_getUrlSync,
@@ -142,4 +160,5 @@ window.PhotoCache = {
   getBlob:     PhotoCache_getBlob,
   remove:      PhotoCache_remove,
   warmAll:     PhotoCache_warmAll,
+  dumpAll:     PhotoCache_dumpAll,
 };

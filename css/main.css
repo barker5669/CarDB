@@ -885,7 +885,7 @@ body::before{
 .bingo-toast.show{display:block;animation:bingo-pop 0.38s cubic-bezier(0.32,0.72,0,1)}
 .snackbar{display:none;position:fixed;bottom:calc(var(--nav-h) + 12px);left:50%;transform:translateX(-50%);background:#1f1d18;border:1px solid #0d0c09;color:#f5f1e7;font-family:var(--ff);font-size:0.88rem;font-weight:500;padding:11px 20px;z-index:300;white-space:nowrap;border-radius:999px;box-shadow:0 8px 24px -4px rgba(40,30,20,0.40)}
 .snackbar.show{display:block}
-#camInput,#camInputFirst,#myCarPhotoInput,#myCarEntryPhotoInput,#myCarAnglePhotoInput{display:none}
+#camInput,#camInputFirst,#myCarPhotoInput,#myCarEntryPhotoInput,#myCarAnglePhotoInput,#restoreInput{display:none}
 
 /* OFFLINE BANNER */
 .offline-banner{display:none;position:fixed;top:calc(var(--st) + 6px);left:50%;transform:translateX(-50%);background:var(--danger);color:#fff;font-family:var(--ff-mono);font-size:0.7rem;font-weight:600;padding:7px 14px;border-radius:999px;z-index:400;white-space:nowrap;box-shadow:0 4px 14px -2px rgba(139,58,46,0.40);letter-spacing:0.08em}

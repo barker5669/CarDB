@@ -3324,11 +3324,136 @@ function _renderEventSummary(sightings, profileById) {
 }
 
 // ══════════════════════════════════════════════
+// DATA BACKUP — full export / restore to a single file
+// ══════════════════════════════════════════════
+// One file holding every localStorage key (cars, sightings, shows,
+// logs, settings) plus every on-device photo. The user saves it to
+// Google Drive / Files; Restore rebuilds the app from it on any
+// device. Supabase auth keys are deliberately left out.
+function _isAuthKey(k) {
+  return !!k && (k.startsWith('sb-') || k.toLowerCase().includes('supabase'));
+}
+function _blobToDataURL(blob) {
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload  = () => res(fr.result);
+    fr.onerror = () => rej(fr.error);
+    fr.readAsDataURL(blob);
+  });
+}
+
+async function exportBackup() {
+  try {
+    showSnack('Preparing backup…');
+    const ls = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && !_isAuthKey(k)) ls[k] = localStorage.getItem(k);
+    }
+    const photos = {};
+    if (typeof PhotoCache !== 'undefined' && PhotoCache.dumpAll) {
+      const entries = await PhotoCache.dumpAll();
+      for (const { path, blob } of entries) {
+        try { photos[path] = await _blobToDataURL(blob); }
+        catch (e) { console.warn('backup photo:', path, e); }
+      }
+    }
+    const backup = {
+      format:     'carbingo-backup',
+      version:    1,
+      exportedAt: new Date().toISOString(),
+      localStorage: ls,
+      photos,
+    };
+    const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `car-bingo-backup-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    const n = Object.keys(photos).length;
+    showSnack(`Backup ready (${n} photo${n===1?'':'s'}) — save it to Google Drive`);
+  } catch (err) {
+    showErr('Backup failed', err);
+  }
+}
+
+function triggerRestoreBackup() {
+  document.getElementById('restoreInput')?.click();
+}
+
+async function handleRestoreFile(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  let backup;
+  try { backup = JSON.parse(await file.text()); }
+  catch { showSnack('That file isn’t a valid backup'); return; }
+  if (!backup || backup.format !== 'carbingo-backup' || !backup.localStorage) {
+    showSnack('That isn’t a Car Bingo backup file');
+    return;
+  }
+  const photoCount = backup.photos ? Object.keys(backup.photos).length : 0;
+  const when = (backup.exportedAt || '').slice(0, 10);
+  const ok = await confirmSheet({
+    title:        'Restore this backup?',
+    body:         `This replaces everything on this device with the backup${when ? ' from ' + when : ''} (${photoCount} photo${photoCount===1?'':'s'}). The app will reload.`,
+    confirmLabel: 'Restore',
+    danger:       true,
+  });
+  if (!ok) return;
+  try {
+    showSnack('Restoring…');
+    // Replace localStorage but keep the current Supabase sign-in.
+    const keep = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (_isAuthKey(k)) keep[k] = localStorage.getItem(k);
+    }
+    localStorage.clear();
+    for (const [k, v] of Object.entries(keep)) localStorage.setItem(k, v);
+    for (const [k, v] of Object.entries(backup.localStorage)) localStorage.setItem(k, v);
+    // Restore photos into the IndexedDB cache.
+    if (backup.photos && typeof PhotoCache !== 'undefined') {
+      for (const [path, dataUrl] of Object.entries(backup.photos)) {
+        try {
+          const blob = await (await fetch(dataUrl)).blob();
+          await PhotoCache.save(path, blob);
+        } catch (e) { console.warn('restore photo:', path, e); }
+      }
+    }
+    showSnack('Restored — reloading');
+    setTimeout(() => location.reload(), 900);
+  } catch (err) {
+    showErr('Restore failed', err);
+  }
+}
+
+// ══════════════════════════════════════════════
 // BOOT
 // ══════════════════════════════════════════════
 // Auth gates the app. bootAuth() (in auth.js) routes between the
 // auth screen and the main app, and runs initSetup() after sign-in.
+// Ask the browser to keep our storage (cars, sightings, photos)
+// persistent — exempts it from eviction under storage pressure.
+// Installed PWAs usually get this granted; harmless where unsupported.
+async function _requestPersistentStorage() {
+  try {
+    if (navigator.storage && navigator.storage.persist) {
+      const already = navigator.storage.persisted ? await navigator.storage.persisted() : false;
+      if (!already) {
+        const granted = await navigator.storage.persist();
+        console.log('Persistent storage:', granted ? 'granted' : 'not granted');
+      }
+    }
+  } catch (e) { console.warn('persist():', e); }
+}
+
 (async () => {
+  _requestPersistentStorage();
   _setupConnectivity();
   _setupVisibilityRefresh();
   // Local photos are warmed asynchronously; re-render visible UI

@@ -516,9 +516,14 @@
         <span class="sr-arrow">›</span>
       </button>
       <div class="settings-group-lbl">Data</div>
-      <button class="settings-row" onclick="exportData()">
+      <button class="settings-row" onclick="exportBackup()">
         <span class="sr-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
-        <div class="sr-body"><div class="sr-label">Export my data</div><div class="sr-sub">Download all sightings as JSON</div></div>
+        <div class="sr-body"><div class="sr-label">Back up data</div><div class="sr-sub">Save a file with all cars, shows &amp; photos</div></div>
+        <span class="sr-arrow">›</span>
+      </button>
+      <button class="settings-row" onclick="triggerRestoreBackup()">
+        <span class="sr-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+        <div class="sr-body"><div class="sr-label">Restore from backup</div><div class="sr-sub">Load a backup file from this or another device</div></div>
         <span class="sr-arrow">›</span>
       </button>
       <button class="settings-row sr-danger" onclick="confirmClearData()">
@@ -793,6 +798,7 @@
 <input type="file" id="myCarPhotoInput"      accept="image/*" capture="environment" onchange="handleMyCarPhoto(event)">
 <input type="file" id="myCarEntryPhotoInput" accept="image/*" capture="environment" onchange="handleMyCarEntryPhoto(event)">
 <input type="file" id="myCarAnglePhotoInput" accept="image/*" capture="environment" onchange="handleMyCarAnglePhoto(event)">
+<input type="file" id="restoreInput"         accept="application/json,.json" onchange="handleRestoreFile(event)">
 
 <script>
 // Register the SW and auto-reload the page when a new version takes
