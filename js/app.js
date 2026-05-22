@@ -3379,13 +3379,59 @@ async function exportBackup() {
       const k = localStorage.key(i);
       if (k && !_isAuthKey(k)) ls[k] = localStorage.getItem(k);
     }
+    // Photos are captured from every possible source — a photo can
+    // be a local blob OR still hosted remotely on Supabase Storage.
     const photos = {};
-    const entries = await _dumpPhotoBlobs();
-    for (const { path, blob } of entries) {
-      if (!path || !blob) continue;
-      try { photos[path] = await _blobToDataURL(blob); }
-      catch (e) { console.warn('backup photo:', path, e); }
+    const seen = new Set();
+    async function _grab(key, url) {
+      if (!key || !url || seen.has(key)) return;
+      seen.add(key);
+      try {
+        const r = await fetch(url);
+        if (!r.ok) return;
+        const blob = await r.blob();
+        if (blob && blob.size) photos[key] = await _blobToDataURL(blob);
+      } catch (e) { console.warn('backup grab:', key, e); }
     }
+    // 1. Every local blob in the photo-cache IndexedDB store.
+    for (const { path, blob } of await _dumpPhotoBlobs()) {
+      if (path && blob && !seen.has(path)) {
+        seen.add(path);
+        try { photos[path] = await _blobToDataURL(blob); }
+        catch (e) { console.warn('backup photo:', path, e); }
+      }
+    }
+    // 2. Any LocalPhotos the IDB dump missed — via their live URL.
+    try {
+      const lp = JSON.parse(localStorage.getItem('cb-local-photos-v1') || '{}');
+      for (const arr of Object.values(lp)) {
+        for (const p of (arr || [])) {
+          if (!p || !p.path || seen.has(p.path)) continue;
+          const u = (typeof PhotoCache !== 'undefined' && PhotoCache.getUrlSync)
+            ? PhotoCache.getUrlSync(p.path) : null;
+          if (u) await _grab(p.path, u);
+        }
+      }
+    } catch (e) { console.warn('backup: LocalPhotos sweep', e); }
+    // 3. Legacy My Car photos still on Supabase Storage — fetch them
+    //    now so they're preserved once the backend is gone.
+    try {
+      let cars = [];
+      if (typeof _loadMyCars === 'function') {
+        try { cars = await _loadMyCars(); } catch { cars = (window._myCars || []); }
+      }
+      for (const car of (cars || [])) {
+        for (const p of ((car && car.my_car_photos) || [])) {
+          const sp = p && p.storage_path;
+          if (!sp || seen.has(sp)) continue;
+          let u = (typeof PhotoCache !== 'undefined' && PhotoCache.getUrlSync(sp)) || null;
+          if (!u && window.DB && DB.storage && typeof DB.storage.publicUrl === 'function') {
+            try { u = DB.storage.publicUrl(sp); } catch {}
+          }
+          if (u) await _grab(sp, u);
+        }
+      }
+    } catch (e) { console.warn('backup: legacy photo sweep', e); }
     const backup = {
       format:     'carbingo-backup',
       version:    1,
