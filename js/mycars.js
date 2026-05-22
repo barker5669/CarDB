@@ -202,6 +202,8 @@ const LocalMyCars = {
       model:        payload.model,
       year:         payload.year,
       registration: payload.registration,
+      owned_from:   payload.owned_from ?? null,
+      owned_to:     payload.owned_to ?? null,
       notes:        payload.notes,
       my_car_photos: [],
       my_car_log_entries: [],
@@ -283,6 +285,21 @@ function _mcIdArg(id) {
   return (typeof id === 'number') ? String(id) : `'${escapeJsSq(String(id))}'`;
 }
 
+// Human label for a car's ownership dates. '' when neither is set.
+function _mcOwnedLabel(car) {
+  const fmt = (d) => {
+    if (!d) return '';
+    const dt = new Date(d);
+    return isNaN(dt) ? '' : dt.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+  };
+  const from = fmt(car && car.owned_from);
+  const to   = fmt(car && car.owned_to);
+  if (from && to) return `Owned ${from} – ${to}`;
+  if (from)       return `Owned since ${from}`;
+  if (to)         return `Owned until ${to}`;
+  return '';
+}
+
 // Public helper for the dashboard hero. Returns the user's primary
 // car (the first one in the list) plus its hero photo URL + counts
 // derived from the my_car_photos / my_car_log_entries relations the
@@ -362,16 +379,19 @@ function _paintMyCarsList(cars) {
         const heroPhoto = _mcHeroFor(c, photos);
         const heroUrl = _mcPhotoUrl(heroPhoto);
         const meta = [c.year, c.make, c.model].filter(Boolean).join(' · ') || '—';
-        return `<button class="mc-card" onclick="showMyCarDetail(${_mcIdArg(c.id)})">
-          <div class="mc-card-thumb">${heroUrl
-            ? `<img src="${escapeAttr(heroUrl)}" alt="">`
-            : `<div class="mc-card-ph">${MC_PH_CAMERA}</div>`}</div>
-          <div class="mc-card-body">
-            <div class="mc-card-name">${escapeHtml(c.name)}</div>
-            <div class="mc-card-meta">${escapeHtml(meta)}</div>
-          </div>
-          <div class="mc-card-arrow">›</div>
-        </button>`;
+        return `<div class="mc-card">
+          <button class="mc-card-main" onclick="showMyCarDetail(${_mcIdArg(c.id)})">
+            <div class="mc-card-thumb">${heroUrl
+              ? `<img src="${escapeAttr(heroUrl)}" alt="">`
+              : `<div class="mc-card-ph">${MC_PH_CAMERA}</div>`}</div>
+            <div class="mc-card-body">
+              <div class="mc-card-name">${escapeHtml(c.name)}</div>
+              <div class="mc-card-meta">${escapeHtml(meta)}</div>
+            </div>
+            <div class="mc-card-arrow">›</div>
+          </button>
+          <button class="mc-card-del" type="button" onclick="confirmDeleteMyCar(${_mcIdArg(c.id)})" title="Delete car" aria-label="Delete car">✕</button>
+        </div>`;
       }).join('')}
     </div>
     <div class="mc-add-wrap">
@@ -389,23 +409,31 @@ async function showMyCarDetail(carId) {
 
   // Route local cars to LocalMyCars so we don't ask Supabase for a
   // bigint id like "local-mp9gepze-0yai" (which would 400 with a
-  // 22P02 invalid input syntax error).
+  // 22P02 invalid input syntax error). For remote cars, use the
+  // cached list first — it's instant and survives a Supabase outage
+  // (some remote cars were failing to open because DB.myCars.get
+  // hung or errored). Only hit the network if the car isn't cached.
   let car;
   if (LocalMyCars.isLocalId(carId)) {
     car = LocalMyCars.list().find(c => String(c.id) === String(carId));
     if (!car) { showErr('Could not load car', new Error('Car not found locally')); return; }
   } else {
-    try { car = await DB.myCars.get(carId); }
-    catch (err) { showErr('Could not load car', err); return; }
+    car = (_myCars || []).find(c => String(c.id) === String(carId))
+       || _myCarsSnapshot().find(c => String(c.id) === String(carId));
+    if (!car) {
+      try { car = await _raceTimeout(DB.myCars.get(carId), 'Load car', 8000); }
+      catch (err) { showErr('Could not load car', err); return; }
+    }
   }
 
   // Log entries are local-first. Always read the on-device log; for
   // remote cars also pull the Supabase log and merge (deduped by id)
   // so entries written before the local-first switch still show.
+  // Time-boxed so a hanging backend can't block the detail render.
   let logEntries = LocalMyCarLog.list(carId);
   if (!LocalMyCars.isLocalId(carId)) {
     try {
-      const remote = await DB.myCarLog.list(carId);
+      const remote = await _raceTimeout(DB.myCarLog.list(carId), 'Car log', 6000);
       if (Array.isArray(remote)) {
         const seen = new Set(logEntries.map(e => String(e.id)));
         for (const r of remote) {
@@ -418,6 +446,7 @@ async function showMyCarDetail(carId) {
 
   const photos = _mcPhotosFor(car);
   const meta   = [car.year, car.make, car.model].filter(Boolean).join(' · ') || '—';
+  const ownedLabel = _mcOwnedLabel(car);
 
   // Cache the car so the turntable can re-render on rotation /
   // capture without a re-fetch. Start on the Front angle.
@@ -434,6 +463,7 @@ async function showMyCarDetail(carId) {
     <div class="mc-detail">
       <h2 class="mc-name">${escapeHtml(car.name)}</h2>
       <div class="mc-meta">${escapeHtml(meta)}</div>
+      ${ownedLabel ? `<div class="mc-owned">${escapeHtml(ownedLabel)}</div>` : ''}
       ${car.registration ? `<div class="mc-reg">${escapeHtml(car.registration)}</div>` : ''}
       ${car.notes ? `<div class="mc-notes">${escapeHtml(car.notes)}</div>` : ''}
 
@@ -599,6 +629,8 @@ const _MC_CAR_FIELDS = [
   { id:'model', label:'Model',         placeholder:'e.g. MGB' },
   { id:'year',  label:'Year',          type:'number',  inputmode:'numeric', placeholder:'1972' },
   { id:'reg',   label:'Registration',  placeholder:'Optional' },
+  { id:'owned_from', label:'Owned since',  type:'date' },
+  { id:'owned_to',   label:'Owned until (leave blank if still owned)', type:'date' },
   { id:'notes', label:'Notes',         type:'textarea', placeholder:'Anything you want to remember' },
 ];
 // Edit form keeps the original text fields — we don't want to overwrite
@@ -629,6 +661,8 @@ async function openAddMyCar() {
       model:        data.model,
       year:         _yearOrNull(data.year),
       registration: data.reg,
+      owned_from:   data.owned_from || null,
+      owned_to:     data.owned_to || null,
       notes:        data.notes,
     });
   } catch (err) {
@@ -667,6 +701,8 @@ async function openEditMyCar(carId) {
       model: car.model || '',
       year:  car.year ? String(car.year) : '',
       reg:   car.registration || '',
+      owned_from: car.owned_from || '',
+      owned_to:   car.owned_to || '',
       notes: car.notes || '',
     },
   });
@@ -677,6 +713,8 @@ async function openEditMyCar(carId) {
     model:        data.model,
     year:         _yearOrNull(data.year),
     registration: data.reg,
+    owned_from:   data.owned_from || null,
+    owned_to:     data.owned_to || null,
     notes:        data.notes,
   };
   try {

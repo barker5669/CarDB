@@ -19,7 +19,7 @@
 // - Storage API responses for photos in the 'photos' bucket are
 //   cache-first when present so a slow connection doesn't blank the
 //   bingo card.
-const CACHE = 'carbingo-v111';
+const CACHE = 'carbingo-v112';
 // Paths are RELATIVE to the service worker's own location, so the app
 // works whether it's served from the domain root or a project-page
 // subpath (e.g. /CarDB/). Absolute '/'-prefixed paths 404'd on a
