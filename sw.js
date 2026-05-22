@@ -19,7 +19,7 @@
 // - Storage API responses for photos in the 'photos' bucket are
 //   cache-first when present so a slow connection doesn't blank the
 //   bingo card.
-const CACHE = 'carbingo-v120';
+const CACHE = 'carbingo-v121';
 // Paths are RELATIVE to the service worker's own location, so the app
 // works whether it's served from the domain root or a project-page
 // subpath (e.g. /CarDB/). Absolute '/'-prefixed paths 404'd on a
@@ -45,7 +45,14 @@ const ASSETS = [
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE).then(async c => {
+      // Cache each asset INDEPENDENTLY. cache.addAll is all-or-
+      // nothing — one flaky fetch (typically the cross-origin font)
+      // aborted the whole install, so the new service worker never
+      // activated and the OLD one kept serving stale code. Tolerate
+      // per-asset failures so a new build always rolls out.
+      await Promise.allSettled(ASSETS.map(u => c.add(u)));
+    }).then(() => self.skipWaiting())
   );
 });
 
