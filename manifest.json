@@ -2,10 +2,11 @@
   "name": "Car Bingo",
   "short_name": "Car Bingo",
   "description": "Classic Car Spotter & Bingo — for car show enthusiasts",
-  "start_url": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#0d1f15",
-  "theme_color": "#0d1f15",
+  "background_color": "#f5f1e7",
+  "theme_color": "#f5f1e7",
   "orientation": "portrait",
   "icons": [
     {
