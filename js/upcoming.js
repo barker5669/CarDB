@@ -18,9 +18,12 @@ async function _loadProfilesIndex() {
   return _profilesIndex;
 }
 
-async function showUpcoming() {
-  switchTab('upcoming');
-  await renderUpcoming();
+function showUpcoming() {
+  // The standalone Upcoming screen is gone — Upcoming is now a
+  // segment of the Shows tab. Set the segment, then switch;
+  // switchTab('shows') runs renderShowsList which paints it.
+  try { _showsSegment = 'upcoming'; } catch (e) {}
+  switchTab('shows');
 }
 
 function _monthLabel(key) {
@@ -30,7 +33,8 @@ function _monthLabel(key) {
 }
 
 async function renderUpcoming() {
-  const body = document.getElementById('upcoming-body');
+  // Upcoming now renders into the Shows tab's shared body.
+  const body = document.getElementById('shows-body');
   if (!body) return;
 
   // Local-first: cache is the source of truth. Render whatever's
@@ -100,14 +104,14 @@ async function _paintUpcoming(body, events) {
             <div class="up-date">${dateBlock}</div>
             <div class="up-info">
               <div class="up-name">${escapeHtml(e.name)}</div>
-              ${e.location ? `<div class="up-loc">📍 ${escapeHtml(e.location)}</div>` : ''}
-              ${e.url      ? `<a class="up-link" href="${escapeAttr(e.url)}" target="_blank" rel="noopener">↗ More info</a>` : ''}
+              ${e.location ? `<div class="up-loc">${escapeHtml(e.location)}</div>` : ''}
+              ${e.url      ? `<a class="up-link" href="${escapeAttr(e.url)}" target="_blank" rel="noopener">More info</a>` : ''}
               ${e.notes    ? `<div class="up-notes">${escapeHtml(e.notes)}</div>` : ''}
               ${others.length ? `<div class="up-others">Also going: ${escapeHtml(others.join(', '))}</div>` : ''}
             </div>
             <div class="up-actions">
-              <button class="up-start" onclick="startShowFromUpcoming('${escapeJsSq(String(e.id))}')" title="Start a bingo show for this event">▶ Start show</button>
-              <button class="up-rsvp ${iAmGoing?'up-rsvp-on':''}" onclick="toggleUpcomingRSVP('${escapeJsSq(String(e.id))}', ${iAmGoing})">${iAmGoing?'✓ Going':'＋ Going'}</button>
+              <button class="up-start" onclick="startShowFromUpcoming('${escapeJsSq(String(e.id))}')" title="Start a bingo show for this event">Start show</button>
+              <button class="up-rsvp ${iAmGoing?'up-rsvp-on':''}" onclick="toggleUpcomingRSVP('${escapeJsSq(String(e.id))}', ${iAmGoing})">${iAmGoing?'Going':'＋ Going'}</button>
               ${e.created_by === me ? `<button class="up-del" onclick="confirmDeleteUpcoming('${escapeJsSq(String(e.id))}')" title="Delete">✕</button>` : ''}
             </div>
           </div>`;

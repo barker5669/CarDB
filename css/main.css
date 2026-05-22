@@ -272,11 +272,15 @@ body::before{
    show), the carousel sizes itself to that single card. */
 .dash-carousel{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;margin:0 -22px;padding:2px 22px;-webkit-overflow-scrolling:touch}
 .dash-carousel::-webkit-scrollbar{display:none}
-.dash-slide{flex:0 0 100%;scroll-snap-align:start;min-width:0}
-/* Override the .upcoming-card's existing display:flex inside the
-   slide wrapper — it still needs to behave as a flex row inside
-   its own slide. */
+/* Slides flex so their inner card can stretch to a shared height —
+   the carousel's default align-items:stretch makes every slide as
+   tall as the tallest; the active-show card then fills its slide so
+   current-show + next-event end up the same height. (The next-event
+   card IS its own slide, so it stretches directly.) */
+.dash-slide{flex:0 0 100%;scroll-snap-align:start;min-width:0;display:flex}
 .dash-carousel .upcoming-card{display:flex;width:100%}
+.dash-carousel .show-active-card{flex:1;display:flex}
+.dash-carousel .show-active-btn{flex:1}
 .dash-carousel-pager{display:flex;justify-content:center;align-items:center;gap:6px;margin:6px 0 0;height:10px}
 .dash-carousel-pager .pd{width:5px;height:5px;border-radius:50%;background:var(--hair-strong);transition:width 0.2s ease,background 0.2s ease;cursor:pointer}
 .dash-carousel-pager .pd.on{width:14px;border-radius:3px;background:var(--brass)}
@@ -576,37 +580,46 @@ body::before{
 .confirm-ok-danger{background:var(--red);color:var(--ink)}
 
 /* UPCOMING EVENTS TAB */
-#s-upcoming{background:transparent}
-.upcoming-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 14px calc(var(--sb) + 14px)}
-.upcoming-scroll::-webkit-scrollbar{display:none}
-.up-empty{text-align:center;padding:36px 22px 18px;max-width:340px;margin:8px auto 0}
+/* ─── Segmented control — Upcoming | Past on the Shows tab ─── */
+.seg-control{display:flex;gap:6px;padding:10px 14px 2px}
+.seg-btn{flex:1;background:var(--paper-deep);border:1px solid var(--hair);color:var(--ink-muted);font-family:var(--ff-mono);font-size:0.64rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:9px 0;border-radius:999px;cursor:pointer;-webkit-appearance:none;appearance:none;transition:background 0.15s,color 0.15s,border-color 0.15s}
+.seg-btn.active{background:var(--brass);border-color:var(--brass);color:#fff;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 2px 8px rgba(166,124,82,0.25)}
+.seg-btn:active{transform:scale(0.98)}
+
+/* ─── Upcoming / Past list — premium paper styling, shared by both
+   segments of the Shows tab so they read as one screen. ─── */
+.up-empty{text-align:center;padding:40px 22px 18px;max-width:340px;margin:8px auto 0}
 .up-empty-icon{width:48px;height:48px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;color:var(--brass)}
 .up-empty-icon svg{width:32px;height:32px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
-.up-empty h3{font-family:var(--fh);font-size:1.3rem;font-weight:700;letter-spacing:-0.015em;color:var(--ink-strong);margin-bottom:6px}
-.up-empty p{font-size:0.88rem;color:var(--ink-muted);margin-bottom:18px;line-height:1.55}
-.up-error{padding:18px;background:rgba(180,48,36,0.08);border:1px solid rgba(180,48,36,0.3);border-radius:var(--R);color:#f06858;font-weight:700;text-align:center}
-.up-month{margin-bottom:14px}
-.up-month-hdr{font-family:var(--ff-mono);font-size:0.6rem;font-weight:700;letter-spacing:0.24em;color:var(--brass);text-transform:uppercase;padding:8px 2px 8px;display:inline-flex;align-items:center;gap:8px}
+.up-empty h3{font-family:var(--fh);font-size:1.35rem;font-weight:700;letter-spacing:-0.02em;color:var(--ink-strong);margin-bottom:6px}
+.up-empty p{font-size:0.9rem;color:var(--ink-muted);margin-bottom:18px;line-height:1.55}
+.up-month{margin-bottom:16px}
+.up-month-hdr{font-family:var(--ff-mono);font-size:0.6rem;font-weight:700;letter-spacing:0.24em;color:var(--brass);text-transform:uppercase;padding:8px 2px;display:inline-flex;align-items:center;gap:8px}
 .up-month-hdr::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--brass);box-shadow:0 0 0 3px var(--brass-soft)}
-.up-row{display:flex;align-items:stretch;background:var(--card);border:1px solid var(--bdr);border-radius:var(--R);margin-bottom:8px;overflow:hidden}
-.up-date{width:64px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0;background:var(--bg2);border-right:1px solid var(--bdr)}
-.up-date-d{font-family:var(--fh);font-size:1.6rem;font-weight:900;color:var(--gold);line-height:1}
-.up-date-w{font-size:0.7rem;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1.5px;margin-top:2px}
-.up-info{flex:1;padding:10px 14px;min-width:0;display:flex;flex-direction:column;gap:3px;justify-content:center}
-.up-name{font-size:1rem;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.up-loc{font-size:0.82rem;color:var(--ink2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.up-link{font-size:0.78rem;color:var(--goldl);font-weight:600;text-decoration:none;width:fit-content}
+.up-row{display:flex;align-items:stretch;background:linear-gradient(180deg,var(--card-surf) 0%,var(--card-deep) 100%);border:1px solid var(--hair);border-radius:var(--R);margin-bottom:8px;overflow:hidden;box-shadow:0 1px 0 rgba(255,255,255,0.85) inset,0 1px 2px rgba(40,30,20,0.04)}
+/* Tappable variant (past shows) — the whole row is a button. */
+.up-row-btn{width:100%;text-align:left;cursor:pointer;-webkit-appearance:none;appearance:none;font:inherit;color:inherit}
+.up-row-btn:active{background:linear-gradient(180deg,var(--card-deep),var(--paper-deep))}
+.up-date{width:62px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0;background:var(--paper-deep);border-right:1px solid var(--hair)}
+.up-date-d{font-family:var(--fh);font-size:1.55rem;font-weight:800;color:var(--brass-dk);line-height:1;letter-spacing:-0.02em}
+.up-date-w{font-family:var(--ff-mono);font-size:0.56rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.12em;margin-top:3px}
+.up-info{flex:1;padding:11px 14px;min-width:0;display:flex;flex-direction:column;gap:3px;justify-content:center}
+.up-name{font-family:var(--fh);font-size:1.02rem;font-weight:700;letter-spacing:-0.015em;color:var(--ink-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.up-loc{font-family:var(--ff-mono);font-size:0.66rem;color:var(--ink-muted);font-weight:500;letter-spacing:0.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.up-link{font-family:var(--ff-mono);font-size:0.66rem;color:var(--brass-dk);font-weight:700;letter-spacing:0.06em;text-decoration:none;width:fit-content}
 .up-link:active{opacity:0.7}
-.up-notes{font-size:0.82rem;color:var(--dim);font-weight:500;line-height:1.4;margin-top:2px}
-.up-others{font-size:0.74rem;color:var(--dim);font-weight:600;font-style:italic}
+.up-notes{font-size:0.8rem;color:var(--ink-muted);font-weight:500;line-height:1.45;margin-top:2px}
+.up-others{font-family:var(--ff-mono);font-size:0.62rem;color:var(--ink-muted);font-weight:600;letter-spacing:0.03em}
+.up-count{font-family:var(--ff-mono);font-size:0.62rem;font-weight:700;color:var(--brass-dk);letter-spacing:0.06em;text-transform:uppercase}
+.up-row-chev{display:flex;align-items:center;padding:0 14px;color:var(--brass);font-size:1.3rem;flex-shrink:0}
 .up-actions{display:flex;flex-direction:column;justify-content:center;align-items:flex-end;gap:6px;padding:10px 12px;flex-shrink:0}
-.up-start{background:var(--brass);border:0;color:#fff;font-family:var(--ff);font-size:0.76rem;font-weight:700;letter-spacing:0.01em;padding:7px 12px;border-radius:999px;cursor:pointer;-webkit-appearance:none;appearance:none;white-space:nowrap;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 -1px 0 rgba(0,0,0,0.10) inset,0 3px 10px -3px rgba(166,124,82,0.40)}
-.up-start:active{opacity:0.92;transform:scale(0.96)}
-.up-rsvp{background:var(--card2);border:1px solid var(--bdr2);color:var(--dim);font-family:var(--ff);font-size:0.78rem;font-weight:800;padding:7px 12px;border-radius:18px;cursor:pointer;-webkit-appearance:none;appearance:none;white-space:nowrap}
+.up-start{background:var(--brass);border:0;color:#fff;font-family:var(--ff-mono);font-size:0.62rem;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;padding:7px 12px;border-radius:999px;cursor:pointer;-webkit-appearance:none;appearance:none;white-space:nowrap;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 2px 8px rgba(166,124,82,0.30)}
+.up-start:active{transform:scale(0.96)}
+.up-rsvp{background:var(--paper-deep);border:1px solid var(--hair-strong);color:var(--ink-muted);font-family:var(--ff-mono);font-size:0.62rem;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;padding:7px 12px;border-radius:999px;cursor:pointer;-webkit-appearance:none;appearance:none;white-space:nowrap}
 .up-rsvp:active{opacity:0.7}
-.up-rsvp-on{background:var(--success);border-color:var(--success);color:#fff}
-.up-del{background:transparent;border:none;color:var(--dim2);font-size:0.85rem;cursor:pointer;-webkit-appearance:none;appearance:none;padding:4px 8px;border-radius:6px}
-.up-del:active{color:var(--red2);background:rgba(180,48,36,0.15)}
+.up-rsvp-on{background:var(--brass);border-color:var(--brass);color:#fff;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset}
+.up-del{background:transparent;border:none;color:var(--ink-muted);font-size:0.85rem;cursor:pointer;-webkit-appearance:none;appearance:none;padding:4px 8px;border-radius:6px}
+.up-del:active{color:#c4533e;background:rgba(196,83,62,0.12)}
 .up-add-wrap{margin-top:14px}
 
 /* MY CARS TAB */
@@ -614,7 +627,12 @@ body::before{
 .mycars-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px calc(var(--sb) + 14px)}
 .mycars-scroll::-webkit-scrollbar{display:none}
 .mc-empty{text-align:center;padding:48px 24px}
-.mc-empty-icon{font-size:3.5rem;margin-bottom:14px}
+.mc-empty-icon{margin-bottom:14px;display:flex;justify-content:center}
+/* Shared brass-hairline placeholder glyph (replaces emoji car icons). */
+.mc-ph-svg{stroke:var(--brass);fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;opacity:0.5}
+.mc-empty-icon .mc-ph-svg{width:62px;height:62px;opacity:0.45}
+.mc-card-ph .mc-ph-svg{width:32px;height:32px}
+.mc-hero-ph .mc-ph-svg{width:52px;height:52px}
 .mc-empty h3{font-family:var(--fh);font-size:1.5rem;font-weight:900;color:var(--ink);margin-bottom:8px}
 .mc-empty p{font-size:0.92rem;color:var(--dim);margin-bottom:18px;line-height:1.55}
 .mc-list{display:flex;flex-direction:column;gap:10px}
@@ -622,7 +640,7 @@ body::before{
 .mc-card:active{transform:scale(0.985)}
 .mc-card-thumb{width:96px;flex-shrink:0;background:var(--bg2);display:flex;align-items:center;justify-content:center;overflow:hidden}
 .mc-card-thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.mc-card-ph{font-size:2rem;color:var(--dim2)}
+.mc-card-ph{display:flex;align-items:center;justify-content:center}
 .mc-card-body{flex:1;padding:12px 14px;display:flex;flex-direction:column;justify-content:center;min-width:0}
 .mc-card-name{font-family:var(--fh);font-size:1.08rem;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mc-card-meta{font-size:0.82rem;color:var(--dim);font-weight:600;margin-top:3px}
@@ -632,7 +650,7 @@ body::before{
 .mc-back-btn:active{opacity:0.7}
 .mc-hero{width:100%;aspect-ratio:16/10;background:var(--bg2);border-radius:var(--RL);overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
 .mc-hero img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}
-.mc-hero-ph{font-size:4rem;color:var(--dim2)}
+.mc-hero-ph{display:flex;align-items:center;justify-content:center}
 .mc-detail{display:flex;flex-direction:column;gap:10px}
 .mc-name{font-family:var(--fh);font-size:1.7rem;font-weight:900;color:var(--ink);line-height:1.1}
 .mc-meta{font-size:0.92rem;color:var(--ink2);font-weight:600}
@@ -641,9 +659,37 @@ body::before{
 .mc-actions{display:flex;gap:8px;margin-top:6px}
 .mc-action-btn{flex:1;background:var(--brass);border:none;color:#fff;font-family:var(--ff);font-size:0.92rem;font-weight:700;padding:13px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none;appearance:none;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 -1px 0 rgba(0,0,0,0.10) inset,0 3px 10px -3px rgba(166,124,82,0.40)}
 .mc-action-btn:active{opacity:0.92;transform:scale(0.98)}
-.mc-section{margin-top:14px}
-.mc-section-hdr{font-size:0.66rem;font-weight:800;letter-spacing:3px;color:var(--dim);text-transform:uppercase;padding:0 2px 9px}
-.mc-section-empty{font-size:0.88rem;color:var(--dim);font-weight:500;padding:14px;background:var(--card);border:1px dashed var(--bdr);border-radius:var(--R);text-align:center}
+.mc-section{margin-top:18px}
+.mc-section-hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:var(--ff-mono);font-size:0.6rem;font-weight:700;letter-spacing:0.22em;color:var(--brass);text-transform:uppercase;padding:0 2px 10px}
+.mc-section-add{background:var(--paper-deep);border:1px solid var(--hair-strong);color:var(--brass-dk);font-family:var(--ff-mono);font-size:0.58rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:6px 11px;border-radius:999px;cursor:pointer;-webkit-appearance:none;appearance:none}
+.mc-section-add:active{background:var(--brass);color:#fff}
+.mc-section-empty{font-size:0.88rem;color:var(--ink-muted);font-weight:500;padding:16px;background:var(--paper-deep);border:1px dashed var(--hair-strong);border-radius:var(--R);text-align:center}
+
+/* ─── My Car turntable — 8-angle rotatable viewer ─── */
+.mc-turntable{margin-bottom:18px}
+.mc-tt-stage{display:flex;align-items:stretch;gap:8px}
+.mc-tt-nav{flex:0 0 38px;background:var(--paper-deep);border:1px solid var(--hair);border-radius:12px;color:var(--brass-dk);font-size:1.5rem;line-height:1;cursor:pointer;-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center}
+.mc-tt-nav:active{background:var(--brass);color:#fff}
+.mc-tt-frame{flex:1;min-width:0;aspect-ratio:4/3;background:radial-gradient(120% 80% at 50% 20%,#fefbef 0%,#f1e7d7 70%,#e6dac3 100%);border:1px solid var(--hair);border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;box-shadow:0 1px 0 rgba(255,255,255,0.85) inset,0 4px 14px -6px rgba(40,30,20,0.18)}
+.mc-tt-img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+.mc-tt-add{width:100%;height:100%;background:transparent;border:0;cursor:pointer;-webkit-appearance:none;appearance:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.mc-tt-add .mc-ph-svg{width:44px;height:44px;opacity:0.5}
+.mc-tt-add-lbl{font-family:var(--ff-mono);font-size:0.62rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--brass)}
+.mc-tt-replace{position:absolute;right:10px;bottom:10px;display:inline-flex;align-items:center;gap:6px;background:rgba(26,24,20,0.78);color:#fbf6ea;border:0;border-radius:999px;padding:7px 12px;font-family:var(--ff-mono);font-size:0.58rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;-webkit-appearance:none;appearance:none;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.mc-tt-replace .mc-ph-svg{width:14px;height:14px;stroke:#fbf6ea;opacity:1}
+.mc-tt-caption{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:11px 2px 12px}
+.mc-tt-angle{font-family:var(--fh);font-size:1.08rem;font-weight:700;color:var(--ink-strong);letter-spacing:-0.01em}
+.mc-tt-count{font-family:var(--ff-mono);font-size:0.6rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--brass)}
+.mc-tt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px 6px}
+.mc-tt-slot{display:flex;flex-direction:column;gap:4px;background:none;border:0;padding:0;cursor:pointer;-webkit-appearance:none;appearance:none}
+.mc-tt-slot:active{transform:scale(0.96)}
+.mc-tt-thumb{aspect-ratio:1;background:var(--paper-deep);border:1px solid var(--hair);border-radius:9px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.mc-tt-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.mc-tt-thumb .mc-ph-svg{width:18px;height:18px;opacity:0.38}
+.mc-tt-slot.active .mc-tt-thumb{border-color:var(--brass);box-shadow:0 0 0 2px var(--brass-soft)}
+.mc-tt-slot-lbl{font-family:var(--ff-mono);font-size:0.5rem;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:var(--ink-muted);text-align:center;line-height:1}
+.mc-tt-slot.active .mc-tt-slot-lbl{color:var(--brass-dk)}
+.mc-delete-wide{width:100%;margin-top:18px}
 .mc-photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .mc-photo{aspect-ratio:1;background:var(--bg2);border-radius:var(--R);overflow:hidden}
 .mc-photo img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}
@@ -690,7 +736,7 @@ body::before{
 .gcar-arrow{display:flex;align-items:center;padding-right:8px;font-size:1.2rem;color:var(--ink-dim);flex-shrink:0}
 .gcar.seen .gcar-arrow{color:var(--brass)}
 .garage-empty{text-align:center;padding:60px 20px;color:var(--ink-muted)}
-.garage-empty .icon{font-size:3.5rem;margin-bottom:14px}
+.garage-empty .icon{margin-bottom:14px;display:flex;justify-content:center;color:var(--brass);opacity:0.5}
 .garage-empty p{font-size:0.96rem;font-weight:500;line-height:1.75}
 
 /* SETTINGS */
@@ -1175,21 +1221,29 @@ body::before{
    need a full hero of cream around it. Populated state stays tall
    so the photo + info zone fit comfortably. */
 .car-hero-full.is-empty{height:360px}
-/* Floor shadow positioned right under where the wheels sit. */
-.car-hero-full::before{
-  content:'';position:absolute;top:160px;left:14%;right:14%;height:6px;
-  background:radial-gradient(ellipse,rgba(40,30,20,0.22) 0%,transparent 70%);
-  filter:blur(3px);pointer-events:none;
-}
 /* Edge vignette */
 .car-hero-full::after{
   content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(120% 100% at 50% 25%,transparent 50%,rgba(40,30,20,0.10) 100%);
 }
+/* No-photo placeholder — sits in the same zone a real photo fills,
+   a soft brass camera prompt. Replaces the old car silhouette. */
 .car-hero-full .car-display{
-  position:absolute;top:calc(var(--st) + 56px);left:50%;width:72%;
-  transform:translateX(-50%);
-  filter:drop-shadow(0 10px 18px rgba(40,30,20,0.28));
+  position:absolute;
+  top:calc(var(--st) + 66px);
+  left:0;right:0;height:240px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+}
+.car-display .car-ph-icon{
+  width:50px;height:50px;
+  stroke:var(--brass);fill:none;stroke-width:1.4;
+  stroke-linecap:round;stroke-linejoin:round;
+  opacity:0.55;
+}
+.car-display .car-ph-text{
+  font-family:var(--ff-mono);font-size:0.62rem;font-weight:600;
+  letter-spacing:0.16em;text-transform:uppercase;
+  color:var(--brass);opacity:0.7;
 }
 /* Empty state — no car at all. Hide the silhouette and the name/
    meta block; show the brass CTA centred over the hero. */
@@ -1228,9 +1282,6 @@ body::before{
           mask-image:linear-gradient(180deg,transparent 0%,#000 10%,#000 92%,transparent 100%);
 }
 .car-hero-full .car-photo img{width:100%;height:100%;object-fit:cover;display:block}
-/* When a real photo is showing, hide the cream-paper floor shadow
-   (it's positioned for the silhouette and looks odd under a photo). */
-.car-hero-full.has-photo::before{display:none}
 /* Info zone (name + stats) is positioned from the TOP when there's
    a photo, so the bottom block sits CLEANLY below the photo's
    bottom edge instead of overlapping it. The pager dots stay

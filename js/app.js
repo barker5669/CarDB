@@ -561,54 +561,105 @@ async function renderPastEvents() {
 // of every past show, sourced from the same PastEvents store the
 // home dashboard uses. Tap a row to resume; the brass count badge
 // shows spotted totals at a glance.
+// Shows tab is segmented: 'upcoming' (the shared events calendar)
+// and 'past' (shows already run). Default to upcoming — it's the
+// forward-looking, more actionable view.
+let _showsSegment = 'upcoming';
+
+function setShowsSegment(seg) {
+  _showsSegment = (seg === 'past') ? 'past' : 'upcoming';
+  renderShowsList();
+}
+
+function _renderShowsSegmentBtns() {
+  document.querySelectorAll('#shows-segment .seg-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.seg === _showsSegment);
+  });
+  const addBtn = document.getElementById('shows-add-btn');
+  if (addBtn) addBtn.textContent = _showsSegment === 'upcoming' ? '＋ Add' : '＋ New';
+  const sub = document.getElementById('shows-hdr-sub');
+  if (sub) sub.textContent = _showsSegment === 'upcoming' ? 'Events to come' : 'Shows you’ve run';
+}
+
+// Header add button — context-aware: add an upcoming event, or
+// start a new show, depending on the active segment.
+function showsAddTapped() {
+  if (_showsSegment === 'upcoming') {
+    if (typeof openAddUpcoming === 'function') openAddUpcoming();
+  } else {
+    openNewShowSheet();
+  }
+}
+
 function renderShowsList() {
+  _renderShowsSegmentBtns();
   const body = document.getElementById('shows-body');
   if (!body) return;
-  // Read directly from the local store so the render is instant.
-  // Network enrichment happens in renderPastEvents (home), and any
-  // new shows it discovers will be in PastEvents the next time the
-  // user opens Shows — no need to re-fetch here.
+  if (_showsSegment === 'upcoming') {
+    // Upcoming segment IS the events calendar — same render the old
+    // standalone Upcoming tab used, now painting into #shows-body.
+    if (typeof renderUpcoming === 'function') renderUpcoming();
+    else body.innerHTML = '';
+    return;
+  }
+  _renderPastShows(body);
+}
+
+// Past shows — month-grouped rows, newest first, styled identically
+// to the upcoming list so the two segments feel like one screen.
+function _renderPastShows(body) {
   const events = (PastEvents.list() || []).filter(e =>
     e.name && e.name !== PERSONAL_EVENT
   );
-  const sub = document.getElementById('shows-hdr-sub');
-  if (sub) sub.textContent = events.length
-    ? `${events.length} show${events.length === 1 ? '' : 's'}`
-    : 'No shows yet';
   if (!events.length) {
     body.innerHTML = `
       <div class="shows-empty">
         <div class="shows-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 21V3M4 4h13l-3 4 3 4H4"/></svg></div>
-        <h3>No shows yet</h3>
-        <p>Start a show from Home and it'll show up here when you end it.</p>
+        <h3>No past shows yet</h3>
+        <p>Start a show and it'll show up here once you've run it.</p>
       </div>`;
     return;
   }
   const countFor = (name) => Object.keys((S.spotted || {})[name] || {}).length;
-  const fmtDate  = (iso) => {
-    if (!iso) return '';
-    const d = new Date(iso);
-    return isNaN(d) ? iso : d.toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
-  };
-  // Sort newest-first when we have dates.
-  const sorted = events.slice().sort((a, b) => {
-    const ad = a.event_date || '';
-    const bd = b.event_date || '';
-    return bd.localeCompare(ad);
-  });
-  body.innerHTML = sorted.map(e => {
-    const meta  = [e.location, fmtDate(e.event_date)].filter(Boolean).join(' · ');
-    const count = countFor(e.name);
-    return `<button class="shows-row" onclick="resumeEvent('${escapeJsSq(e.name)}')">
-      <span class="shows-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 21V3M4 4h13l-3 4 3 4H4"/></svg></span>
-      <div class="shows-row-body">
-        <div class="shows-row-name">${escapeHtml(e.name)}</div>
-        ${meta ? `<div class="shows-row-meta">${escapeHtml(meta)}</div>` : ''}
-      </div>
-      ${count > 0 ? `<span class="shows-row-badge">${count} spotted</span>` : ''}
-      <span class="shows-row-arrow">›</span>
-    </button>`;
-  }).join('');
+  // Newest first.
+  const sorted = events.slice().sort((a, b) =>
+    String(b.event_date || '').localeCompare(String(a.event_date || ''))
+  );
+  // Group by month so it mirrors the upcoming list's structure.
+  const groups = {};
+  for (const e of sorted) {
+    const key = e.event_date ? String(e.event_date).slice(0, 7) : 'no-date';
+    (groups[key] = groups[key] || []).push(e);
+  }
+  body.innerHTML = Object.entries(groups).map(([key, evs]) => `
+    <div class="up-month">
+      <div class="up-month-hdr">${escapeHtml(_monthLabelSafe(key))}</div>
+      ${evs.map(e => {
+        const d = e.event_date ? new Date(e.event_date) : null;
+        const dateBlock = d && !isNaN(d)
+          ? `<div class="up-date-d">${d.getDate()}</div>
+             <div class="up-date-w">${d.toLocaleDateString('en-GB',{weekday:'short'})}</div>`
+          : `<div class="up-date-d">—</div>`;
+        const count = countFor(e.name);
+        return `<button class="up-row up-row-btn" onclick="resumeEvent('${escapeJsSq(e.name)}')">
+          <div class="up-date">${dateBlock}</div>
+          <div class="up-info">
+            <div class="up-name">${escapeHtml(e.name)}</div>
+            ${e.location ? `<div class="up-loc">${escapeHtml(e.location)}</div>` : ''}
+            ${count > 0 ? `<div class="up-count">${count} spotted</div>` : ''}
+          </div>
+          <div class="up-row-chev">›</div>
+        </button>`;
+      }).join('')}
+    </div>`).join('');
+}
+
+// Month label that doesn't depend on upcoming.js load order.
+function _monthLabelSafe(key) {
+  if (key === 'no-date') return 'No date';
+  const [y, m] = key.split('-').map(Number);
+  if (!y || !m) return 'No date';
+  return new Date(y, m - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 }
 
 // Local-first index of every show the user has been part of, persisted
@@ -951,7 +1002,7 @@ function launch() {
 // ══════════════════════════════════════════════
 function switchTab(tab) {
   S.tab = tab;
-  const tabs = ['home','bingo','event','shows','garage','mycars','upcoming','sort','settings'];
+  const tabs = ['home','bingo','event','shows','garage','mycars','sort','settings'];
   tabs.forEach(t => {
     const el = document.getElementById('s-' + t);
     if (el) el.classList.toggle('active', t === tab);
@@ -992,7 +1043,7 @@ function buildNav(activeTab) {
 
   const html = tabBtn(NAV_TABS[0]) + tabBtn(NAV_TABS[1]) + camBtn + tabBtn(NAV_TABS[2]) + tabBtn(NAV_TABS[3]);
 
-  ['home','bingo','event','shows','garage','mycars','upcoming','sort','settings'].forEach(id => {
+  ['home','bingo','event','shows','garage','mycars','sort','settings'].forEach(id => {
     const bar = document.getElementById('nav-' + id + '-bar');
     if (bar) bar.innerHTML = html;
   });
@@ -1403,13 +1454,14 @@ async function renderNextEventCard() {
 }
 
 function _showNextEventFromList(events) {
-  const me = currentUserId();
   const todayIso = new Date().toISOString().slice(0, 10);
+  // Show the soonest upcoming event regardless of RSVP. This is a
+  // two-user app where both people see every event — filtering by
+  // attendance hid real events from Supabase that nobody had RSVPd
+  // to yet, so the card sat empty even when an event existed.
   const candidates = events
     .filter(e => e.event_date && e.event_date >= todayIso)
-    .filter(e => Array.isArray(e.upcoming_event_attendees) &&
-                 e.upcoming_event_attendees.some(a => a.user_id === me))
-    .sort((a, b) => a.event_date.localeCompare(b.event_date));
+    .sort((a, b) => String(a.event_date).localeCompare(String(b.event_date)));
   if (!candidates.length) return;
   const ev = candidates[0];
   const d  = new Date(ev.event_date);
@@ -2227,7 +2279,7 @@ function renderGarage() {
   } else {
     if(G_F.showSeen&&seenCars.length){html+=`<div class="garage-section-hdr">In your collection (${seenCars.length})</div>`;html+=seenCars.map(c=>garageCarHTML(c,carMap[c.name],true)).join('');}
     if(G_F.showUnseen&&unseenCars.length){html+=`<div class="garage-section-hdr" style="margin-top:12px">Still to find (${unseenCars.length})</div>`;html+=unseenCars.map(c=>garageCarHTML(c,null,false)).join('');}
-    if(!html)html=`<div class="garage-empty"><div class="icon">🚗</div><p>No cars spotted yet.<br>Get out there!</p></div>`;
+    if(!html)html=`<div class="garage-empty"><div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="56" height="56" stroke="currentColor" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg></div><p>No cars spotted yet.<br>Get out there!</p></div>`;
   }
   body.innerHTML = html;
   // Delegated click — survives the re-renders from preloadEraImages.
@@ -2981,7 +3033,7 @@ function _setupConnectivity() {
   _setOfflineBanner(!navigator.onLine);
   window.addEventListener('online',  () => {
     _setOfflineBanner(false);
-    showSnack('🟢 Back online');
+    showSnack('Back online');
     // Refresh data we may have missed while offline.
     _refreshOnFocus();
   });
@@ -3374,7 +3426,7 @@ async function addCarToPersonalCollection(car) {
     if (!sp[key]) sp[key] = { event:PERSONAL_EVENT, loc, ts:row.spotted_at, sightings:[] };
     sp[key].sightings.push({ id:row.id, event:PERSONAL_EVENT, loc, ts:row.spotted_at, photos:[] });
     save(); renderGarageAddPicker(); renderGarage();
-    showSnack(`🚗 ${car.name} added!`);
+    showSnack(`${car.name} added`);
     await attachWaitingPhoto(key);
     return;
   }
@@ -3386,7 +3438,7 @@ async function addCarToPersonalCollection(car) {
   S.event = PERSONAL_EVENT;
   S.pendingSightingPromise = sightingPromise;
   document.getElementById('camInput').click();
-  showSnack(`🚗 ${car.name} added!`);
+  showSnack(`${car.name} added`);
 
   let row;
   try { row = await sightingPromise; }
@@ -3437,12 +3489,12 @@ async function detectLocation() {
         ].filter(Boolean);
         const locStr = parts.join(', ') || data.display_name?.split(',').slice(0,2).join(',').trim() || '';
         input.value    = locStr;
-        status.textContent = `📍 ${locStr}`;
+        status.textContent = locStr;
         status.className   = 'loc-status ok';
       } catch(e) {
         // Fallback: just show coordinates
         input.value = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-        status.textContent = '📍 Location set (no name found)';
+        status.textContent = 'Location set (no name found)';
         status.className   = 'loc-status ok';
       }
     },

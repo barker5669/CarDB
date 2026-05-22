@@ -147,20 +147,16 @@
           </button>
         </div>
 
-        <!-- Car silhouette — refined coupe profile. Only visible when
-             we HAVE a car but no photo yet; in empty state (no car at
-             all) it's hidden and the brass CTA takes its place. -->
-        <svg class="car-display" id="cb-hero-svg" viewBox="0 0 340 130">
-          <path d="M22 96 Q 38 92 56 88 L 96 76 Q 124 56 162 56 Q 200 48 232 58 Q 256 62 282 80 L 300 88 Q 310 92 312 96 L 22 98 Z"
-                fill="#1a1814" stroke="#c79569" stroke-width="0.6" stroke-opacity="0.30"/>
-          <circle cx="86"  cy="100" r="15" fill="#0d0c09"/>
-          <circle cx="86"  cy="100" r="9"  fill="#2a261f"/>
-          <circle cx="86"  cy="100" r="3"  fill="#c79569" opacity="0.7"/>
-          <circle cx="252" cy="100" r="15" fill="#0d0c09"/>
-          <circle cx="252" cy="100" r="9"  fill="#2a261f"/>
-          <circle cx="252" cy="100" r="3"  fill="#c79569" opacity="0.7"/>
-          <path d="M104 76 L 142 64 L 200 64 L 232 70" stroke="#7da9c4" stroke-width="0.7" stroke-opacity="0.55" fill="none"/>
-        </svg>
+        <!-- No-photo placeholder — a clean camera prompt. Only visible
+             when we HAVE a car but no photo yet; in empty state (no
+             car at all) it's hidden and the brass CTA takes its place. -->
+        <div class="car-display" id="cb-hero-svg">
+          <svg class="car-ph-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span class="car-ph-text">Add a photo</span>
+        </div>
         <div class="car-photo" id="cb-hero-photo" style="display:none">
           <img id="cb-hero-img" alt="">
         </div>
@@ -398,15 +394,21 @@
     </div>
   </div>
 
-  <!-- SHOWS TAB — browseable list of past shows the user has done.
-       Tap a row to view that show's summary / resume. -->
+  <!-- SHOWS TAB — upcoming + past shows, split by a segmented
+       control. Upcoming = the shared events calendar; Past = shows
+       already run. Tap an upcoming event to start a show; tap a
+       past show to resume it. -->
   <div class="screen" id="s-shows">
     <div class="page-hdr">
       <div class="page-hdr-text">
         <div class="page-hdr-title">Shows</div>
-        <div class="page-hdr-sub" id="shows-hdr-sub">All your previous shows</div>
+        <div class="page-hdr-sub" id="shows-hdr-sub">Upcoming &amp; past</div>
       </div>
-      <button class="hdr-cta-btn" onclick="openNewShowSheet()">＋ New</button>
+      <button class="hdr-cta-btn" id="shows-add-btn" onclick="showsAddTapped()">＋ Add</button>
+    </div>
+    <div class="seg-control" id="shows-segment">
+      <button class="seg-btn active" data-seg="upcoming" type="button" onclick="setShowsSegment('upcoming')">Upcoming</button>
+      <button class="seg-btn" data-seg="past" type="button" onclick="setShowsSegment('past')">Past</button>
     </div>
     <div class="shows-scroll" id="shows-body"></div>
     <nav class="bottom-nav" id="nav-shows-bar"></nav>
@@ -456,21 +458,6 @@
     </div>
     <div class="sort-scroll" id="sort-body"></div>
     <nav class="bottom-nav" id="nav-sort-bar"></nav>
-  </div>
-
-  <!-- UPCOMING EVENTS TAB -->
-  <div class="screen" id="s-upcoming">
-    <div class="page-hdr">
-      <button class="hdr-icon-btn" onclick="switchTab('home')" title="Back to Home">
-        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
-      <div class="page-hdr-text">
-        <div class="page-hdr-title">Upcoming</div>
-      </div>
-      <button class="hdr-cta-btn" onclick="openAddUpcoming()">＋ Add</button>
-    </div>
-    <div class="upcoming-scroll" id="upcoming-body"></div>
-    <nav class="bottom-nav" id="nav-upcoming-bar"></nav>
   </div>
 
   <!-- MY CARS TAB -->
@@ -803,6 +790,7 @@
 <input type="file" id="camInputFirst"        accept="image/*" capture="environment" onchange="handlePhotoFirst(event)">
 <input type="file" id="myCarPhotoInput"      accept="image/*" capture="environment" onchange="handleMyCarPhoto(event)">
 <input type="file" id="myCarEntryPhotoInput" accept="image/*" capture="environment" onchange="handleMyCarEntryPhoto(event)">
+<input type="file" id="myCarAnglePhotoInput" accept="image/*" capture="environment" onchange="handleMyCarAnglePhoto(event)">
 
 <script>
 // Register the SW and auto-reload the page when a new version takes
