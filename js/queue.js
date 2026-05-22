@@ -260,7 +260,19 @@ const Queue = {
 async function _apply(env) {
   switch (env.kind) {
     case 'sighting.create': {
-      const row = await DB.sightings.create(env.payload);
+      const payload = { ...env.payload };
+      // event_id may still be a local-* string when the show was
+      // started while Supabase was unreachable. Resolve it via the
+      // temp map; if it's STILL local the event was never created
+      // server-side, so inserting this sighting would 400 with a
+      // bigint type mismatch (22P02). The sighting is already saved
+      // locally in S.spotted — just drop the envelope quietly.
+      if (payload.event_id != null && _isTempId(payload.event_id)) {
+        const resolved = _resolveTempId(payload.event_id);
+        if (_isTempId(resolved)) return;   // local-only event — keep sighting local
+        payload.event_id = resolved;
+      }
+      const row = await DB.sightings.create(payload);
       _mapLoad();
       _tempMap[env.tempId] = row.id;
       _mapSave();
