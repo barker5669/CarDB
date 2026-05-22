@@ -296,10 +296,16 @@ function buildBoard(eventKey, userId, roll, eras, totalCount) {
 }
 
 // DB.boards.cars stores car names only. New shape: flat ["name", ...].
-// Old shape: era-keyed { "Pre-War": ["name", ...] }. Hydrate handles both.
+// Old shape: era-keyed { "Pre-War": ["name", ...] }. The localStorage
+// cache (save()) stores the board as an array of full car OBJECTS, so
+// hydrate also accepts objects — otherwise resuming a show produced an
+// empty board (every object failed the name-string lookup).
 function hydrateBoard(stored) {
   if (Array.isArray(stored)) {
-    return stored.map(name => CAR_DB.find(c => c.name === name)).filter(Boolean);
+    return stored.map(item => {
+      const name = (item && typeof item === 'object') ? item.name : item;
+      return CAR_DB.find(c => c.name === name) || (item && item.name ? item : null);
+    }).filter(Boolean);
   }
   const out = [];
   for (const era in (stored || {})) {
@@ -606,12 +612,29 @@ function renderShowsList() {
 }
 
 // Past shows — month-grouped rows, newest first, styled identically
-// to the upcoming list so the two segments feel like one screen.
+// to the upcoming list so the two segments feel like one screen. The
+// currently-running show is excluded (it's not "past" — it shows on
+// the dashboard). Each row can be resumed or deleted.
 function _renderPastShows(body) {
   const events = (PastEvents.list() || []).filter(e =>
-    e.name && e.name !== PERSONAL_EVENT
+    e.name && e.name !== PERSONAL_EVENT && e.name !== S.event
   );
-  if (!events.length) {
+  // The active show, if any, gets its own pinned card at the top so
+  // it's clearly separated from genuinely-ended shows.
+  const activeCard = S.event ? `
+    <div class="up-month">
+      <div class="up-month-hdr">Running now</div>
+      <button class="up-row up-row-btn" onclick="resumeEvent('${escapeJsSq(S.event)}')">
+        <div class="up-date"><div class="up-date-d up-date-live">●</div></div>
+        <div class="up-info">
+          <div class="up-name">${escapeHtml(S.event)}</div>
+          ${S.loc ? `<div class="up-loc">${escapeHtml(S.loc)}</div>` : ''}
+          <div class="up-count">Current show · tap to continue</div>
+        </div>
+        <div class="up-row-chev">›</div>
+      </button>
+    </div>` : '';
+  if (!events.length && !activeCard) {
     body.innerHTML = `
       <div class="shows-empty">
         <div class="shows-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 21V3M4 4h13l-3 4 3 4H4"/></svg></div>
@@ -631,7 +654,7 @@ function _renderPastShows(body) {
     const key = e.event_date ? String(e.event_date).slice(0, 7) : 'no-date';
     (groups[key] = groups[key] || []).push(e);
   }
-  body.innerHTML = Object.entries(groups).map(([key, evs]) => `
+  const pastHtml = Object.entries(groups).map(([key, evs]) => `
     <div class="up-month">
       <div class="up-month-hdr">${escapeHtml(_monthLabelSafe(key))}</div>
       ${evs.map(e => {
@@ -641,17 +664,44 @@ function _renderPastShows(body) {
              <div class="up-date-w">${d.toLocaleDateString('en-GB',{weekday:'short'})}</div>`
           : `<div class="up-date-d">—</div>`;
         const count = countFor(e.name);
-        return `<button class="up-row up-row-btn" onclick="resumeEvent('${escapeJsSq(e.name)}')">
-          <div class="up-date">${dateBlock}</div>
-          <div class="up-info">
-            <div class="up-name">${escapeHtml(e.name)}</div>
-            ${e.location ? `<div class="up-loc">${escapeHtml(e.location)}</div>` : ''}
-            ${count > 0 ? `<div class="up-count">${count} spotted</div>` : ''}
+        return `<div class="up-row">
+          <div class="up-row-main" onclick="resumeEvent('${escapeJsSq(e.name)}')">
+            <div class="up-date">${dateBlock}</div>
+            <div class="up-info">
+              <div class="up-name">${escapeHtml(e.name)}</div>
+              ${e.location ? `<div class="up-loc">${escapeHtml(e.location)}</div>` : ''}
+              ${count > 0 ? `<div class="up-count">${count} spotted</div>` : ''}
+            </div>
           </div>
-          <div class="up-row-chev">›</div>
-        </button>`;
+          <div class="up-actions">
+            <button class="up-del" type="button" onclick="confirmDeletePastShow('${escapeJsSq(e.name)}')" title="Delete show">✕</button>
+          </div>
+        </div>`;
       }).join('')}
     </div>`).join('');
+  body.innerHTML = activeCard + pastHtml;
+}
+
+// Delete a past show from the local index + its cached board.
+// Spotted cars stay in the collection (they live in S.spotted).
+async function confirmDeletePastShow(name) {
+  const ok = await confirmSheet({
+    title:        `Delete "${name}"?`,
+    body:         'Removes the show from your list. Cars you spotted stay in your collection.',
+    confirmLabel: 'Delete',
+    danger:       true,
+  });
+  if (!ok) return;
+  try {
+    PastEvents._save((PastEvents.list() || []).filter(e => e.name !== name));
+    const store = loadStore();
+    if (store.events && store.events[name]) {
+      delete store.events[name];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    }
+  } catch (e) { console.warn('confirmDeletePastShow:', e); }
+  showSnack('Show deleted');
+  renderShowsList();
 }
 
 // Month label that doesn't depend on upcoming.js load order.
@@ -1082,7 +1132,10 @@ function updateHomeCard() {
     welcomeEl.style.display = (!S.event && !hasPast) ? 'block' : 'none';
   }
   if (S.event) {
-    activeDiv.style.display = 'block';
+    // 'flex' (not 'block') so the .dash-slide flex rule still applies —
+    // an inline display:block was overriding it and leaving the
+    // current-show card shorter than the next-event card.
+    activeDiv.style.display = 'flex';
     const nameEl  = document.getElementById('home-show-name');
     const metaEl  = document.getElementById('home-show-meta');
     const badgeEl = document.getElementById('home-show-badge');
@@ -1670,8 +1723,16 @@ function renderList() {
     return;
   }
   if (S.bingoView === 'carousel') {
+    // Preserve horizontal scroll across re-renders — spotting a car
+    // rebuilds the list, and without this the carousel snaps back to
+    // the first card instead of staying on the car just spotted.
+    const oldScroll = list.querySelector('.bingo-carousel')?.scrollLeft || 0;
     const cells = unique.map((car, i) => bingoCarouselCardHTML(car, i)).join('');
     list.innerHTML = `<div class="bingo-carousel">${cells}</div>`;
+    if (oldScroll) {
+      const newCar = list.querySelector('.bingo-carousel');
+      if (newCar) newCar.scrollLeft = oldScroll;
+    }
   } else {
     // Flat 3-column grid mixing eras. Order is the buildBoard output so
     // line detection (rows / cols / diagonals) stays meaningful.
@@ -1706,6 +1767,13 @@ function renderList() {
       const name = spotBtn.dataset.name;
       const car = unique.find(c => c.name === name);
       if (car) spotCarouselCar(car);
+      return;
+    }
+    // Tap a carousel card's image → open it full screen.
+    const imgZone = e.target.closest('.bingo-card-img[data-name]');
+    if (imgZone) {
+      const img = imgZone.querySelector('img');
+      if (img && img.getAttribute('src')) openLightbox(img.src, imgZone.dataset.name);
       return;
     }
     if (S.bingoView === 'carousel') return;
@@ -1782,6 +1850,8 @@ function renderBingoFeatured(car) {
     const parts = [car.years, car.make].filter(Boolean);
     metaEl.textContent = parts.join(' · ');
   }
+  const factsEl = document.getElementById('featured-facts');
+  if (factsEl) factsEl.innerHTML = _carFactsInner(car);
   if (spotBtn) {
     spotBtn.classList.toggle('is-spotted', spotted);
     spotBtn.dataset.carName = car.name;
@@ -1834,13 +1904,30 @@ async function spotFeaturedCar() {
   }
 }
 
+// Car detail facts (produced / surviving / value etc). Returned as
+// the inner .car-fact items so callers can drop them into their own
+// .car-facts container. Shared by the carousel card + the grid's
+// featured-bottom hero so "car details" show in both views.
+function _carFactsInner(car) {
+  if (!car) return '';
+  const facts = [
+    ['Era',       car.era],
+    ['Produced',  car.produced],
+    ['Surviving', car.surviving],
+    ['Value',     car.value],
+  ].filter(([, v]) => v);
+  if (!facts.length) return '';
+  return facts.map(([k, v]) =>
+    `<div class="car-fact"><span class="cf-k">${escapeHtml(k)}</span><span class="cf-v">${escapeHtml(String(v))}</span></div>`
+  ).join('');
+}
+
 function bingoCarouselCardHTML(car, idx) {
   const key   = cellKey(car.era, car.name);
   const sp    = currentSpotted();
   const data  = sp[key];
   const count = data ? data.sightings.length : 0;
   const spotted = count > 0;
-  const isPending = (data?.sightings || []).some(s => String(s.id || '').startsWith('local-'));
   const sightingPhoto = photoUrl(data?.sightings?.find(sg => sg.photos?.length > 0)?.photos[0]);
   const wikiPic = imgCache[car.name];
   const displaySrc = sightingPhoto || wikiPic;
@@ -1850,14 +1937,14 @@ function bingoCarouselCardHTML(car, idx) {
   const stamp = spotted
     ? `<div class="bingo-stamp">✓${count > 1 ? ` ×${count}` : ''}</div>`
     : '';
-  const pendCls = isPending ? ' pending' : '';
   const spotCls = spotted   ? ' spotted' : '';
   const flashCls = (S.justSpotted === key) ? ' just-spotted' : '';
   const spotLabel = spotted
     ? (count > 1 ? `Spotted ×${count}` : 'Spotted')
     : "I've spotted it";
-  return `<div class="bingo-card ${car.rarity}${spotCls}${pendCls}${flashCls}" data-name="${escapeAttr(car.name)}" data-idx="${idx}">
-    <div class="bingo-card-img">
+  const facts = _carFactsInner(car);
+  return `<div class="bingo-card ${car.rarity}${spotCls}${flashCls}" data-name="${escapeAttr(car.name)}" data-idx="${idx}">
+    <div class="bingo-card-img" data-name="${escapeAttr(car.name)}">
       ${imgHTML}<div class="bingo-card-flag" style="${displaySrc?'display:none':''}">${car.flag}</div>
       <div class="bingo-card-era">${escapeHtml(car.era)}</div>
       ${stamp}
@@ -1866,6 +1953,7 @@ function bingoCarouselCardHTML(car, idx) {
       <div class="bingo-card-rarity rarity-badge ${car.rarity}">${RARITY_LABELS[car.rarity]||''}</div>
       <div class="bingo-card-name">${escapeHtml(car.name)}</div>
       <div class="bingo-card-meta">${escapeHtml([car.years, car.country].filter(Boolean).join(' · '))}</div>
+      ${facts ? `<div class="car-facts">${facts}</div>` : ''}
       <button type="button" class="bingo-card-spot${spotted?' is-spotted':''}" data-name="${escapeAttr(car.name)}">
         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         <span>${escapeHtml(spotLabel)}</span>
@@ -1884,16 +1972,14 @@ function bingoCellHTML(car, idx) {
   const data  = sp[key];
   const count = data ? data.sightings.length : 0;
   const spotted = count > 0;
-  const isPending = (data?.sightings || []).some(s => String(s.id || '').startsWith('local-'));
   const justSpotted = S.justSpotted === key;
   const stamp = spotted
     ? `<div class="bingo-stamp">${count > 1 ? '×' + count : '✓'}</div>`
     : '';
-  const pendCls = isPending    ? ' pending'      : '';
   const spotCls = spotted      ? ' spotted'      : '';
   const flashCls = justSpotted ? ' just-spotted' : '';
   const rarityLabel = (typeof RARITY_LABELS !== 'undefined' && RARITY_LABELS[car.rarity]) || car.rarity || '';
-  return `<button class="bingo-cell ${car.rarity}${spotCls}${pendCls}${flashCls}" data-name="${escapeAttr(car.name)}" data-idx="${idx}" type="button">
+  return `<button class="bingo-cell ${car.rarity}${spotCls}${flashCls}" data-name="${escapeAttr(car.name)}" data-idx="${idx}" type="button">
     <div class="bingo-cell-name">${escapeHtml(car.name)}</div>
     <div class="bingo-cell-rarity"><span class="dot"></span>${escapeHtml(rarityLabel)}</div>
     ${stamp}

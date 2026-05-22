@@ -358,6 +358,9 @@ async function renderMyCarsList() {
 
 async function showMyCarDetail(carId) {
   _myCarsActive = carId;
+  // Make sure the My Cars screen is actually showing — this is called
+  // straight from the dashboard hero, where the active tab is Home.
+  if (typeof switchTab === 'function') switchTab('mycars');
   const titleEl = document.getElementById('mycars-hdr-title');
   if (titleEl) titleEl.textContent = '';
 

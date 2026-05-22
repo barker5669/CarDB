@@ -19,23 +19,27 @@
 // - Storage API responses for photos in the 'photos' bucket are
 //   cache-first when present so a slow connection doesn't blank the
 //   bingo card.
-const CACHE = 'carbingo-v108';
+const CACHE = 'carbingo-v109';
+// Paths are RELATIVE to the service worker's own location, so the app
+// works whether it's served from the domain root or a project-page
+// subpath (e.g. /CarDB/). Absolute '/'-prefixed paths 404'd on a
+// subpath deploy, which is why the SW failed to install.
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/css/main.css',
-  '/js/app.js',
-  '/js/auth.js',
-  '/js/cars.js',
-  '/js/db.js',
-  '/js/forms.js',
-  '/js/localphotos.js',
-  '/js/mycars.js',
-  '/js/photobin.js',
-  '/js/photocache.js',
-  '/js/queue.js',
-  '/js/supabase.js',
-  '/js/upcoming.js',
+  './',
+  'index.html',
+  'css/main.css',
+  'js/app.js',
+  'js/auth.js',
+  'js/cars.js',
+  'js/db.js',
+  'js/forms.js',
+  'js/localphotos.js',
+  'js/mycars.js',
+  'js/photobin.js',
+  'js/photocache.js',
+  'js/queue.js',
+  'js/supabase.js',
+  'js/upcoming.js',
   'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap'
 ];
 
@@ -113,7 +117,7 @@ self.addEventListener('fetch', e => {
           caches.open(CACHE).then(c => c.put(req, clone));
         }
         return res;
-      }).catch(() => caches.match(req).then(c => c || caches.match('/index.html')))
+      }).catch(() => caches.match(req).then(c => c || caches.match('index.html')))
     );
     return;
   }

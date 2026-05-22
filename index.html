@@ -331,6 +331,7 @@
             <div class="eyebrow-mini" id="featured-eyebrow"><span class="dot"></span><span id="featured-rarity-text">—</span></div>
             <h2 id="featured-name">—</h2>
             <div class="meta-line" id="featured-meta">—</div>
+            <div class="car-facts" id="featured-facts"></div>
           </div>
           <button class="spot-btn" id="featured-spot-btn" onclick="spotFeaturedCar()">
             <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
@@ -801,7 +802,7 @@
 // for updates (not first installs) and only once per page lifetime.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js').catch(() => {});
     const hadController = !!navigator.serviceWorker.controller;
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {

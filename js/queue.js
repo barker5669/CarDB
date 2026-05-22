@@ -90,11 +90,15 @@ function _withTimeout(promise, ms = 5000) {
 }
 
 function _setIndicator() {
-  const n = (_qState || []).length;
+  // Sightings are local-first: the data is saved on-device the moment
+  // it's spotted. The queue replays to Supabase in the background
+  // when it's reachable. We no longer surface a persistent
+  // "syncing…" badge — with the backend often unreachable it just
+  // sat there forever looking stuck. Nothing is lost regardless.
   const el = document.getElementById('queue-indicator');
   if (!el) return;
-  el.textContent = n > 0 ? `↑ ${n} syncing…` : '';
-  el.classList.toggle('show', n > 0);
+  el.textContent = '';
+  el.classList.remove('show');
 }
 
 // ─── IndexedDB for offline photo blobs ───────────────────────────────

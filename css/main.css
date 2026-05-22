@@ -600,6 +600,11 @@ body::before{
 /* Tappable variant (past shows) — the whole row is a button. */
 .up-row-btn{width:100%;text-align:left;cursor:pointer;-webkit-appearance:none;appearance:none;font:inherit;color:inherit}
 .up-row-btn:active{background:linear-gradient(180deg,var(--card-deep),var(--paper-deep))}
+/* Tappable resume area of a past-show row (leaves room for a
+   separate delete button in .up-actions alongside it). */
+.up-row-main{flex:1;min-width:0;display:flex;align-items:stretch;cursor:pointer}
+.up-row-main:active{opacity:0.72}
+.up-date-live{color:var(--brass);font-size:1.2rem;line-height:1.4}
 .up-date{width:62px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0;background:var(--paper-deep);border-right:1px solid var(--hair)}
 .up-date-d{font-family:var(--fh);font-size:1.55rem;font-weight:800;color:var(--brass-dk);line-height:1;letter-spacing:-0.02em}
 .up-date-w{font-family:var(--ff-mono);font-size:0.56rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.12em;margin-top:3px}
@@ -855,7 +860,7 @@ body::before{
 .bingo-toast.show{display:block;animation:bingo-pop 0.38s cubic-bezier(0.32,0.72,0,1)}
 .snackbar{display:none;position:fixed;bottom:calc(var(--nav-h) + 12px);left:50%;transform:translateX(-50%);background:#1f1d18;border:1px solid #0d0c09;color:#f5f1e7;font-family:var(--ff);font-size:0.88rem;font-weight:500;padding:11px 20px;z-index:300;white-space:nowrap;border-radius:999px;box-shadow:0 8px 24px -4px rgba(40,30,20,0.40)}
 .snackbar.show{display:block}
-#camInput,#camInputFirst,#myCarPhotoInput,#myCarEntryPhotoInput{display:none}
+#camInput,#camInputFirst,#myCarPhotoInput,#myCarEntryPhotoInput,#myCarAnglePhotoInput{display:none}
 
 /* OFFLINE BANNER */
 .offline-banner{display:none;position:fixed;top:calc(var(--st) + 6px);left:50%;transform:translateX(-50%);background:var(--danger);color:#fff;font-family:var(--ff-mono);font-size:0.7rem;font-weight:600;padding:7px 14px;border-radius:999px;z-index:400;white-space:nowrap;box-shadow:0 4px 14px -2px rgba(139,58,46,0.40);letter-spacing:0.08em}
@@ -1155,6 +1160,14 @@ body::before{
 .bingo-card-spot svg{flex:0 0 auto}
 .bingo-card-spot.is-spotted{background:var(--card-deep);color:var(--ink-strong);box-shadow:0 0 0 1px var(--hair) inset}
 
+/* Car detail facts — shared by carousel cards + the grid's
+   featured-bottom hero so "car details" surface in both views. */
+.car-facts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.car-fact{display:flex;flex-direction:column;gap:1px;background:var(--paper-deep);border:1px solid var(--hair);border-radius:8px;padding:5px 9px}
+.cf-k{font-family:var(--ff-mono);font-size:0.5rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--brass)}
+.cf-v{font-family:var(--ff);font-size:0.74rem;font-weight:700;color:var(--ink-strong);white-space:nowrap}
+.featured-bottom .car-facts{margin-top:7px}
+
 /* Carousel-mode layout — one car fills the area below the meta +
    section-label lines (both kept visible). Only the featured-bottom
    hero is hidden, since each carousel card carries its own image
@@ -1163,7 +1176,9 @@ body::before{
 #bingo-live[data-view="carousel"] .car-list{flex:1;min-height:0;display:flex;flex-direction:column;padding:0}
 #bingo-live[data-view="carousel"] .bingo-carousel{flex:1;min-height:0;align-items:stretch;padding:14px}
 #bingo-live[data-view="carousel"] .bingo-card{height:auto}
-#bingo-live[data-view="carousel"] .bingo-card-img{flex:1;min-height:0;aspect-ratio:auto}
+#bingo-live[data-view="carousel"] .bingo-card-img{flex:1;min-height:0;aspect-ratio:auto;cursor:zoom-in}
+/* Show the whole car — contain, not cover, so the sides aren't cropped. */
+#bingo-live[data-view="carousel"] .bingo-card-img img{object-fit:contain}
 #bingo-live[data-view="carousel"] .bingo-card-body{flex:0 0 auto}
 
 /* GAMIFICATION — progress bar + cell flash + confetti */

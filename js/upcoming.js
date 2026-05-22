@@ -7,12 +7,18 @@
 // ══════════════════════════════════════════════════════════════════════
 
 let _profilesIndex = null;
+let _upcomingFetching = false;  // dedupe concurrent list() calls
 
 async function _loadProfilesIndex() {
   if (_profilesIndex) return _profilesIndex;
   _profilesIndex = {};
   try {
-    const { data, error } = await SB.from('profiles').select('id, display_name');
+    // Time-boxed — a hanging profiles fetch must never block the
+    // upcoming list from painting (it once did, leaving the list
+    // blank until the user switched tabs).
+    const q = SB.from('profiles').select('id, display_name');
+    const { data, error } = await (typeof _raceTimeout === 'function'
+      ? _raceTimeout(q, 'Profiles', 6000) : q);
     if (!error && data) data.forEach(p => { _profilesIndex[p.id] = p.display_name; });
   } catch (e) { console.warn('loadProfilesIndex:', e); }
   return _profilesIndex;
@@ -43,7 +49,19 @@ async function renderUpcoming() {
   // openAddUpcoming (optimistic) + by successful list() responses.
   const cached = (typeof _loadCachedUpcoming === 'function') ? _loadCachedUpcoming() : [];
   _paintUpcoming(body, cached);
-  if (window.DB && DB.upcoming && typeof DB.upcoming.list === 'function') {
+  // Load attendee display names in the background; when they arrive,
+  // repaint so "Also going" names fill in. Never blocks the paint.
+  if (!_profilesIndex) {
+    _loadProfilesIndex().then(() => {
+      if (document.getElementById('shows-body') === body) _paintUpcoming(body, cached);
+    }).catch(() => {});
+  }
+  // Background refresh — deduped: renderShowsList can fire several
+  // times in quick succession (tab switch + home enrich + segment
+  // toggle), and without this guard each one spawned its own
+  // list() call, spamming the console with timeout warnings.
+  if (!_upcomingFetching && window.DB && DB.upcoming && typeof DB.upcoming.list === 'function') {
+    _upcomingFetching = true;
     _raceTimeout(DB.upcoming.list(), 'Upcoming events', 8000)
       .then(fresh => {
         if (!Array.isArray(fresh)) return;
@@ -53,13 +71,16 @@ async function renderUpcoming() {
         if (typeof _saveCachedUpcoming === 'function') _saveCachedUpcoming(merged);
         _paintUpcoming(body, merged);
       })
-      .catch(err => console.warn('renderUpcoming:', err));
+      .catch(err => console.warn('renderUpcoming:', err.message || err))
+      .finally(() => { _upcomingFetching = false; });
   }
 }
 
-async function _paintUpcoming(body, events) {
+function _paintUpcoming(body, events) {
   if (!body) return;
-  await _loadProfilesIndex();
+  // Profiles are loaded in the background — use whatever's available
+  // now (the paint must not wait on a network round-trip).
+  const profiles = _profilesIndex || {};
   if (!events.length) {
     body.innerHTML = `
       <div class="up-empty">
@@ -93,7 +114,7 @@ async function _paintUpcoming(body, events) {
           const iAmGoing  = attendees.includes(me);
           const others    = attendees
             .filter(id => id !== me)
-            .map(id => _profilesIndex[id])
+            .map(id => profiles[id])
             .filter(Boolean);
           const d = e.event_date ? new Date(e.event_date) : null;
           const dateBlock = d && !isNaN(d)
