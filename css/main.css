@@ -1109,14 +1109,11 @@ body::before{
 .bingo-card-spot svg{flex:0 0 auto}
 .bingo-card-spot.is-spotted{background:var(--card-deep);color:var(--ink-strong);box-shadow:0 0 0 1px var(--hair) inset}
 
-/* Carousel-mode layout — one car per full screen. Hide the
-   featured-bottom hero, the grid section header AND the score/meta
-   line so a single carousel card claims the entire content area
-   (page header to bottom nav). Each card carries its own image,
-   meta and spot button, so nothing else is needed on screen. */
-#bingo-live[data-view="carousel"] .featured-bottom,
-#bingo-live[data-view="carousel"] .section-lab,
-#bingo-live[data-view="carousel"] .bingo-meta{display:none !important}
+/* Carousel-mode layout — one car fills the area below the meta +
+   section-label lines (both kept visible). Only the featured-bottom
+   hero is hidden, since each carousel card carries its own image
+   and spot button. The carousel claims all remaining height. */
+#bingo-live[data-view="carousel"] .featured-bottom{display:none !important}
 #bingo-live[data-view="carousel"] .car-list{flex:1;min-height:0;display:flex;flex-direction:column;padding:0}
 #bingo-live[data-view="carousel"] .bingo-carousel{flex:1;min-height:0;align-items:stretch;padding:14px}
 #bingo-live[data-view="carousel"] .bingo-card{height:auto}
