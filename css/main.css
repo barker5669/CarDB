@@ -254,7 +254,7 @@ body::before{
 .hdr-pill-btn{background:var(--card-surf);border:1px solid var(--hair);border-radius:999px;color:var(--ink-2);font-family:var(--ff);font-size:0.82rem;font-weight:700;padding:9px 13px;min-height:42px;display:flex;align-items:center;gap:5px;cursor:pointer;-webkit-appearance:none;appearance:none;flex-shrink:0;white-space:nowrap;box-shadow:0 1px 0 rgba(255,255,255,0.85) inset,0 1px 2px rgba(40,30,20,0.06)}
 .hdr-pill-btn:active{opacity:0.75;transform:scale(0.96)}
 .hdr-pill-btn.exhausted{color:var(--ink-dim);opacity:0.5}
-.hdr-cta-btn{background:var(--brass);border:none;color:#fff;font-family:var(--ff);font-size:0.84rem;font-weight:700;letter-spacing:0.01em;padding:9px 14px;border-radius:999px;min-height:42px;display:flex;align-items:center;gap:5px;cursor:pointer;-webkit-appearance:none;appearance:none;flex-shrink:0;white-space:nowrap;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 -1px 0 rgba(0,0,0,0.10) inset,0 3px 10px -3px rgba(166,124,82,0.40)}
+.hdr-cta-btn{background:var(--ink-strong);border:none;color:#fbf6ea;font-family:var(--ff);font-size:0.84rem;font-weight:700;letter-spacing:0.01em;padding:9px 14px;border-radius:999px;min-height:42px;display:flex;align-items:center;gap:5px;cursor:pointer;-webkit-appearance:none;appearance:none;flex-shrink:0;white-space:nowrap;box-shadow:0 1px 0 rgba(255,255,255,0.08) inset,0 4px 12px -4px rgba(26,24,20,0.40)}
 .hdr-cta-btn:active{opacity:0.92;transform:scale(0.96)}
 
 /* HOME TAB
@@ -278,8 +278,11 @@ body::before{
    current-show + next-event end up the same height. (The next-event
    card IS its own slide, so it stretches directly.) */
 .dash-slide{flex:0 0 100%;scroll-snap-align:start;min-width:0;display:flex}
-.dash-carousel .upcoming-card{display:flex;width:100%}
-.dash-carousel .show-active-card{flex:1;display:flex}
+/* Explicit shared min-height guarantees the current-show and
+   next-event cards match height even if the flex-stretch chain
+   doesn't resolve (both cards' content sits well under this). */
+.dash-carousel .upcoming-card{display:flex;width:100%;min-height:82px}
+.dash-carousel .show-active-card{flex:1;display:flex;min-height:82px}
 .dash-carousel .show-active-btn{flex:1}
 .dash-carousel-pager{display:flex;justify-content:center;align-items:center;gap:6px;margin:6px 0 0;height:10px}
 .dash-carousel-pager .pd{width:5px;height:5px;border-radius:50%;background:var(--hair-strong);transition:width 0.2s ease,background 0.2s ease;cursor:pointer}
@@ -309,7 +312,7 @@ body::before{
 .bc-slider-lbl{font-size:0.8rem;font-weight:700;color:var(--dim);min-width:16px;text-align:center}
 .bc-slider{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:var(--bdr2);outline:none;cursor:pointer}
 .bc-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:26px;height:26px;border-radius:50%;background:var(--gold);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.45)}
-.primary-btn{width:100%;background:var(--brass);border:none;color:#fff;font-family:var(--ff);font-size:1.05rem;font-weight:700;padding:17px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 -1px 0 rgba(0,0,0,0.10) inset,0 4px 14px -4px rgba(166,124,82,0.40);letter-spacing:0.01em}
+.primary-btn{width:100%;background:var(--ink-strong);border:none;color:#fbf6ea;font-family:var(--ff);font-size:1.05rem;font-weight:700;padding:17px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 1px 0 rgba(255,255,255,0.08) inset,0 6px 18px -6px rgba(26,24,20,0.45);letter-spacing:0.01em}
 .primary-btn:active{opacity:0.92;transform:scale(0.98)}
 
 /* Past shows — row vocabulary mirroring the Shows tab so both
@@ -583,7 +586,7 @@ body::before{
 /* ─── Segmented control — Upcoming | Past on the Shows tab ─── */
 .seg-control{display:flex;gap:6px;padding:10px 14px 2px}
 .seg-btn{flex:1;background:var(--paper-deep);border:1px solid var(--hair);color:var(--ink-muted);font-family:var(--ff-mono);font-size:0.64rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;padding:9px 0;border-radius:999px;cursor:pointer;-webkit-appearance:none;appearance:none;transition:background 0.15s,color 0.15s,border-color 0.15s}
-.seg-btn.active{background:var(--brass);border-color:var(--brass);color:#fff;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 2px 8px rgba(166,124,82,0.25)}
+.seg-btn.active{background:var(--ink-strong);border-color:var(--ink-strong);color:#fbf6ea;box-shadow:0 1px 0 rgba(255,255,255,0.08) inset,0 2px 8px rgba(26,24,20,0.25)}
 .seg-btn:active{transform:scale(0.98)}
 
 /* ─── Upcoming / Past list — premium paper styling, shared by both
@@ -605,8 +608,8 @@ body::before{
 .up-row-main{flex:1;min-width:0;display:flex;align-items:stretch;cursor:pointer}
 .up-row-main:active{opacity:0.72}
 .up-date-live{color:var(--brass);font-size:1.2rem;line-height:1.4}
-.up-date{width:62px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0;background:var(--paper-deep);border-right:1px solid var(--hair)}
-.up-date-d{font-family:var(--fh);font-size:1.55rem;font-weight:800;color:var(--brass-dk);line-height:1;letter-spacing:-0.02em}
+.up-date{width:60px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0;border-right:1px solid var(--hair)}
+.up-date-d{font-family:var(--fh);font-size:1.55rem;font-weight:800;color:var(--ink-strong);line-height:1;letter-spacing:-0.02em}
 .up-date-w{font-family:var(--ff-mono);font-size:0.56rem;font-weight:700;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.12em;margin-top:3px}
 .up-info{flex:1;padding:11px 14px;min-width:0;display:flex;flex-direction:column;gap:3px;justify-content:center}
 .up-name{font-family:var(--fh);font-size:1.02rem;font-weight:700;letter-spacing:-0.015em;color:var(--ink-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -615,14 +618,14 @@ body::before{
 .up-link:active{opacity:0.7}
 .up-notes{font-size:0.8rem;color:var(--ink-muted);font-weight:500;line-height:1.45;margin-top:2px}
 .up-others{font-family:var(--ff-mono);font-size:0.62rem;color:var(--ink-muted);font-weight:600;letter-spacing:0.03em}
-.up-count{font-family:var(--ff-mono);font-size:0.62rem;font-weight:700;color:var(--brass-dk);letter-spacing:0.06em;text-transform:uppercase}
-.up-row-chev{display:flex;align-items:center;padding:0 14px;color:var(--brass);font-size:1.3rem;flex-shrink:0}
+.up-count{font-family:var(--ff-mono);font-size:0.62rem;font-weight:700;color:var(--ink-muted);letter-spacing:0.06em;text-transform:uppercase}
+.up-row-chev{display:flex;align-items:center;padding:0 14px;color:var(--ink-muted);font-size:1.3rem;flex-shrink:0}
 .up-actions{display:flex;flex-direction:column;justify-content:center;align-items:flex-end;gap:6px;padding:10px 12px;flex-shrink:0}
-.up-start{background:var(--brass);border:0;color:#fff;font-family:var(--ff-mono);font-size:0.62rem;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;padding:7px 12px;border-radius:999px;cursor:pointer;-webkit-appearance:none;appearance:none;white-space:nowrap;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 2px 8px rgba(166,124,82,0.30)}
+.up-start{background:var(--ink-strong);border:0;color:#fbf6ea;font-family:var(--ff-mono);font-size:0.62rem;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;padding:7px 12px;border-radius:999px;cursor:pointer;-webkit-appearance:none;appearance:none;white-space:nowrap;box-shadow:0 1px 0 rgba(255,255,255,0.08) inset,0 2px 8px -2px rgba(26,24,20,0.4)}
 .up-start:active{transform:scale(0.96)}
 .up-rsvp{background:var(--paper-deep);border:1px solid var(--hair-strong);color:var(--ink-muted);font-family:var(--ff-mono);font-size:0.62rem;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;padding:7px 12px;border-radius:999px;cursor:pointer;-webkit-appearance:none;appearance:none;white-space:nowrap}
 .up-rsvp:active{opacity:0.7}
-.up-rsvp-on{background:var(--brass);border-color:var(--brass);color:#fff;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset}
+.up-rsvp-on{background:var(--ink-strong);border-color:var(--ink-strong);color:#fbf6ea;box-shadow:0 1px 0 rgba(255,255,255,0.08) inset}
 .up-del{background:transparent;border:none;color:var(--ink-muted);font-size:0.85rem;cursor:pointer;-webkit-appearance:none;appearance:none;padding:4px 8px;border-radius:6px}
 .up-del:active{color:#c4533e;background:rgba(196,83,62,0.12)}
 .up-add-wrap{margin-top:14px}
@@ -722,6 +725,15 @@ body::before{
 #s-garage{background:var(--paper)}
 .garage-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 14px 14px}
 .garage-body::-webkit-scrollbar{display:none}
+/* Quick link from the Collection catalog to the user's own cars. */
+.garage-mycars-link{display:flex;align-items:center;gap:12px;width:100%;background:linear-gradient(180deg,var(--card-surf),var(--card-deep));border:1px solid var(--hair);border-radius:var(--R);padding:12px 13px;margin:8px 0 6px;cursor:pointer;-webkit-appearance:none;appearance:none;text-align:left;box-shadow:0 1px 0 rgba(255,255,255,0.85) inset,0 1px 2px rgba(40,30,20,0.05)}
+.garage-mycars-link:active{transform:scale(0.99)}
+.gml-icon{width:38px;height:38px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:10px;background:var(--ink-strong);color:#fbf6ea}
+.gml-icon svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.gml-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.gml-title{font-family:var(--fh);font-size:1rem;font-weight:700;color:var(--ink-strong);letter-spacing:-0.01em}
+.gml-sub{font-family:var(--ff-mono);font-size:0.6rem;color:var(--ink-muted);font-weight:500;letter-spacing:0.05em}
+.gml-arrow{font-size:1.3rem;color:var(--ink-muted);flex-shrink:0;padding-right:2px}
 .garage-section-hdr{font-family:var(--ff-mono);font-size:0.58rem;font-weight:700;letter-spacing:0.22em;color:var(--ink-muted);text-transform:uppercase;padding:14px 2px 6px;display:flex;align-items:center;gap:8px}
 .garage-section-hdr::after{content:'';flex:1;height:1px;background:var(--hair)}
 .gcar{background:transparent;border:0;border-bottom:1px solid var(--hair);margin:0;border-radius:0;overflow:visible;cursor:pointer;display:flex;align-items:center;min-height:64px;gap:12px;padding:10px 4px 10px 0;position:relative;transition:background 0.12s}
@@ -1131,28 +1143,26 @@ body::before{
    to filled brass + a brass tick badge. */
 .bingo-carousel{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:14px;padding:14px 14px calc(var(--sb) + 14px);-webkit-overflow-scrolling:touch}
 .bingo-carousel::-webkit-scrollbar{display:none}
-.bingo-card{flex:0 0 calc(100% - 28px);scroll-snap-align:center;background:linear-gradient(180deg,var(--card-surf) 0%,var(--card-deep) 100%);border:0;border-radius:14px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;-webkit-appearance:none;appearance:none;position:relative;transition:transform 0.12s;clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,0 100%);box-shadow:0 0 0 1px var(--hair) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 4px 14px -4px rgba(40,30,20,0.12),0 14px 32px -14px rgba(40,30,20,0.18)}
+.bingo-card{flex:0 0 calc(100% - 28px);scroll-snap-align:center;background:linear-gradient(180deg,var(--card-surf) 0%,var(--card-deep) 100%);border:0;border-radius:16px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;-webkit-appearance:none;appearance:none;position:relative;transition:transform 0.12s;box-shadow:0 0 0 1px var(--hair) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 4px 14px -4px rgba(40,30,20,0.12),0 14px 32px -14px rgba(40,30,20,0.18)}
 .bingo-card:active{transform:scale(0.98)}
 .bingo-card.rare        {box-shadow:0 0 0 1px rgba(77,126,176,0.35) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 4px 14px -4px rgba(40,30,20,0.12),0 14px 32px -14px rgba(40,30,20,0.18)}
 .bingo-card.epic        {box-shadow:0 0 0 1px rgba(138,95,191,0.38) inset,0 1px 0 rgba(255,255,255,0.85) inset,0 -1px 0 rgba(26,24,20,0.06) inset,0 4px 14px -4px rgba(40,30,20,0.12),0 14px 32px -14px rgba(40,30,20,0.18)}
 .bingo-card.legendary   {box-shadow:0 0 0 1px var(--brass-line) inset,0 1px 0 rgba(255,240,220,0.85) inset,0 -1px 0 rgba(122,88,54,0.10) inset,0 4px 14px -4px rgba(40,30,20,0.14),0 14px 32px -14px rgba(166,124,82,0.30)}
-/* Chamfered corner diagonal — rarity-coloured. */
-.bingo-card::before{content:'';position:absolute;top:-1px;right:-1px;width:34px;height:34px;background:linear-gradient(135deg,transparent 47%,rgba(139,130,120,0.55) 47%,rgba(139,130,120,0.55) 53%,transparent 53%);pointer-events:none;z-index:3;left:auto;bottom:auto}
-.bingo-card.rare::before     {background:linear-gradient(135deg,transparent 46%,rgba(77,126,176,0.75) 46%,rgba(77,126,176,0.75) 54%,transparent 54%)}
-.bingo-card.epic::before     {background:linear-gradient(135deg,transparent 46%,rgba(138,95,191,0.80) 46%,rgba(138,95,191,0.80) 54%,transparent 54%)}
-.bingo-card.legendary::before{width:38px;height:38px;background:linear-gradient(135deg,transparent 45%,var(--brass-light) 45%,var(--brass) 55%,transparent 55%)}
-.bingo-card.spotted::before  {background:linear-gradient(135deg,transparent 40%,var(--brass) 40%)}
+/* Spotted — a clear brass frame around the whole card overrides the
+   rarity ring, so a spotted car reads at a glance, not just a tick. */
+.bingo-card.spotted{box-shadow:0 0 0 2.5px var(--brass) inset,0 1px 0 rgba(255,240,210,0.85) inset,0 4px 14px -4px rgba(40,30,20,0.14),0 16px 34px -14px rgba(166,124,82,0.40)}
 .bingo-card-img{width:100%;aspect-ratio:16/11;background:linear-gradient(180deg,var(--paper-deep) 0%,var(--paper) 100%);position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .bingo-card-img img{width:100%;height:100%;object-fit:cover;display:block}
 .bingo-card-flag{font-size:5rem;line-height:1;color:var(--ink-dim);opacity:0.55}
 .bingo-card-era{position:absolute;top:12px;left:12px;background:rgba(254,251,242,0.82);color:var(--ink-2);font-family:var(--ff-mono);font-size:0.6rem;font-weight:600;padding:4px 10px;border-radius:999px;letter-spacing:0.12em;text-transform:uppercase;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 0 0 1px rgba(26,24,20,0.08),0 1px 2px rgba(40,30,20,0.06);z-index:1}
-.bingo-card.spotted .bingo-card-img::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,rgba(166,124,82,0.10) 100%);pointer-events:none}
+.bingo-card.spotted .bingo-card-img::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(166,124,82,0.16) 100%);pointer-events:none}
 .bingo-card-body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:6px;background:linear-gradient(180deg,var(--card-surf),var(--card-deep));border-top:1px solid var(--hair)}
 .bingo-card-rarity{align-self:flex-start;margin-bottom:2px}
 .bingo-card-name{font-family:var(--fh);font-size:1.4rem;font-weight:800;color:var(--ink-strong);line-height:1.15;letter-spacing:-0.02em}
 .bingo-card.spotted .bingo-card-name{color:var(--ink-strong)}
 .bingo-card-meta{font-family:var(--ff-mono);font-size:0.7rem;color:var(--ink-muted);font-weight:500;letter-spacing:0.04em}
-.bingo-card .bingo-stamp{position:absolute;top:14px;right:14px;background:var(--brass);color:#fff;font-family:var(--ff-mono);font-size:0.7rem;font-weight:700;padding:4px 11px;border-radius:999px;letter-spacing:0.06em;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 2px 6px rgba(0,0,0,0.18);transform:none;z-index:4;bottom:auto}
+/* Spotted stamp — a clear labelled brass badge, not a bare tick. */
+.bingo-card .bingo-stamp{position:absolute;top:13px;right:13px;display:inline-flex;align-items:center;gap:5px;background:var(--brass);color:#fff;font-family:var(--ff-mono);font-size:0.64rem;font-weight:700;padding:6px 12px;border-radius:999px;letter-spacing:0.12em;text-transform:uppercase;box-shadow:0 1px 0 rgba(255,240,210,0.5) inset,0 3px 10px -2px rgba(166,124,82,0.5);z-index:4}
 .bingo-card.pending{opacity:0.78}
 .bingo-card.pending::after{content:'syncing…';position:absolute;top:14px;left:18px;background:rgba(77,126,176,0.85);color:#fff;font-family:var(--ff-mono);font-size:0.62rem;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:0.06em;z-index:3}
 

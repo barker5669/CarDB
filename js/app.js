@@ -928,8 +928,11 @@ async function resumeEvent(name) {
   } catch (e) { console.warn('resumeEvent cache read:', e); }
   switchTab('bingo');
   try {
+    // Network enrichment is best-effort — the board already rendered
+    // from the local cache above, so a missing/slow Supabase event
+    // must NOT surface a scary error (the show resumed fine locally).
     const eventRow = await _raceTimeout(_findEventByName(name), 'Resume show', 10000);
-    if (!eventRow) { showSnack('Event not found'); return; }
+    if (!eventRow) { console.warn('resumeEvent: event not in Supabase (local-only show)'); return; }
     PastEvents.upsert(eventRow);
     S.event   = eventRow.name;
     S.eventId = eventRow.id;
@@ -944,7 +947,7 @@ async function resumeEvent(name) {
     updateBingoState();
     if (Array.isArray(S.board) && S.board.length) preloadEraImages(S.board);
   } catch (err) {
-    showErr('Could not load event', err);
+    console.warn('resumeEvent enrich failed (show still resumed locally):', err);
   }
 }
 
@@ -1946,7 +1949,7 @@ function bingoCarouselCardHTML(car, idx) {
     ? `<img src="${escapeAttr(displaySrc)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
     : '';
   const stamp = spotted
-    ? `<div class="bingo-stamp">✓${count > 1 ? ` ×${count}` : ''}</div>`
+    ? `<div class="bingo-stamp">✓ Spotted${count > 1 ? ` ·${count}` : ''}</div>`
     : '';
   const spotCls = spotted   ? ' spotted' : '';
   const flashCls = (S.justSpotted === key) ? ' just-spotted' : '';
@@ -2370,15 +2373,21 @@ function renderGarage() {
   const totalCars = Object.keys(carMap).length;
   const totalS    = Object.values(merged).reduce((a,d)=>a+(d.sightings?.length||0),0);
   document.getElementById('garage-total').textContent = `${totalCars} cars · ${totalS} sightings`;
+  // Quick link to the user's own vehicles (the My Cars tab).
+  const myCarsLink = `<button class="garage-mycars-link" type="button" onclick="showMyCars()">
+    <span class="gml-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg></span>
+    <span class="gml-body"><span class="gml-title">My Cars</span><span class="gml-sub">Your own vehicles — photos &amp; history</span></span>
+    <span class="gml-arrow">›</span>
+  </button>`;
   let html = '';
   if (!G_F.showSeen && !G_F.showUnseen) {
-    html=`<div class="garage-empty"><div class="icon">🔍</div><p>Both filters hidden.</p></div>`;
+    html=`<div class="garage-empty"><div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16" y2="16"/></svg></div><p>Both filters hidden.</p></div>`;
   } else {
     if(G_F.showSeen&&seenCars.length){html+=`<div class="garage-section-hdr">In your collection (${seenCars.length})</div>`;html+=seenCars.map(c=>garageCarHTML(c,carMap[c.name],true)).join('');}
     if(G_F.showUnseen&&unseenCars.length){html+=`<div class="garage-section-hdr" style="margin-top:12px">Still to find (${unseenCars.length})</div>`;html+=unseenCars.map(c=>garageCarHTML(c,null,false)).join('');}
     if(!html)html=`<div class="garage-empty"><div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="56" height="56" stroke="currentColor" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg></div><p>No cars spotted yet.<br>Get out there!</p></div>`;
   }
-  body.innerHTML = html;
+  body.innerHTML = myCarsLink + html;
   // Delegated click — survives the re-renders from preloadEraImages.
   body.onclick = (e) => {
     const card = e.target.closest('.gcar[data-name]');

@@ -112,10 +112,14 @@ function _paintUpcoming(body, events) {
         ${evs.map(e => {
           const attendees = (e.upcoming_event_attendees || []).map(a => a.user_id);
           const iAmGoing  = attendees.includes(me);
-          const others    = attendees
-            .filter(id => id !== me)
-            .map(id => profiles[id])
-            .filter(Boolean);
+          // Who else is going — show names if we have them, otherwise
+          // fall back to a count so the line still appears when the
+          // profiles lookup hasn't loaded.
+          const otherIds   = attendees.filter(id => id !== me);
+          const otherNames = otherIds.map(id => profiles[id]).filter(Boolean);
+          const othersLabel = otherNames.length
+            ? otherNames.join(', ')
+            : (otherIds.length ? `${otherIds.length} other${otherIds.length > 1 ? 's' : ''}` : '');
           const d = e.event_date ? new Date(e.event_date) : null;
           const dateBlock = d && !isNaN(d)
             ? `<div class="up-date-d">${d.getDate()}</div>
@@ -128,7 +132,7 @@ function _paintUpcoming(body, events) {
               ${e.location ? `<div class="up-loc">${escapeHtml(e.location)}</div>` : ''}
               ${e.url      ? `<a class="up-link" href="${escapeAttr(e.url)}" target="_blank" rel="noopener">More info</a>` : ''}
               ${e.notes    ? `<div class="up-notes">${escapeHtml(e.notes)}</div>` : ''}
-              ${others.length ? `<div class="up-others">Also going: ${escapeHtml(others.join(', '))}</div>` : ''}
+              ${othersLabel ? `<div class="up-others">Also going · ${escapeHtml(othersLabel)}</div>` : ''}
             </div>
             <div class="up-actions">
               <button class="up-start" onclick="startShowFromUpcoming('${escapeJsSq(String(e.id))}')" title="Start a bingo show for this event">Start show</button>
