@@ -183,6 +183,62 @@ const LocalMyCars = {
 };
 window.LocalMyCars = LocalMyCars;
 
+// Local-first My Car Log store. Same rationale as LocalMyCars: the
+// Supabase backend hangs intermittently and the user is migrating
+// off it, so log entries (service / mod / drive / note / photo) are
+// written to localStorage instantly. Remote sync is best-effort and
+// only attempted for cars that have a real (non-local) id. Old
+// remote log entries still render — _carLogEntries merges them in.
+const _LOCAL_MYCAR_LOG_KEY = 'cb-local-mycar-log-v1';
+const LocalMyCarLog = {
+  _all() {
+    try {
+      const arr = JSON.parse(localStorage.getItem(_LOCAL_MYCAR_LOG_KEY) || '[]');
+      return Array.isArray(arr) ? arr : [];
+    } catch { return []; }
+  },
+  _save(entries) {
+    try { localStorage.setItem(_LOCAL_MYCAR_LOG_KEY, JSON.stringify(entries)); }
+    catch (e) { console.warn('LocalMyCarLog save:', e); }
+  },
+  // All entries for one car, newest first (by entry_date then ts).
+  list(carId) {
+    return this._all()
+      .filter(e => String(e.my_car_id) === String(carId))
+      .sort((a, b) => String(b.entry_date || '').localeCompare(String(a.entry_date || ''))
+                   || (b._ts || 0) - (a._ts || 0));
+  },
+  add(payload) {
+    const id = `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const entry = {
+      id,
+      my_car_id:  payload.my_car_id,
+      entry_kind: payload.entry_kind,
+      title:      payload.title,
+      body:       payload.body ?? null,
+      entry_date: payload.entry_date || new Date().toISOString().slice(0, 10),
+      _ts:        Date.now(),
+      _local:     true,
+    };
+    const all = this._all();
+    all.push(entry);
+    this._save(all);
+    return entry;
+  },
+  remove(logId) {
+    this._save(this._all().filter(e => String(e.id) !== String(logId)));
+  },
+  isLocalId(id) { return String(id || '').startsWith('local-'); },
+};
+window.LocalMyCarLog = LocalMyCarLog;
+
+// Argument-safe id for an inline onclick handler. Numeric ids go in
+// raw; string ids (local-xxx) must be quoted or the browser parses
+// `foo(local-abc)` as arithmetic on undefined identifiers.
+function _mcIdArg(id) {
+  return (typeof id === 'number') ? String(id) : `'${escapeJsSq(String(id))}'`;
+}
+
 // Public helper for the dashboard hero. Returns the user's primary
 // car (the first one in the list) plus its hero photo URL + counts
 // derived from the my_car_photos / my_car_log_entries relations the
@@ -194,11 +250,14 @@ async function getHomeHeroCar() {
   const photos = _mcPhotosFor(car);
   const heroPhoto = _mcHeroFor(car, photos);
   const heroUrl = _mcPhotoUrl(heroPhoto);
+  // Log count = local-first entries + any legacy remote ones.
+  const localLog  = LocalMyCarLog.list(car.id).length;
+  const remoteLog = Array.isArray(car.my_car_log_entries) ? car.my_car_log_entries.length : 0;
   return {
     car,
     photoUrl: heroUrl,
     photoCount: photos.length,
-    logCount: Array.isArray(car.my_car_log_entries) ? car.my_car_log_entries.length : 0,
+    logCount: localLog + remoteLog,
     totalCars: cars.length,
   };
 }
@@ -236,7 +295,7 @@ async function renderMyCarsList() {
         const heroPhoto = _mcHeroFor(c, photos);
         const heroUrl = _mcPhotoUrl(heroPhoto);
         const meta = [c.year, c.make, c.model].filter(Boolean).join(' · ') || '—';
-        return `<button class="mc-card" onclick="showMyCarDetail(${c.id})">
+        return `<button class="mc-card" onclick="showMyCarDetail(${_mcIdArg(c.id)})">
           <div class="mc-card-thumb">${heroUrl
             ? `<img src="${escapeAttr(heroUrl)}" alt="">`
             : `<div class="mc-card-ph">🚗</div>`}</div>
@@ -270,11 +329,21 @@ async function showMyCarDetail(carId) {
     catch (err) { showErr('Could not load car', err); return; }
   }
 
-  let logEntries = [];
-  // Local cars don't have a remote log yet — skip the network call.
+  // Log entries are local-first. Always read the on-device log; for
+  // remote cars also pull the Supabase log and merge (deduped by id)
+  // so entries written before the local-first switch still show.
+  let logEntries = LocalMyCarLog.list(carId);
   if (!LocalMyCars.isLocalId(carId)) {
-    try { logEntries = await DB.myCarLog.list(carId); }
-    catch (err) { console.warn('myCarLog list:', err); }
+    try {
+      const remote = await DB.myCarLog.list(carId);
+      if (Array.isArray(remote)) {
+        const seen = new Set(logEntries.map(e => String(e.id)));
+        for (const r of remote) {
+          if (r && !seen.has(String(r.id))) logEntries.push(r);
+        }
+        logEntries.sort((a, b) => String(b.entry_date || '').localeCompare(String(a.entry_date || '')));
+      }
+    } catch (err) { console.warn('myCarLog list:', err); }
   }
 
   const photos    = _mcPhotosFor(car);
@@ -309,10 +378,9 @@ async function showMyCarDetail(carId) {
           ? `<div class="mc-photo-grid">${photos.map(p => {
               const url = _mcPhotoUrl(p) || '';
               const isCover = (heroPhoto && String(p.id) === String(heroPhoto.id));
-              const idArg = (typeof p.id === 'number') ? p.id : `'${escapeJsSq(p.id)}'`;
               return `<div class="mc-photo ${isCover?'is-cover':''}">
                 <img src="${escapeAttr(url)}" alt="" loading="lazy" onclick="openLightbox('${escapeJsSq(url)}','${escapeJsSq(car.name)}')">
-                <button class="mc-cover-toggle" type="button" onclick="setMyCarCover(${car.id}, ${idArg})" title="${isCover?'Cover photo':'Set as cover'}">${isCover?'★':'☆'}</button>
+                <button class="mc-cover-toggle" type="button" onclick="setMyCarCover(${_mcIdArg(car.id)}, ${_mcIdArg(p.id)})" title="${isCover?'Cover photo':'Set as cover'}">${isCover?'★':'☆'}</button>
               </div>`;
             }).join('')}</div>`
           : `<div class="mc-section-empty">No photos yet — tap "Add photo".</div>`}
@@ -333,7 +401,7 @@ async function showMyCarDetail(carId) {
           if (!logEntries.length) return `<div class="mc-section-empty">No entries yet.</div>`;
           if (!visible.length)    return `<div class="mc-section-empty">No ${escapeHtml(_mcLogFilter)} entries.</div>`;
           return visible.map(e => {
-            const linked = (photos || []).find(p => p.log_entry_id === e.id);
+            const linked = (photos || []).find(p => String(p.log_entry_id) === String(e.id));
             const linkedUrl = linked
               ? ((typeof PhotoCache !== 'undefined' && PhotoCache.getUrlSync(linked.storage_path)) || DB.storage.publicUrl(linked.storage_path))
               : null;
@@ -345,15 +413,15 @@ async function showMyCarDetail(carId) {
               <div class="mc-log-title">${escapeHtml(e.title)}</div>
               ${e.body ? `<div class="mc-log-body">${escapeHtml(e.body)}</div>` : ''}
               ${linkedUrl ? `<img class="mc-log-photo" src="${escapeAttr(linkedUrl)}" alt="" loading="lazy" onclick="openLightbox('${escapeJsSq(linkedUrl)}','${escapeJsSq(e.title)}')">` : ''}
-              <button class="mc-log-del" onclick="deleteMyCarLog(${e.id})" title="Delete entry">✕</button>
+              <button class="mc-log-del" onclick="deleteMyCarLog(${_mcIdArg(e.id)})" title="Delete entry">✕</button>
             </div>`;
           }).join('');
         })()}
       </div>
 
       <div class="mc-detail-edit">
-        <button class="mc-edit-btn"   onclick="openEditMyCar(${car.id})">Edit details</button>
-        <button class="mc-delete-btn" onclick="confirmDeleteMyCar(${car.id})">Delete car</button>
+        <button class="mc-edit-btn"   onclick="openEditMyCar(${_mcIdArg(car.id)})">Edit details</button>
+        <button class="mc-delete-btn" onclick="confirmDeleteMyCar(${_mcIdArg(car.id)})">Delete car</button>
       </div>
     </div>`;
 }
@@ -482,6 +550,16 @@ async function confirmDeleteMyCar(carId) {
     } else {
       await DB.myCars.remove(carId);
     }
+    // Drop this car's local-first log entries + on-device photos.
+    for (const e of LocalMyCarLog.list(carId)) LocalMyCarLog.remove(e.id);
+    if (typeof LocalPhotos !== 'undefined') {
+      try {
+        const owner = _mcOwnerId(carId);
+        for (const p of LocalPhotos.list(owner)) {
+          LocalPhotos.removeEntry(owner, p.id, { withBlob: true });
+        }
+      } catch (e) { console.warn('local photo cleanup:', e); }
+    }
     _myCars = null;
     showSnack('Deleted');
     await renderMyCarsList();
@@ -607,27 +685,29 @@ async function saveMyCarEntry() {
     return;
   }
   if (!MC_LOG_KINDS.includes(kind)) { showSnack('Pick a kind'); return; }
-  showSnack('💾 Saving…');
-  try {
-    const entry = await DB.myCarLog.create({
-      my_car_id:  carId,
-      entry_kind: kind,
-      title,
-      body,
-      entry_date: date,
-    });
-    if (blob) {
-      // Photo stays on this device only. Linked to the log entry via
-      // meta so deletion of the entry can find and remove it.
-      await LocalPhotos.add(_mcOwnerId(carId), blob, { log_entry_id: entry.id });
-    }
-    _myCars = null;
-    closeMyCarEntry();
-    showSnack('Saved');
-    if (_myCarsActive) await showMyCarDetail(_myCarsActive);
-  } catch (err) {
-    showErr('Could not save entry', err);
+
+  // Local-first: the log entry is written to localStorage immediately
+  // so it appears with zero network wait. Entries stay on-device —
+  // the user is migrating off Supabase and the £0 design keeps photos
+  // (and now log entries) local. Old remote entries still display via
+  // the merge in showMyCarDetail.
+  const entry = LocalMyCarLog.add({
+    my_car_id:  carId,
+    entry_kind: kind,
+    title,
+    body,
+    entry_date: date,
+  });
+  if (blob) {
+    // Photo stays on this device only. Linked to the log entry via
+    // meta so deletion of the entry can find and remove it.
+    try { await LocalPhotos.add(_mcOwnerId(carId), blob, { log_entry_id: entry.id }); }
+    catch (err) { console.warn('log photo save:', err); }
   }
+  _myCars = null;
+  closeMyCarEntry();
+  showSnack('Saved');
+  if (_myCarsActive) await showMyCarDetail(_myCarsActive);
 }
 
 async function openAddMyCarLog() {
@@ -654,20 +734,25 @@ async function deleteMyCarLog(logId) {
         }
       }
     }
-    // Legacy DB-stored photos (uploaded before the local-only switch).
-    // Best-effort cleanup; cascade deletion isn't on log_entry_id.
-    try {
-      const { data: photos } = await SB.from('my_car_photos')
-        .select('id, storage_path')
-        .eq('log_entry_id', logId);
-      for (const p of (photos || [])) {
-        try {
-          await SB.from('my_car_photos').delete().eq('id', p.id);
-          if (p.storage_path) await DB.storage.removePhoto(p.storage_path);
-        } catch (e) { console.warn('legacy photo cleanup:', e); }
-      }
-    } catch (e) { console.warn('legacy photo lookup:', e); }
-    await DB.myCarLog.remove(logId);
+    if (LocalMyCarLog.isLocalId(logId)) {
+      // Local-first entry — remove from localStorage. No network.
+      LocalMyCarLog.remove(logId);
+    } else {
+      // Legacy remote entry. Clean up its DB-stored photos (uploaded
+      // before the local-only switch) then delete the row itself.
+      try {
+        const { data: photos } = await SB.from('my_car_photos')
+          .select('id, storage_path')
+          .eq('log_entry_id', logId);
+        for (const p of (photos || [])) {
+          try {
+            await SB.from('my_car_photos').delete().eq('id', p.id);
+            if (p.storage_path) await DB.storage.removePhoto(p.storage_path);
+          } catch (e) { console.warn('legacy photo cleanup:', e); }
+        }
+      } catch (e) { console.warn('legacy photo lookup:', e); }
+      await DB.myCarLog.remove(logId);
+    }
     _myCars = null;
     showSnack('Deleted');
     if (_myCarsActive) await showMyCarDetail(_myCarsActive);

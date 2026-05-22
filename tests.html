@@ -168,6 +168,18 @@
     localStorage.setItem('cb-bingo-defaults-v1', JSON.stringify({ eras: ERAS, carCount: 'eleventy' }));
     eq(loadBingoDefaults().carCount, 9);
   });
+  test('clamps out-of-range carCount (stale 30) to fallback', () => {
+    localStorage.setItem('cb-bingo-defaults-v1', JSON.stringify({ eras: ERAS, carCount: 30 }));
+    eq(loadBingoDefaults().carCount, 9);
+  });
+  test('clamps too-small carCount (3) to fallback', () => {
+    localStorage.setItem('cb-bingo-defaults-v1', JSON.stringify({ eras: ERAS, carCount: 3 }));
+    eq(loadBingoDefaults().carCount, 9);
+  });
+  test('keeps in-range carCount (16) untouched', () => {
+    localStorage.setItem('cb-bingo-defaults-v1', JSON.stringify({ eras: ERAS, carCount: 16 }));
+    eq(loadBingoDefaults().carCount, 16);
+  });
 
   // ───────── render results ──────────────────────────────────
   const sum  = document.getElementById('summary');

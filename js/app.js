@@ -72,17 +72,25 @@ async function fetchWikiImg(carName) {
   }
 
   const promise = (async () => {
+    // Manual abort wrapper — AbortSignal.timeout is missing on
+    // older iOS Safari (FIL's phone is one), and a missing static
+    // method threw TypeError on EVERY fetch, blanking the bingo
+    // card. Build our own AbortController + setTimeout instead.
+    const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), 8000) : null;
     try {
       const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(mapped)}`;
-      const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      const r = await fetch(url, ctrl ? { signal: ctrl.signal } : {});
       if (!r.ok) throw new Error(r.status);
       const data = await r.json();
       const src = data?.thumbnail?.source || null;
       if (src) { imgCache[carName] = src; saveImgCache(); }    // only cache wins
       return src;
     } catch (e) {
+      console.warn('fetchWikiImg failed:', carName, e?.message || e);
       return null;                                              // do NOT cache failure
     } finally {
+      if (timer) clearTimeout(timer);
       _imgInFlight.delete(carName);
     }
   })();
@@ -321,11 +329,16 @@ function loadBingoDefaults() {
   try {
     const raw = localStorage.getItem(BINGO_DEFAULTS_KEY);
     const obj = raw ? JSON.parse(raw) : {};
+    // Clamp carCount to the realistic bingo range (3x3 → ~4x4). Values
+    // outside this (e.g. a stale 30 from an earlier slider config) get
+    // pulled back to the 9-card default so new shows respect intent.
+    let carCount = Number.isInteger(obj.carCount) ? obj.carCount : BINGO_DEFAULTS_FALLBACK.carCount;
+    if (carCount < 6 || carCount > 16) carCount = BINGO_DEFAULTS_FALLBACK.carCount;
     return {
       eras: (Array.isArray(obj.eras) && obj.eras.length)
         ? obj.eras.filter(e => ERAS.includes(e))
         : ERAS.slice(),
-      carCount: Number.isInteger(obj.carCount) ? obj.carCount : BINGO_DEFAULTS_FALLBACK.carCount,
+      carCount,
     };
   } catch { return { ...BINGO_DEFAULTS_FALLBACK, eras: BINGO_DEFAULTS_FALLBACK.eras.slice() }; }
 }
@@ -883,10 +896,15 @@ async function startEvent() {
   launch();
 
   // Background Supabase sync — best effort. If it succeeds, swap
-  // the local-style id for the canonical remote one and migrate
-  // the board's persisted entry under the new id (board contents
-  // are the same).
+  // the local-style id for the canonical remote one. Push our
+  // freshly-built local board UP (don't pull a stale remote board
+  // down — that's how a 9-card local board ended up replaced by an
+  // old 16-card remote one for the same event name).
   if (window.DB && DB.events && typeof DB.events.create === 'function') {
+    const localBoard      = S.board;
+    const localBoardEras  = S.boardEras;
+    const localBoardCount = S.boardCarCount;
+    const localRolls      = S.rolls;
     (async () => {
       try {
         const eventRow = await _raceTimeout(_findOrCreateEvent(ev, loc, date || null), 'Start show', 10000);
@@ -894,7 +912,19 @@ async function startEvent() {
         PastEvents.upsert(eventRow);
         S.eventId = eventRow.id;
         try { await DB.attendees.join(eventRow.id); } catch (e) { console.warn('attendees.join:', e); }
-        try { await _loadOrCreateBoard(eventRow); } catch (e) { console.warn('_loadOrCreateBoard:', e); }
+        // Push the local board up — overwrite any stale remote board
+        // for this event (e.g. an older 16-card layout from before
+        // the user lowered their settings to 9).
+        try {
+          if (DB.boards && typeof DB.boards.upsert === 'function') {
+            await DB.boards.upsert(eventRow.id, {
+              cars:      dehydrateBoard(localBoard),
+              eras:      localBoardEras,
+              car_count: localBoardCount,
+              rolls:     localRolls || 0,
+            });
+          }
+        } catch (e) { console.warn('boards.upsert (push local):', e); }
         save();
         _invalidateEventsCache();
       } catch (err) {
@@ -1572,6 +1602,12 @@ function renderList() {
   if (!list) return;
   if (!S.bingoView) S.bingoView = _loadBingoView();
   _refreshViewToggleBtn();
+  // Tag the live container with the current view so CSS can hide
+  // the featured-bottom hero + section-lab in carousel mode (each
+  // carousel card carries its own image + spot button, so the
+  // bottom hero would be redundant and steal vertical space).
+  const liveEl = document.getElementById('bingo-live');
+  if (liveEl) liveEl.dataset.view = S.bingoView;
   const cars = Array.isArray(S.board) ? S.board : [];
   const unique = [...new Map(cars.map(c => [c.name, c])).values()];
   if (!unique.length) {
@@ -1598,24 +1634,61 @@ function renderList() {
     featuredCar = unique.find(c => !sp[cellKey(c.era, c.name)]) || unique[0];
     S.bingoFeatured = featuredCar.name;
   }
-  renderBingoFeatured(featuredCar);
-  // Delegated click — tap a cell to select it as the featured car
-  // in the bottom hero (replaces the old "tap → open modal" flow).
+  // In grid mode the featured-bottom hero shows the image; in
+  // carousel mode it's hidden via CSS, but we still keep S.bingoFeatured
+  // in sync so toggling back lands on the same car.
+  if (S.bingoView === 'grid') {
+    renderBingoFeatured(featuredCar);
+  } else {
+    const fb = document.getElementById('featured-bottom');
+    if (fb) fb.style.display = 'none';
+  }
+  // Delegated click — in grid mode tap = select-as-featured. In
+  // carousel mode tap on the spot button fires spotCarouselCar; tap
+  // on the card body is a no-op (each card is fully self-contained
+  // and shows its own image + meta + spot affordance).
   list.onclick = (e) => {
-    const cell = e.target.closest('.bingo-cell[data-name],.bingo-card[data-name]');
+    const spotBtn = e.target.closest('.bingo-card-spot[data-name]');
+    if (spotBtn) {
+      e.stopPropagation();
+      const name = spotBtn.dataset.name;
+      const car = unique.find(c => c.name === name);
+      if (car) spotCarouselCar(car);
+      return;
+    }
+    if (S.bingoView === 'carousel') return;
+    const cell = e.target.closest('.bingo-cell[data-name]');
     if (!cell) return;
     const car = unique.find(c => c.name === cell.dataset.name);
     if (!car) return;
     S.bingoFeatured = car.name;
     renderBingoFeatured(car);
-    // Highlight the selected card so the user sees which one drives the hero.
     list.querySelectorAll('.is-featured').forEach(n => n.classList.remove('is-featured'));
     cell.classList.add('is-featured');
   };
-  // Initial highlight for whichever card is featured.
-  const initEl = list.querySelector(`.bingo-cell[data-name="${escapeAttr(featuredCar.name)}"],.bingo-card[data-name="${escapeAttr(featuredCar.name)}"]`);
-  if (initEl) initEl.classList.add('is-featured');
+  // Initial highlight only matters in grid mode (carousel cards are
+  // all visually equal — no "selected" highlight).
+  if (S.bingoView === 'grid') {
+    const initEl = list.querySelector(`.bingo-cell[data-name="${escapeAttr(featuredCar.name)}"]`);
+    if (initEl) initEl.classList.add('is-featured');
+  }
   updateScore();
+}
+
+// Spot a car from the carousel view — sets the same state as
+// spotFeaturedCar and triggers the photo flow. Each carousel card
+// has its own spot button so the user can spot any car without
+// returning to the featured-bottom hero (which is hidden in this
+// view).
+async function spotCarouselCar(car) {
+  if (!car) return;
+  S.bingoFeatured = car.name;
+  S.modalKey = cellKey(car.era, car.name);
+  S.modalCar = car;
+  S.pendingSightingId = null;
+  if (typeof addSighting === 'function') {
+    try { await addSighting(); } catch (e) { console.warn('addSighting:', e); }
+  }
 }
 
 // Populate the featured-bottom hero from a car object. Photo (real
@@ -1728,6 +1801,9 @@ function bingoCarouselCardHTML(car, idx) {
   const pendCls = isPending ? ' pending' : '';
   const spotCls = spotted   ? ' spotted' : '';
   const flashCls = (S.justSpotted === key) ? ' just-spotted' : '';
+  const spotLabel = spotted
+    ? (count > 1 ? `Spotted ×${count}` : 'Spotted')
+    : "I've spotted it";
   return `<div class="bingo-card ${car.rarity}${spotCls}${pendCls}${flashCls}" data-name="${escapeAttr(car.name)}" data-idx="${idx}">
     <div class="bingo-card-img">
       ${imgHTML}<div class="bingo-card-flag" style="${displaySrc?'display:none':''}">${car.flag}</div>
@@ -1738,6 +1814,10 @@ function bingoCarouselCardHTML(car, idx) {
       <div class="bingo-card-rarity rarity-badge ${car.rarity}">${RARITY_LABELS[car.rarity]||''}</div>
       <div class="bingo-card-name">${escapeHtml(car.name)}</div>
       <div class="bingo-card-meta">${escapeHtml([car.years, car.country].filter(Boolean).join(' · '))}</div>
+      <button type="button" class="bingo-card-spot${spotted?' is-spotted':''}" data-name="${escapeAttr(car.name)}">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>${escapeHtml(spotLabel)}</span>
+      </button>
     </div>
   </div>`;
 }
@@ -1783,7 +1863,9 @@ function updateScore() {
   if (scoreMeta) scoreMeta.innerHTML = `<b>${spotted}</b>/<b>${total}</b> spotted`;
   // After spotting, the featured-bottom may need its label refreshed
   // (was the just-spotted car the featured one?). Cheap, idempotent.
-  if (S.bingoFeatured) {
+  // Skip in carousel mode — the hero is hidden there and
+  // renderBingoFeatured would un-hide it.
+  if (S.bingoFeatured && S.bingoView !== 'carousel') {
     const car = unique.find(c => c.name === S.bingoFeatured);
     if (car) renderBingoFeatured(car);
   }
@@ -3088,33 +3170,50 @@ function goToNewEvent() {
 async function endCurrentShow() {
   closeEventMenu();
   if (!S.event) { showSnack('No active show'); return; }
-  const ok = await confirmSheet({
-    title:        `End "${S.event}"?`,
-    body:         "Your sightings stay saved. You can come back to it from Previous Shows on Home.",
-    confirmLabel: 'End show',
-  });
+  // Confirm — but never let a flaky confirm sheet block ending the
+  // show. If confirmSheet throws (missing DOM, etc.) fall back to the
+  // native prompt so the action always completes.
+  let ok;
+  try {
+    ok = await confirmSheet({
+      title:        `End "${S.event}"?`,
+      body:         "Your sightings stay saved. You can come back to it from Previous Shows on Home.",
+      confirmLabel: 'End show',
+    });
+  } catch (e) {
+    console.warn('confirmSheet failed, using native confirm:', e);
+    ok = window.confirm(`End "${S.event}"? Your sightings stay saved.`);
+  }
   if (!ok) return;
-  // Snapshot the show into the local Past Shows index BEFORE clearing
-  // state, so it lands in the list even if it had no spotted cars.
-  PastEvents.upsert({
-    id:         S.eventId,
-    name:       S.event,
-    location:   S.loc || null,
-    event_date: S.date || null,
-  });
-  S.event   = '';
-  S.eventId = null;
-  S.board   = null;
-  S.boardEras = null;
-  S.boardCarCount = null;
-  S.rolls   = 0;
-  S._fired  = {};
-  save();
-  _invalidateEventsCache();
-  showSnack('Show ended');
-  switchTab('home');
-  // renderPastEvents now reads PastEvents (localStorage) first, so the
-  // just-ended show appears instantly with no network dependency.
+  // Ending a show is a purely local operation — no network, so it can
+  // never hang or time out. Wrapped in try/catch so a throw in any
+  // render step can't leave the show half-ended.
+  try {
+    // Snapshot the show into the local Past Shows index BEFORE clearing
+    // state, so it lands in the list even if it had no spotted cars.
+    PastEvents.upsert({
+      id:         S.eventId,
+      name:       S.event,
+      location:   S.loc || null,
+      event_date: S.date || null,
+    });
+    S.event   = '';
+    S.eventId = null;
+    S.board   = null;
+    S.boardEras = null;
+    S.boardCarCount = null;
+    S.rolls   = 0;
+    S._fired  = {};
+    save();
+    _invalidateEventsCache();
+    showSnack('Show ended');
+    switchTab('home');
+  } catch (err) {
+    console.warn('endCurrentShow:', err);
+    // State is already cleared above — make sure the user still lands
+    // somewhere sensible even if a render step threw.
+    try { switchTab('home'); } catch {}
+  }
 }
 
 function openNewShowSheet() {

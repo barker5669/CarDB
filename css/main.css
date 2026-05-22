@@ -1101,6 +1101,28 @@ body::before{
 .bingo-card.pending{opacity:0.78}
 .bingo-card.pending::after{content:'syncing…';position:absolute;top:14px;left:18px;background:rgba(77,126,176,0.85);color:#fff;font-family:var(--ff-mono);font-size:0.62rem;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:0.06em;z-index:3}
 
+/* Per-card spot button inside carousel cards — each card carries
+   its own affordance so the user doesn't need to drop back to the
+   featured-bottom hero (hidden in carousel mode anyway). */
+.bingo-card-spot{margin-top:14px;display:inline-flex;align-items:center;gap:8px;padding:11px 16px;background:var(--brass);color:#fff;border:0;border-radius:999px;font-family:var(--ff-mono);font-size:0.74rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;-webkit-appearance:none;appearance:none;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 2px 8px rgba(166,124,82,0.35);transition:transform 0.12s,box-shadow 0.12s;align-self:flex-start}
+.bingo-card-spot:active{transform:scale(0.97);box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 1px 4px rgba(166,124,82,0.40)}
+.bingo-card-spot svg{flex:0 0 auto}
+.bingo-card-spot.is-spotted{background:var(--card-deep);color:var(--ink-strong);box-shadow:0 0 0 1px var(--hair) inset}
+
+/* Carousel-mode layout — one car per full screen. Hide the
+   featured-bottom hero, the grid section header AND the score/meta
+   line so a single carousel card claims the entire content area
+   (page header to bottom nav). Each card carries its own image,
+   meta and spot button, so nothing else is needed on screen. */
+#bingo-live[data-view="carousel"] .featured-bottom,
+#bingo-live[data-view="carousel"] .section-lab,
+#bingo-live[data-view="carousel"] .bingo-meta{display:none !important}
+#bingo-live[data-view="carousel"] .car-list{flex:1;min-height:0;display:flex;flex-direction:column;padding:0}
+#bingo-live[data-view="carousel"] .bingo-carousel{flex:1;min-height:0;align-items:stretch;padding:14px}
+#bingo-live[data-view="carousel"] .bingo-card{height:auto}
+#bingo-live[data-view="carousel"] .bingo-card-img{flex:1;min-height:0;aspect-ratio:auto}
+#bingo-live[data-view="carousel"] .bingo-card-body{flex:0 0 auto}
+
 /* GAMIFICATION — progress bar + cell flash + confetti */
 .bingo-progress{position:relative;height:24px;background:var(--paper-deep);border:1px solid var(--hair);border-radius:999px;overflow:hidden;flex:1;box-shadow:inset 0 1px 2px rgba(40,30,20,0.10)}
 .bingo-progress-fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--brass-light),var(--brass));transition:width 0.4s cubic-bezier(0.32,0.72,0,1);width:0%;border-radius:999px;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset}
