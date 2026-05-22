@@ -254,7 +254,8 @@ body::before{
 .hdr-pill-btn{background:var(--card-surf);border:1px solid var(--hair);border-radius:999px;color:var(--ink-2);font-family:var(--ff);font-size:0.82rem;font-weight:700;padding:9px 13px;min-height:42px;display:flex;align-items:center;gap:5px;cursor:pointer;-webkit-appearance:none;appearance:none;flex-shrink:0;white-space:nowrap;box-shadow:0 1px 0 rgba(255,255,255,0.85) inset,0 1px 2px rgba(40,30,20,0.06)}
 .hdr-pill-btn:active{opacity:0.75;transform:scale(0.96)}
 .hdr-pill-btn.exhausted{color:var(--ink-dim);opacity:0.5}
-.hdr-cta-btn{background:var(--ink-strong);border:none;color:#fbf6ea;font-family:var(--ff);font-size:0.84rem;font-weight:700;letter-spacing:0.01em;padding:9px 14px;border-radius:999px;min-height:42px;display:flex;align-items:center;gap:5px;cursor:pointer;-webkit-appearance:none;appearance:none;flex-shrink:0;white-space:nowrap;box-shadow:0 1px 0 rgba(255,255,255,0.08) inset,0 4px 12px -4px rgba(26,24,20,0.40)}
+.hdr-cta-btn{position:relative;background:var(--ink-strong);border:none;color:#fbf6ea;font-family:var(--ff);font-size:0.84rem;font-weight:700;letter-spacing:0.01em;padding:9px 15px;border-radius:999px;min-height:42px;display:flex;align-items:center;gap:5px;cursor:pointer;-webkit-appearance:none;appearance:none;flex-shrink:0;white-space:nowrap;box-shadow:0 1px 0 rgba(255,255,255,0.08) inset,0 4px 12px -4px rgba(26,24,20,0.40)}
+.hdr-cta-btn::after{content:'';position:absolute;inset:3px;border:1.3px dashed rgba(199,149,105,0.6);border-radius:999px;pointer-events:none}
 .hdr-cta-btn:active{opacity:0.92;transform:scale(0.96)}
 
 /* HOME TAB
@@ -312,7 +313,9 @@ body::before{
 .bc-slider-lbl{font-size:0.8rem;font-weight:700;color:var(--dim);min-width:16px;text-align:center}
 .bc-slider{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:var(--bdr2);outline:none;cursor:pointer}
 .bc-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:26px;height:26px;border-radius:50%;background:var(--gold);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.45)}
-.primary-btn{width:100%;background:var(--ink-strong);border:none;color:#fbf6ea;font-family:var(--ff);font-size:1.05rem;font-weight:700;padding:17px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 1px 0 rgba(255,255,255,0.08) inset,0 6px 18px -6px rgba(26,24,20,0.45);letter-spacing:0.01em}
+.primary-btn{position:relative;width:100%;background:var(--ink-strong);border:none;color:#fbf6ea;font-family:var(--ff);font-size:1.05rem;font-weight:700;padding:17px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 1px 0 rgba(255,255,255,0.08) inset,0 6px 18px -6px rgba(26,24,20,0.45);letter-spacing:0.01em}
+/* Bronze "stitched" inset outline — premium leather-trim detail. */
+.primary-btn::after{content:'';position:absolute;inset:5px;border:1.5px dashed rgba(199,149,105,0.6);border-radius:calc(var(--R) - 5px);pointer-events:none}
 .primary-btn:active{opacity:0.92;transform:scale(0.98)}
 
 /* Past shows — row vocabulary mirroring the Shows tab so both
@@ -621,11 +624,14 @@ body::before{
 .up-count{font-family:var(--ff-mono);font-size:0.62rem;font-weight:700;color:var(--ink-muted);letter-spacing:0.06em;text-transform:uppercase}
 .up-row-chev{display:flex;align-items:center;padding:0 14px;color:var(--ink-muted);font-size:1.3rem;flex-shrink:0}
 .up-actions{display:flex;flex-direction:column;justify-content:center;align-items:flex-end;gap:6px;padding:10px 12px;flex-shrink:0}
-.up-start{background:var(--ink-strong);border:0;color:#fbf6ea;font-family:var(--ff-mono);font-size:0.62rem;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;padding:7px 12px;border-radius:999px;cursor:pointer;-webkit-appearance:none;appearance:none;white-space:nowrap;box-shadow:0 1px 0 rgba(255,255,255,0.08) inset,0 2px 8px -2px rgba(26,24,20,0.4)}
+/* Start show — primary action: solid ink with a bronze stitch. */
+.up-start{position:relative;background:var(--ink-strong);border:0;color:#fbf6ea;font-family:var(--ff-mono);font-size:0.62rem;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;padding:8px 14px;border-radius:999px;cursor:pointer;-webkit-appearance:none;appearance:none;white-space:nowrap;box-shadow:0 1px 0 rgba(255,255,255,0.08) inset,0 2px 8px -2px rgba(26,24,20,0.4)}
+.up-start::after{content:'';position:absolute;inset:2.5px;border:1.1px dashed rgba(199,149,105,0.65);border-radius:999px;pointer-events:none}
 .up-start:active{transform:scale(0.96)}
 .up-rsvp{background:var(--paper-deep);border:1px solid var(--hair-strong);color:var(--ink-muted);font-family:var(--ff-mono);font-size:0.62rem;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;padding:7px 12px;border-radius:999px;cursor:pointer;-webkit-appearance:none;appearance:none;white-space:nowrap}
 .up-rsvp:active{opacity:0.7}
-.up-rsvp-on{background:var(--ink-strong);border-color:var(--ink-strong);color:#fbf6ea;box-shadow:0 1px 0 rgba(255,255,255,0.08) inset}
+/* Going (confirmed) — brass, distinct from the ink "Start show". */
+.up-rsvp-on{background:var(--brass);border-color:var(--brass);color:#fff;box-shadow:0 1px 0 rgba(255,240,210,0.45) inset,0 2px 8px -3px rgba(166,124,82,0.5)}
 .up-del{background:transparent;border:none;color:var(--ink-muted);font-size:0.85rem;cursor:pointer;-webkit-appearance:none;appearance:none;padding:4px 8px;border-radius:6px}
 .up-del:active{color:#c4533e;background:rgba(196,83,62,0.12)}
 .up-add-wrap{margin-top:14px}
