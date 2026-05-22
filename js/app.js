@@ -458,6 +458,7 @@ function bcSetCount(val) {
 // REROLL — keeps sightings, persists via DB.boards
 // ══════════════════════════════════════════════
 async function rerollBoard() {
+  if (!S.event) { showSnack('Start a show first'); return; }
   if ((S.rolls || 0) >= 3) { showSnack('No rerolls left for this event'); return; }
   const newRolls = (S.rolls || 0) + 1;
   const newBoard = buildBoard(S.eventId || S.event, currentUserId(), newRolls, S.boardEras, S.boardCarCount);
@@ -1051,6 +1052,10 @@ function launch() {
 // TAB NAV
 // ══════════════════════════════════════════════
 function switchTab(tab) {
+  // No active show → the bingo board has nothing to display. Route to
+  // Shows (upcoming + past events) so the user can start or resume a
+  // show rather than landing on an empty board.
+  if (tab === 'bingo' && !S.event) tab = 'shows';
   S.tab = tab;
   const tabs = ['home','bingo','event','shows','garage','mycars','sort','settings'];
   tabs.forEach(t => {
