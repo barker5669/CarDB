@@ -1776,6 +1776,14 @@ function renderList() {
       if (img && img.getAttribute('src')) openLightbox(img.src, imgZone.dataset.name);
       return;
     }
+    // Tap a carousel card's body → open the full detail modal
+    // (stats + every sighting, with delete).
+    const cardBody = e.target.closest('.bingo-card-body');
+    if (cardBody) {
+      const card = cardBody.closest('.bingo-card[data-name]');
+      if (card) openCarDetail(card.dataset.name);
+      return;
+    }
     if (S.bingoView === 'carousel') return;
     const cell = e.target.closest('.bingo-cell[data-name]');
     if (!cell) return;
@@ -1850,8 +1858,6 @@ function renderBingoFeatured(car) {
     const parts = [car.years, car.make].filter(Boolean);
     metaEl.textContent = parts.join(' · ');
   }
-  const factsEl = document.getElementById('featured-facts');
-  if (factsEl) factsEl.innerHTML = _carFactsInner(car);
   if (spotBtn) {
     spotBtn.classList.toggle('is-spotted', spotted);
     spotBtn.dataset.carName = car.name;
@@ -2403,6 +2409,18 @@ function garageCarHTML(car, entry, isSeen) {
 // ══════════════════════════════════════════════
 // MODAL
 // ══════════════════════════════════════════════
+// Open the full car-detail modal (stats, description, sightings list
+// with delete + add-photo) for a car by name, looked up on the
+// current board. The featured-bottom hero + carousel cards route
+// here so the user can see and manage every sighting.
+function openCarDetail(name) {
+  if (!name) return;
+  const cars = Array.isArray(S.board) ? S.board : [];
+  const car = cars.find(c => c.name === name);
+  if (!car) return;
+  openModal(car, cellKey(car.era, car.name));
+}
+
 function openModal(car, key) {
   if (!car || !key) return;
   S.modalKey = key; S.modalCar = car;
@@ -2441,7 +2459,7 @@ function openModal(car, key) {
   const hBtn = document.getElementById('m-hagerty');
   if (hBtn) {
     hBtn.href = car.hagerty ? `https://www.hagerty.com/valuation-tools/${car.hagerty}` : 'https://www.hagerty.com/valuation-tools/';
-    hBtn.textContent = car.hagerty ? '📈 View Hagerty Valuation' : '📈 Search Hagerty Valuations';
+    hBtn.textContent = car.hagerty ? 'View Hagerty Valuation' : 'Search Hagerty Valuations';
   }
   document.getElementById('m-stats').innerHTML = `
     <div class="modal-stat"><div class="modal-stat-val">${car.produced||'—'}</div><div class="modal-stat-lbl">Produced</div></div>
@@ -2471,7 +2489,7 @@ function refreshModalSightings() {
   // Primary action label: first time vs. another sighting.
   const spotBtn = document.getElementById('spot-btn');
   if (spotBtn) {
-    spotBtn.textContent = count === 0 ? '📷  I Spotted It!' : '📷  Saw Another One!';
+    spotBtn.textContent = count === 0 ? 'I Spotted It' : 'Saw Another One';
     spotBtn.classList.toggle('spotted', count > 0);
   }
 
@@ -2504,7 +2522,7 @@ function refreshModalSightings() {
     return `<div class="sighting-entry">
       <div class="sighting-top"><div class="sighting-meta"><div class="sighting-num">Sighting #${i+1}</div><div class="sighting-time">${escapeHtml(sg.ts)}</div><div class="sighting-ev">${escapeHtml(sg.event)}${sg.loc?' · '+escapeHtml(sg.loc):''}</div></div><button class="sighting-del" onclick="deleteSighting('${escapeJsSq(sg.id)}')">✕</button></div>
       ${photosHTML?`<div class="sighting-photos">${photosHTML}</div>`:''}
-      <button class="add-photo-btn" onclick="triggerPhoto('${sg.id}')">📷  Add a Photo</button>
+      <button class="add-photo-btn" onclick="triggerPhoto('${sg.id}')">Add a Photo</button>
     </div>`;
   }).join('');
   const firstPhoto = photoUrl(data.sightings.find(sg=>sg.photos?.length>0)?.photos[0]);
@@ -2543,10 +2561,18 @@ async function changeCount(delta) {
   showSnack('Removed last sighting');
 }
 
+let _lastSpotTs = 0;
 async function addSighting() {
   const key = S.modalKey;
   const car = S.modalCar;
   if (!key || !car) return;
+  // Guard against a double-fire (double-tap, a delegated handler
+  // running twice). A genuine second sighting always means re-opening
+  // the camera, which takes seconds — so a sub-second repeat is
+  // always accidental and would otherwise create a duplicate ×2.
+  const now = Date.now();
+  if (now - _lastSpotTs < 1200) return;
+  _lastSpotTs = now;
   const eventIdForRow = (S.event === PERSONAL_EVENT) ? null : (S.eventId || null);
 
   // iOS Safari throws away the user-gesture context across an `await`.
@@ -2609,9 +2635,9 @@ async function handlePhoto(e) {
   S.pendingSightingId = null;
   S.pendingSightingPromise = null;
   e.target.value = '';
-  if (!file || !S.modalKey) { showSnack('✓ Sighting saved'); return; }
+  if (!file || !S.modalKey) { showSnack('Sighting saved'); return; }
 
-  showSnack('💾 Saving photo…');
+  showSnack('Saving photo…');
   try {
     // The camera was opened synchronously to preserve iOS gesture
     // context, so the sighting row may still be in flight. Wait for it.
@@ -2648,7 +2674,7 @@ async function handlePhoto(e) {
     if (!sg.photos) sg.photos = [];
     sg.photos.push(photo);
     save(); refreshModalSightings(); renderList(); renderEventList();
-    showSnack('📷 Photo saved!');
+    showSnack('Photo saved');
   } catch (err) {
     showErr('Photo save failed', err);
   } finally {

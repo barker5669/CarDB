@@ -313,14 +313,38 @@ async function showMyCars() {
   await renderMyCarsList();
 }
 
+// Sync snapshot — local cars + the last cached remote payload, no
+// network. Lets the list paint instantly instead of waiting up to
+// 8s on a (often unreachable) Supabase fetch.
+function _myCarsSnapshot() {
+  const local = LocalMyCars.list();
+  let remote = [];
+  try {
+    const cached = JSON.parse(localStorage.getItem(_REMOTE_MYCARS_CACHE_KEY) || '[]');
+    if (Array.isArray(cached)) remote = cached;
+  } catch {}
+  const seen = new Set(local.map(c => String(c.id)));
+  const merged = [...local];
+  for (const r of remote) if (r && !seen.has(String(r.id))) merged.push(r);
+  return merged;
+}
+
 async function renderMyCarsList() {
   _myCarsActive = null;
-  const cars = await _loadMyCars(true);
-  const body = document.getElementById('mycars-body');
-  if (!body) return;
   const titleEl = document.getElementById('mycars-hdr-title');
   if (titleEl) titleEl.textContent = 'My Cars';
+  // Paint instantly from local + cached remote — no network wait.
+  _paintMyCarsList(_myCarsSnapshot());
+  // Refresh from Supabase in the background; repaint only if the user
+  // is still on the list (hasn't tapped into a car's detail).
+  _loadMyCars(true)
+    .then(cars => { if (_myCarsActive === null) _paintMyCarsList(cars); })
+    .catch(() => {});
+}
 
+function _paintMyCarsList(cars) {
+  const body = document.getElementById('mycars-body');
+  if (!body) return;
   if (!cars.length) {
     body.innerHTML = `
       <div class="mc-empty">
@@ -331,7 +355,6 @@ async function renderMyCarsList() {
       </div>`;
     return;
   }
-
   body.innerHTML = `
     <div class="mc-list">
       ${cars.map(c => {
