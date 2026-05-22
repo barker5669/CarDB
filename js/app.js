@@ -190,8 +190,15 @@ function save() {
     const store = loadStore();
     store.events = store.events || {};
     if (S.event) {
+      // Never clobber a good stored board with an empty one — if
+      // S.board is momentarily empty, keep whatever was saved before
+      // (this is what made a resumed show lose all its cars).
+      const prev  = store.events[S.event];
+      const board = (Array.isArray(S.board) && S.board.length)
+        ? S.board
+        : ((prev && Array.isArray(prev.board) && prev.board.length) ? prev.board : S.board);
       store.events[S.event] = {
-        board:    S.board,
+        board,
         spotted:  S.spotted[S.event] || {},
         loc:      S.loc,
         date:     S.date,
@@ -915,9 +922,10 @@ async function resumeEvent(name) {
   // Read the cached board for this show so cards render right away.
   // save() persists store.events[name].board after every change, so
   // this is the same data we'd build remotely.
+  let evCache = null;
   try {
     const store = loadStore();
-    const evCache = store.events && store.events[name];
+    evCache = store.events && store.events[name];
     if (evCache && Array.isArray(evCache.board) && evCache.board.length) {
       S.board         = hydrateBoard(evCache.board);
       S.rolls         = evCache.rolls ?? 0;
@@ -926,6 +934,19 @@ async function resumeEvent(name) {
       if (evCache.spotted) S.spotted[name] = { ...(S.spotted[name] || {}), ...evCache.spotted };
     }
   } catch (e) { console.warn('resumeEvent cache read:', e); }
+  // No cached board (show created on another device, or its cache was
+  // lost) — build one NOW from settings so the user never lands on an
+  // empty board. buildBoard is deterministic by event seed, so this
+  // reconstructs a stable board; save() persists it for next time.
+  if (!Array.isArray(S.board) || !S.board.length) {
+    const defs = (typeof loadBingoDefaults === 'function')
+      ? loadBingoDefaults() : { eras: ERAS.slice(), carCount: 9 };
+    S.boardEras     = (evCache && Array.isArray(evCache.eras) && evCache.eras.length) ? evCache.eras : defs.eras;
+    S.boardCarCount = (evCache && Number.isInteger(evCache.carCount)) ? evCache.carCount : defs.carCount;
+    S.rolls         = (evCache && evCache.rolls) || 0;
+    S.board = buildBoard(S.eventId || S.event || name, currentUserId(), S.rolls, S.boardEras, S.boardCarCount);
+    save();
+  }
   switchTab('bingo');
   try {
     // Network enrichment is best-effort — the board already rendered
@@ -2375,7 +2396,7 @@ function renderGarage() {
   document.getElementById('garage-total').textContent = `${totalCars} cars · ${totalS} sightings`;
   // Quick link to the user's own vehicles (the My Cars tab).
   const myCarsLink = `<button class="garage-mycars-link" type="button" onclick="showMyCars()">
-    <span class="gml-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg></span>
+    <span class="gml-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.25"/><circle cx="12" cy="12" r="2.6"/><line x1="12" y1="14.6" x2="12" y2="21.25"/><line x1="9.75" y1="10.7" x2="4" y2="7.4"/><line x1="14.25" y1="10.7" x2="20" y2="7.4"/></svg></span>
     <span class="gml-body"><span class="gml-title">My Cars</span><span class="gml-sub">Your own vehicles — photos &amp; history</span></span>
     <span class="gml-arrow">›</span>
   </button>`;
