@@ -3342,6 +3342,35 @@ function _blobToDataURL(blob) {
   });
 }
 
+// Self-contained dump of every cached photo blob, read straight from
+// IndexedDB. Doesn't depend on photocache.js exposing a dump helper
+// (a stale cached build of it was making the backup miss photos).
+function _dumpPhotoBlobs() {
+  return new Promise((resolve) => {
+    let req;
+    try { req = indexedDB.open('cardb-photo-cache'); }
+    catch { resolve([]); return; }
+    req.onerror = () => resolve([]);
+    req.onsuccess = () => {
+      const db = req.result;
+      if (!db.objectStoreNames || !db.objectStoreNames.contains('photos')) {
+        resolve([]); return;
+      }
+      let cur;
+      try {
+        cur = db.transaction('photos', 'readonly').objectStore('photos').openCursor();
+      } catch { resolve([]); return; }
+      const out = [];
+      cur.onsuccess = () => {
+        const c = cur.result;
+        if (c) { out.push({ path: c.key, blob: c.value }); c.continue(); }
+        else resolve(out);
+      };
+      cur.onerror = () => resolve(out);
+    };
+  });
+}
+
 async function exportBackup() {
   try {
     showSnack('Preparing backup…');
@@ -3351,12 +3380,11 @@ async function exportBackup() {
       if (k && !_isAuthKey(k)) ls[k] = localStorage.getItem(k);
     }
     const photos = {};
-    if (typeof PhotoCache !== 'undefined' && PhotoCache.dumpAll) {
-      const entries = await PhotoCache.dumpAll();
-      for (const { path, blob } of entries) {
-        try { photos[path] = await _blobToDataURL(blob); }
-        catch (e) { console.warn('backup photo:', path, e); }
-      }
+    const entries = await _dumpPhotoBlobs();
+    for (const { path, blob } of entries) {
+      if (!path || !blob) continue;
+      try { photos[path] = await _blobToDataURL(blob); }
+      catch (e) { console.warn('backup photo:', path, e); }
     }
     const backup = {
       format:     'carbingo-backup',
