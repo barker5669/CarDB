@@ -93,7 +93,7 @@
   --ff-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;overflow:hidden}
+html,body{height:100%;overflow:hidden;background:var(--paper)}
 /* Body — paper surface with the same layered showroom-lighting
    gradients the mockup uses (spotlight from upper centre, warm
    sash-window band across the middle, cool shade bottom-right). */
@@ -851,9 +851,11 @@ body::before{
 .modal-close-full:active{opacity:0.78;transform:scale(0.98)}
 
 /* LIGHTBOX */
-.lightbox{display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,0.97);align-items:center;justify-content:center;flex-direction:column}
+.lightbox{display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,0.97);align-items:center;justify-content:center;flex-direction:column;padding:calc(var(--st) + 56px) 0 calc(var(--sb) + 40px)}
 .lightbox.open{display:flex}
-.lightbox img{max-width:100%;max-height:82vh;object-fit:contain;border-radius:6px}
+/* Fill the available area while preserving aspect ratio — previous
+   max-only rules left small source images stuck at thumbnail size. */
+.lightbox img{display:block;width:100%;height:100%;object-fit:contain;flex:1;min-height:0}
 .lightbox-close{position:absolute;top:calc(var(--st) + 8px);right:14px;width:40px;height:40px;background:rgba(255,255,255,0.13);border:none;border-radius:50%;color:white;font-size:1rem;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(8px)}
 .lightbox-info{color:rgba(255,255,255,0.42);font-size:0.83rem;margin-top:11px;text-align:center;padding:0 20px}
 

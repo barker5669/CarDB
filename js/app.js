@@ -207,6 +207,10 @@ function save() {
         carCount: S.boardCarCount,
       };
       store.lastEvent = S.event;
+    } else {
+      // No active show — clear lastEvent so the next launch doesn't
+      // auto-resume a show the user already ended.
+      delete store.lastEvent;
     }
     store.allSpotted = S.spotted;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
@@ -1537,12 +1541,12 @@ async function renderNextEventCard() {
 
 function _showNextEventFromList(events) {
   const todayIso = new Date().toISOString().slice(0, 10);
-  // Show the soonest upcoming event regardless of RSVP. This is a
-  // two-user app where both people see every event — filtering by
-  // attendance hid real events from Supabase that nobody had RSVPd
-  // to yet, so the card sat empty even when an event existed.
+  // Show the soonest upcoming event regardless of RSVP. Skip the
+  // currently-running show — it's not "next", it's the active one
+  // and already has its own card on the dashboard.
   const candidates = events
     .filter(e => e.event_date && e.event_date >= todayIso)
+    .filter(e => !S.event || e.name !== S.event)
     .sort((a, b) => String(a.event_date).localeCompare(String(b.event_date)));
   if (!candidates.length) return;
   const ev = candidates[0];

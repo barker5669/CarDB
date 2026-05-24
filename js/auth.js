@@ -323,4 +323,14 @@ async function afterSignIn(session) {
       })
       .catch(() => {});
   }
+  // Auto-resume the last active show — if the user closed the app
+  // mid-show, drop them straight back onto their bingo board with
+  // every car they were spotting still there. lastEvent is cleared
+  // by endCurrentShow, so this only fires for genuinely-active shows.
+  try {
+    const store = (typeof loadStore === 'function') ? loadStore() : null;
+    if (store && store.lastEvent && typeof resumeEvent === 'function') {
+      setTimeout(() => { resumeEvent(store.lastEvent).catch(() => {}); }, 0);
+    }
+  } catch (e) { console.warn('auto-resume:', e); }
 }

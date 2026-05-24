@@ -253,17 +253,15 @@ function startShowFromUpcoming(id) {
   const list = (typeof _loadCachedUpcoming === 'function') ? _loadCachedUpcoming() : [];
   const ev = list.find(e => e && String(e.id) === String(id));
   if (!ev) { showSnack('Event not found'); return; }
-  if (typeof openNewShowSheet === 'function') openNewShowSheet();
-  // The sheet has a slide-in animation; wait for it to settle then
-  // populate the inputs so the user sees the prefilled values.
-  setTimeout(() => {
-    const nameEl = document.getElementById('ev-input');
-    const locEl  = document.getElementById('loc-input');
-    const dateEl = document.getElementById('date-input');
-    if (nameEl) nameEl.value = ev.name || '';
-    if (locEl)  locEl.value  = ev.location || '';
-    if (dateEl) dateEl.value = ev.event_date || '';
-  }, 60);
+  // Populate the hidden inputs that startEvent reads from, then
+  // start the show directly — one tap, no intermediate sheet.
+  const nameEl = document.getElementById('ev-input');
+  const locEl  = document.getElementById('loc-input');
+  const dateEl = document.getElementById('date-input');
+  if (nameEl) nameEl.value = ev.name || '';
+  if (locEl)  locEl.value  = ev.location || '';
+  if (dateEl) dateEl.value = ev.event_date || '';
+  if (typeof startEvent === 'function') startEvent();
 }
 
 async function confirmDeleteUpcoming(id) {
