@@ -246,11 +246,18 @@ function strSeed(str) {
   return Math.abs(h) || 1;
 }
 function _quotaFor(n) {
-  const leg  = 1;
-  const epic = Math.max(1, Math.round(n * 0.17));
-  const rare = Math.max(1, Math.round(n * 0.42));
-  const com  = Math.max(0, n - leg - epic - rare);
-  return { legendary: leg, epic, rare, common: com };
+  // Board mix, weighted for ACHIEVABILITY. The old mix put ~7 of every 9
+  // cells at rare-or-above (leg 1 / epic 2 / rare 4 / common 2), which
+  // made a board next to impossible to complete. New intent: mostly
+  // common, then rare, with epic + legendary as the scarce "trophy"
+  // cells. The ordering common > rare > epic ≥ legendary holds across the
+  // whole 6–16 card range the app allows. For the default 9-card board
+  // this yields 4 common / 3 rare / 1 epic / 1 legendary.
+  const legendary = n >= 8 ? 1 : 0;
+  const epic      = Math.max(1, Math.round(n * 0.12));
+  const rare      = Math.max(1, Math.round(n * 0.30));
+  const common    = Math.max(0, n - legendary - epic - rare);
+  return { legendary, epic, rare, common };
 }
 
 // Returns a single flat array of cars mixed across the selected eras.

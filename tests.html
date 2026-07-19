@@ -110,12 +110,24 @@
     const board = buildBoard('test-3', 'test-user', 0, ERAS, undefined);
     eq(board.length, 9, 'default board length');
   });
-  test('quota: 9-card board has 1 legendary, ~2 epic, ~4 rare, rest common', () => {
+  test('quota: 9-card board is mostly common, then rare, then epic/legendary', () => {
     const q = _quotaFor(9);
     eq(q.legendary, 1);
-    truthy(q.epic >= 1);
-    truthy(q.rare >= 1);
+    eq(q.epic, 1);
+    eq(q.rare, 3);
+    eq(q.common, 4);
     truthy(q.legendary + q.epic + q.rare + q.common === 9, 'quotas sum to 9');
+    // Ordering must hold: common is the biggest bucket, legendary the smallest.
+    truthy(q.common >= q.rare && q.rare >= q.epic && q.epic >= q.legendary,
+      'common >= rare >= epic >= legendary');
+  });
+  test('quota: ordering holds across the whole 6-16 card range', () => {
+    for (let n = 6; n <= 16; n++) {
+      const q = _quotaFor(n);
+      eq(q.legendary + q.epic + q.rare + q.common, n, `sum for n=${n}`);
+      truthy(q.common >= q.rare && q.rare >= q.epic && q.epic >= q.legendary,
+        `common>=rare>=epic>=legendary for n=${n} (got ${JSON.stringify(q)})`);
+    }
   });
   test('prefers unseen cars over already-spotted ones', () => {
     // Mark every Pre-War car (rarer pool) as spotted in a fake event.
@@ -150,6 +162,44 @@
     const a = buildBoard('event-a', 'same-user', 0, ERAS, 9).map(c => c.name).sort();
     const b = buildBoard('event-b', 'same-user', 0, ERAS, 9).map(c => c.name).sort();
     truthy(JSON.stringify(a) !== JSON.stringify(b), 'different seeds should produce different boards');
+  });
+
+  // ───────── deriveRarity (data-driven) ──────────────────────
+  group('deriveRarity');
+  test('classifies from survivors + value, not a hand-set field', () => {
+    const byName = n => CAR_DB.find(c => c.name === n);
+    // Trophy: very scarce AND very valuable.
+    eq(deriveRarity(byName('Ferrari 250 GTO')), 'legendary', '250 GTO');
+    eq(deriveRarity(byName('McLaren F1')),      'legendary', 'McLaren F1');
+    // The bug the user reported: ~900 left is NOT common.
+    eq(deriveRarity(byName('Rolls-Royce Phantom II')), 'epic', 'Phantom II');
+    // Abundant + affordable → common (the ones you actually see).
+    eq(deriveRarity(byName('Porsche 911 Carrera 3.2')), 'common', '911 3.2');
+    eq(deriveRarity(byName('Ferrari Testarossa')),      'common', 'Testarossa');
+    // Scarce but not especially valuable → epic, not legendary.
+    eq(deriveRarity(byName('Maserati Quattroporte II')), 'epic', 'Quattroporte II');
+  });
+  test('every car in CAR_DB has a valid, derived rarity', () => {
+    const valid = new Set(['common','rare','epic','legendary']);
+    const bad = CAR_DB.filter(c => !valid.has(c.rarity));
+    truthy(bad.length === 0, `all rarities valid (offenders: ${bad.slice(0,3).map(c=>c.name+'='+c.rarity).join(', ')})`);
+    // The load-time normalisation must have run: static field == derived.
+    const drift = CAR_DB.filter(c => c.rarity !== deriveRarity(c));
+    truthy(drift.length === 0, `no static/derived drift (offenders: ${drift.slice(0,3).map(c=>c.name).join(', ')})`);
+  });
+  test('common is the largest tier, legendary the smallest', () => {
+    const t = { common:0, rare:0, epic:0, legendary:0 };
+    CAR_DB.forEach(c => t[c.rarity]++);
+    truthy(t.common > t.rare, `common(${t.common}) > rare(${t.rare})`);
+    truthy(t.rare > t.epic, `rare(${t.rare}) > epic(${t.epic})`);
+    truthy(t.epic > t.legendary, `epic(${t.epic}) > legendary(${t.legendary})`);
+  });
+  test('RARITY_OVERRIDES wins over the derived score', () => {
+    // Non-destructive check: a temporary override forces a known car.
+    const name = 'Porsche 911 Carrera 3.2';
+    RARITY_OVERRIDES[name] = 'legendary';
+    try { eq(deriveRarity(CAR_DB.find(c=>c.name===name)), 'legendary', 'override applied'); }
+    finally { delete RARITY_OVERRIDES[name]; }
   });
 
   // ───────── loadBingoDefaults ───────────────────────────────

@@ -1555,6 +1555,101 @@ const CAR_DB = [
 
 ];
 
+// ══════════════════════════════════════════════════════════════════════
+// RARITY — DERIVED FROM THE DATA, NOT HAND-ASSIGNED
+// ----------------------------------------------------------------------
+// A car's tier is a function of two signals already present on every car
+// above: how many SURVIVE in the world (spotting difficulty) and its
+// VALUE (a proxy for desirability / reputation). This keeps rarity honest
+// and self-consistent — add a car or fix a survivor count and its tier
+// updates automatically at load, with no manual data hygiene. The static
+// `rarity:` field on each car is a leftover hint only; the pass at the end
+// of this block OVERWRITES it with the derived tier, so that field is not
+// the source of truth (deriveRarity is).
+//
+// Scale (reputation-forward): score = scarcityPoints + valuePoints (0–8)
+//   legendary  score >= 7      epic  >= 4      rare  >= 2      common < 2
+// Roughly: common ~49%, rare ~24%, epic ~18%, legendary ~8% of the DB —
+// abundant, affordable cars are common (the ones you actually see at a
+// show); the scarce, valuable trophies climb. To hand-tune a specific car
+// against its data-derived tier, add it to RARITY_OVERRIDES below.
+// ══════════════════════════════════════════════════════════════════════
+
+// "~900", "1,672", "6,173", "~2,500", "~15,000" → number. Non-numeric
+// ("unknown", "N/A") → null (treated as mid-scarce).
+function _rarityParseSurviving(s) {
+  if (s == null) return null;
+  s = String(s).toLowerCase().trim();
+  if (!s || s.includes('unknown') || s.includes('n/a') || s.includes('?')) return null;
+  s = s.replace(/~|approx|\+|,/g, '');
+  const m = s.match(/(\d+(?:\.\d+)?)(k)?/);
+  if (!m) return null;
+  let n = parseFloat(m[1]);
+  if (m[2] === 'k') n *= 1000;
+  return n;
+}
+
+// Upper bound of a value range ("£200K–£700K" → 700000, "£1.5M–£4M" →
+// 4000000). The ceiling is the truer reputation signal: a car that CAN
+// fetch millions is a trophy even if tired examples trade for less.
+function _rarityParseValue(s) {
+  if (s == null) return null;
+  s = String(s).toLowerCase();
+  const toks = [...s.matchAll(/£?\s*(\d+(?:\.\d+)?)\s*(k|m)?/g)];
+  if (!toks.length) return null;
+  const nums = toks.map(t => {
+    let n = parseFloat(t[1]);
+    if (t[2] === 'm') n *= 1e6; else if (t[2] === 'k') n *= 1e3;
+    return n;
+  });
+  return Math.max(...nums);
+}
+
+// Fewer survivors → harder to spot → more points.
+function _rarityScarcityPoints(surv) {
+  if (surv == null) return 1;      // unknown count → assume moderately scarce
+  if (surv < 100)  return 4;
+  if (surv < 300)  return 3;
+  if (surv < 1000) return 2;
+  if (surv < 5000) return 1;
+  return 0;
+}
+
+// More valuable → more desirable / reputable → more points.
+function _rarityValuePoints(val) {
+  if (val == null) return 1;       // unknown value → neutral
+  if (val >= 5e6)   return 4;
+  if (val >= 1.5e6) return 3;
+  if (val >= 5e5)   return 2;
+  if (val >= 1.5e5) return 1;
+  return 0;
+}
+
+// name → forced tier. Wins over the derived score. Use when a car's
+// real-world standing differs from what survivors × value implies.
+// (Empty by default — the scale classifies the current DB well.)
+const RARITY_OVERRIDES = {
+  // 'Ferrari Testarossa': 'rare',
+};
+
+function deriveRarity(car) {
+  if (!car) return 'common';
+  if (RARITY_OVERRIDES[car.name]) return RARITY_OVERRIDES[car.name];
+  const score = _rarityScarcityPoints(_rarityParseSurviving(car.surviving))
+              + _rarityValuePoints(_rarityParseValue(car.value));
+  if (score >= 7) return 'legendary';
+  if (score >= 4) return 'epic';
+  if (score >= 2) return 'rare';
+  return 'common';
+}
+
+// Normalise the whole DB from the data at load, so every downstream reader
+// (board builder, filters, badges, stats) sees a consistent, data-driven
+// tier regardless of the static `rarity:` field above. cars.js loads first
+// (before app.js and the other modules), so this runs before anything reads
+// a rarity.
+for (const _car of CAR_DB) _car.rarity = deriveRarity(_car);
+
 const WIKI_PAGES = {
   'Jaguar E-Type Series 1 Roadster': 'Jaguar_E-type',
   'Jaguar E-Type Series 1 Coupé':    'Jaguar_E-type',
