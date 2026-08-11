@@ -1098,6 +1098,12 @@ body::before{
 .es-empty{text-align:center;padding:40px 20px;color:var(--dim);font-weight:600}
 .es-loading{text-align:center;padding:40px 20px;color:var(--dim);font-weight:600}
 
+/* Invite code — how another spotter gets into a private show */
+.es-joincode{background:linear-gradient(135deg,rgba(200,162,74,0.1),var(--card));border:1px solid var(--gold);border-radius:var(--R);padding:14px;margin-bottom:14px;text-align:center}
+.es-joincode-lbl{font-family:var(--ff);font-size:0.66rem;font-weight:800;letter-spacing:2px;color:var(--dim);text-transform:uppercase}
+.es-joincode-val{font-family:var(--fh);font-size:1.7rem;font-weight:900;color:var(--gold);letter-spacing:4px;margin:6px 0 4px;user-select:all;-webkit-user-select:all}
+.es-joincode-sub{font-size:0.74rem;color:var(--dim);line-height:1.45}
+
 /* My-Car entry sheet — kind pills, photo button, preview */
 .mce-photo-btn{width:100%;background:var(--card);border:1.5px dashed var(--bdr2);color:var(--ink2);font-family:var(--ff);font-size:0.95rem;font-weight:700;padding:14px;border-radius:var(--R);cursor:pointer;-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px}
 .mce-photo-btn:active{opacity:0.78;transform:scale(0.98)}

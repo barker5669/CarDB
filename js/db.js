@@ -61,6 +61,20 @@ const DB = {
       if (error) throw error;
       return data;
     },
+    // Join someone else's show with the code they shared. Shows are
+    // private — RLS only lets you read an event you created or already
+    // attend, and direct inserts into event_attendees are limited to
+    // the event's creator. This RPC (security definer, see
+    // schema-patch-harden.sql) is the only way in, so knowing the code
+    // is exactly what membership costs. Returns the event id.
+    async joinByCode(code) {
+      requireUser();
+      const clean = String(code || '').trim().toUpperCase();
+      if (!clean) throw new Error('Enter the code from the person hosting the show.');
+      const { data, error } = await SB.rpc('join_event_by_code', { _code: clean });
+      if (error) throw error;
+      return data;
+    },
     async remove(id) {
       // Best-effort: gather every photo path under this event before
       // the cascade obliterates the sighting_photos rows, then remove
