@@ -98,6 +98,40 @@ async function sbSignIn(email, password) {
   if (error) throw error;
 }
 
+// ─── Sign up ─────────────────────────────────────────────────────────
+
+// Creates the account and sends a confirmation email. With "Confirm
+// email" on (it is, and should stay on) there's no session until the
+// user clicks the link, so this never signs anyone in directly —
+// callers show the check-your-email view and the SIGNED_IN event fires
+// later when the link lands back on the app.
+//
+// display_name rides along in user metadata; the on_auth_user_created
+// trigger reads raw_user_meta_data->>'display_name' when it creates the
+// profile row, so the name is set before the user ever reaches the app.
+//
+// Returns { alreadyRegistered } so the caller can decide what to say.
+// Supabase deliberately does NOT error when the email is already taken
+// — that would turn this form into an account-enumeration oracle. It
+// signals it with an empty identities array instead, and we keep the
+// user-facing message identical either way.
+async function sbSignUp(email, password, displayName) {
+  const emailRedirectTo = window.location.origin + window.location.pathname;
+  const { data, error } = await _withAuthTimeout(
+    SB.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo,
+        data: { display_name: displayName || null },
+      },
+    }),
+    'Sign up'
+  );
+  if (error) throw error;
+  return { alreadyRegistered: !!data?.user && (data.user.identities?.length === 0) };
+}
+
 // First-time setup or "forgot password": Supabase emails a recovery link
 // that, when clicked, opens the app authenticated and fires the
 // PASSWORD_RECOVERY event. The Set-Password view then lets the user

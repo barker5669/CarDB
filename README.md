@@ -15,25 +15,19 @@ Works on a phone, offline, at a muddy showground with no signal.
 
 ## Getting an account
 
-> ⚠️ **Not wired up yet.** Accounts currently have to be created from
-> the Supabase dashboard (Authentication → Users → Add User). The app's
-> "First time / Forgot password?" screen only sends recovery links to
-> people who *already* have an account — for a new email it silently
-> does nothing, so a new visitor gets stuck on "Check your email".
-> Self-serve signup needs a `signUp()` call adding to the auth screen.
-
-Once you have an account:
-
-1. Open the app and tap **First time / Forgot password?**
-2. Type your email, tap **Send reset link**
-3. Open the email **on the same device** and tap the link
-4. Choose a password, twice, and you're in
+1. Open the app and tap **New here? Create an account**
+2. Pick a name, enter your email and a password
+3. Open the confirmation email **on the same device** and tap the link
+4. That's it — you land in the app signed in
 
 After that it's just email + password. You stay signed in indefinitely —
 the session refreshes itself — until you sign out.
 
-Set your name under **Settings → Account**; everyone starts as
-"New spotter".
+The name you chose is what other spotters see when you share a show. You
+can change it any time under **Settings → Account**.
+
+**Forgot your password?** Tap **Forgot password?** on the sign-in
+screen. You'll get an email link that lets you set a new one.
 
 ## Put it on your home screen
 
