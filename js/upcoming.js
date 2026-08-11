@@ -130,7 +130,7 @@ function _paintUpcoming(body, events) {
             <div class="up-info">
               <div class="up-name">${escapeHtml(e.name)}</div>
               ${e.location ? `<div class="up-loc">${escapeHtml(e.location)}</div>` : ''}
-              ${e.url      ? `<a class="up-link" href="${escapeAttr(e.url)}" target="_blank" rel="noopener">More info</a>` : ''}
+              ${safeUrl(e.url) ? `<a class="up-link" href="${escapeAttr(safeUrl(e.url))}" target="_blank" rel="noopener noreferrer">More info</a>` : ''}
               ${e.notes    ? `<div class="up-notes">${escapeHtml(e.notes)}</div>` : ''}
               ${othersLabel ? `<div class="up-others">Also going · ${escapeHtml(othersLabel)}</div>` : ''}
             </div>

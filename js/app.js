@@ -31,6 +31,18 @@ function escapeHtml(s) {
 function escapeAttr(s) { return escapeHtml(s); }
 // Escape for embedding in a single-quoted JS string in onclick="..."
 function escapeJsSq(s) { return String(s ?? '').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+// Escaping alone doesn't make a URL safe to put in href — `javascript:`
+// and `data:` survive HTML-escaping intact and still execute on tap.
+// Event URLs are user-typed and shared between accounts, so allow only
+// http/https and drop anything else.
+function safeUrl(s) {
+  const raw = String(s ?? '').trim();
+  if (!raw) return '';
+  try {
+    const u = new URL(raw, window.location.href);
+    return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : '';
+  } catch { return ''; }
+}
 
 // ══════════════════════════════════════════════
 // IMAGE CACHE — Wikipedia REST API + localStorage
@@ -3260,7 +3272,7 @@ async function openEventSummary() {
   overlay.classList.add('open');
   try {
     const { sightings, profileById } = await _raceTimeout(_fetchEventSummary(S.eventId), 'Event summary', 10000);
-    body.innerHTML = _renderEventSummary(sightings, profileById);
+    body.innerHTML = _renderJoinCode() + _renderEventSummary(sightings, profileById);
   } catch (err) {
     console.error('openEventSummary:', err);
     const detail = err?.message || String(err);
@@ -3274,6 +3286,22 @@ function closeEventSummary() {
 document.getElementById('event-summary-overlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('event-summary-overlay')) closeEventSummary();
 });
+
+// The code that lets someone else into this show. Read from the cached
+// event row rather than a fresh fetch — DB.events.list/get select '*',
+// so join_code rides along once schema-patch-harden.sql has been run.
+// Renders nothing at all if it's missing, so the summary still works
+// on a database where the patch hasn't been applied yet.
+function _renderJoinCode() {
+  const row  = (PastEvents.list() || []).find(e => String(e.id) === String(S.eventId));
+  const code = row && row.join_code;
+  if (!code) return '';
+  return `<div class="es-joincode">
+    <div class="es-joincode-lbl">Invite someone to this show</div>
+    <div class="es-joincode-val">${escapeHtml(code)}</div>
+    <div class="es-joincode-sub">They tap the menu on the Bingo tab → Join a show with a code. Only people with this code can see what's spotted here.</div>
+  </div>`;
+}
 
 function _renderEventSummary(sightings, profileById) {
   if (!sightings.length) {
@@ -3644,9 +3672,39 @@ function closeNewShowSheet() {
 document.getElementById('new-show-overlay')?.addEventListener('click', e => {
   if (e.target === document.getElementById('new-show-overlay')) closeNewShowSheet();
 });
-function goToSwitchEvent() { 
-  closeEventMenu(); 
-  switchTab('home'); 
+// Join someone else's show. Shows are private to their attendees, so
+// the host shares the code from their Event Summary and this is how
+// you get in — see join_event_by_code in schema-patch-harden.sql.
+async function joinShowByCode() {
+  closeEventMenu();
+  let out;
+  try {
+    out = await openFormSheet({
+      title:       'Join a show',
+      submitLabel: 'Join',
+      fields: [{
+        id:          'code',
+        label:       'Show code',
+        required:    true,
+        placeholder: 'e.g. 4F2A9C1B',
+      }],
+    });
+  } catch (e) { console.warn('joinShowByCode sheet:', e); return; }
+  if (!out || !out.code) return;
+  try {
+    const eventId = await DB.events.joinByCode(out.code);
+    const ev      = await DB.events.get(eventId);
+    PastEvents.upsert(ev);
+    showSnack(`Joined ${ev.name}`);
+    await resumeEvent(ev.name);
+  } catch (err) {
+    showErr("Couldn't join that show", err);
+  }
+}
+
+function goToSwitchEvent() {
+  closeEventMenu();
+  switchTab('home');
   // Scroll to past events section
   setTimeout(() => {
     const pe = document.getElementById('past-events');
