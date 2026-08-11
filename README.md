@@ -1,158 +1,245 @@
 # 🏎️ Car Bingo
 
-A classic car spotting & bingo app for car shows. Open signup — anyone
-can register and spot. Frontend lives on GitHub Pages; backend (auth,
-data) is Supabase.
+Spot classic cars at car shows. You get a bingo card of cars that might
+turn up, tick them off as you find them in the flesh, and photograph the
+good ones. Keep a collection of everything you've ever spotted, a log of
+your own cars, and a calendar of shows worth going to.
 
-**Privacy model** — worth knowing before you change anything:
+**→ [barker5669.github.io/CarDB](https://barker5669.github.io/CarDB/)**
 
-| Data | Who can see it |
-|---|---|
-| Your collection, my-cars, boards | You only |
-| Photos | You only — they never leave your device (IndexedDB) |
-| A show and its sightings | You, plus anyone you give the show's join code to |
-| Upcoming events calendar | Everyone signed in; only the creator can edit their entry |
-| Display name | You, plus people you share a show with |
+Works on a phone, offline, at a muddy showground with no signal.
 
 ---
 
-## Setup
+# Using Car Bingo
 
-### 1. Apply the database schema
+## Getting an account
 
-Open the Supabase Dashboard → **SQL Editor → New Query**, paste the
-contents of [`schema.sql`](schema.sql), and run.
+> ⚠️ **Not wired up yet.** Accounts currently have to be created from
+> the Supabase dashboard (Authentication → Users → Add User). The app's
+> "First time / Forgot password?" screen only sends recovery links to
+> people who *already* have an account — for a new email it silently
+> does nothing, so a new visitor gets stuck on "Check your email".
+> Self-serve signup needs a `signUp()` call adding to the auth screen.
 
-This creates all tables, RLS policies, and triggers. It is destructive
-(drops any existing schema first) and is meant to be run on a fresh
-project.
+Once you have an account:
 
-### 2. Create the photos Storage bucket
+1. Open the app and tap **First time / Forgot password?**
+2. Type your email, tap **Send reset link**
+3. Open the email **on the same device** and tap the link
+4. Choose a password, twice, and you're in
 
-Dashboard → **Storage → New Bucket**
+After that it's just email + password. You stay signed in indefinitely —
+the session refreshes itself — until you sign out.
 
-- Name: `photos`
-- Public bucket: **on**
+Set your name under **Settings → Account**; everyone starts as
+"New spotter".
 
-New photos no longer go here — they're saved to IndexedDB on the
-device (see `js/localphotos.js`). The bucket only holds legacy photos
-uploaded before that change, and `DB.storage.uploadPhoto` in
-`js/db.js` is now dead code.
+## Put it on your home screen
 
-### 2b. Apply the hardening patch — required
+Worth doing properly, not just for the full-screen look.
+
+- **iPhone**: Safari → Share → Add to Home Screen
+- **Android**: Chrome → menu → Install app
+
+**Your photos live on your phone, not on a server.** Installing the app
+tells iOS the storage is worth keeping — otherwise Safari can clear it
+when space runs low or after a stretch of not using the site, and the
+photos go with it. See *Backing up* below.
+
+## Running a show
+
+Tap **Bingo → Start a new show**, name it, and you get a card of cars
+that plausibly turn up at that sort of event. Not all common ones — the
+mix is weighted so there's something to chase.
+
+- Tap a car to see what you're looking for: photo, years, maker, and why
+  it matters
+- Found one? **I've spotted it**, then photograph it
+- **Reroll** swaps the card out if the mix is hopeless — three per show
+- Card size and which eras appear: **Settings → Bingo card**
+
+Shows don't have to be finished in one go. End it and pick it up later
+from **Shows → Past**; the card and everything you spotted come back.
+
+Spotting a car that isn't on your card still counts — **Spotted → + Add**
+logs anything, and it all lands in your collection.
+
+## Spotting together
+
+Shows are private to you. To spot alongside someone at the same event,
+share the code:
+
+1. You: open the show → menu → **Event Summary** → read the 8-character
+   code
+2. Them: Bingo tab → menu → **Join a show with a code**
+
+You'll both see a combined leaderboard and a shared list of what's been
+found. Photos stay private to whoever took them.
+
+Anyone with the code can see what's spotted at that show, and there's no
+way to remove someone afterwards short of deleting the show — so treat
+the code as the permission.
+
+## Your collection
+
+**Collection** is everything you've ever spotted, across every show,
+filterable by era, maker, country, rarity or event. Lifetime counts live
+on the home screen.
+
+**My Cars** is your own vehicles — service, modifications, drives, notes
+and photos against each one, so it doubles as a history file.
+
+## Upcoming shows
+
+The **Shows → Upcoming** calendar is shared with everyone using the app.
+Add one you've spotted, and tap **Going** to RSVP. Anyone can add and
+RSVP; only whoever added an event can edit or delete it.
+
+Note it's genuinely shared — everyone signed in can read the name,
+location and notes on every entry, so don't put anything private in the
+notes field.
+
+## Photos, and backing up
+
+Photos never leave your device. Nobody else can see them, which is the
+upside, and nothing restores them if the phone goes in a canal, which is
+not.
+
+**Settings → Back up data** saves one file with every car, show,
+sighting and photo. Do it after a good show.
+
+**Settings → Restore from backup** loads it back, on this device or a
+new one. It's also how you move to a new phone.
+
+## When there's no signal
+
+Showgrounds are bad for reception, so the app expects it. Everything
+keeps working offline — spot cars, take photos, browse the catalogue —
+and anything that needs the server queues up and syncs when you have
+bars again. The banner along the bottom tells you where you stand.
+
+If it ever gets properly stuck, **Trouble signing in? Reset app** on the
+sign-in screen clears the local cache without touching your data.
+
+## What's private
+
+| | Who can see it |
+|---|---|
+| Your photos | You — they never leave your device |
+| Your collection and My Cars | You |
+| Your bingo card | You |
+| A show and what's spotted at it | You, plus anyone you gave the join code |
+| Upcoming events calendar | Everyone signed in |
+| Your display name | You, plus people you share a show with |
+
+Your email address is never shown to other users.
+
+---
+
+# Self-hosting
+
+Static frontend on GitHub Pages, Supabase for auth and data. No build
+step — it's plain HTML, CSS and JS.
+
+## 1. Apply the database schema
+
+Supabase Dashboard → **SQL Editor → New Query**, paste
+[`schema.sql`](schema.sql), run.
+
+Destructive: it drops any existing schema first. Fresh projects only.
+
+## 2. Create the photos Storage bucket
+
+Dashboard → **Storage → New Bucket** — name `photos`, public **on**.
+
+New photos don't go here; they're saved to IndexedDB on the device (see
+`js/localphotos.js`). The bucket only holds legacy photos from before
+that change, and `DB.storage.uploadPhoto` in `js/db.js` is dead code.
+
+## 3. Apply the patches — required
 
 Run [`schema-patch-harden.sql`](schema-patch-harden.sql), then
 [`schema-patch-unassigned-photos.sql`](schema-patch-unassigned-photos.sql)
-(that table is referenced by `js/db.js` but was never created, so
+(that table is referenced by `js/db.js` but isn't in `schema.sql`, so
 "Photos to sort" fails cross-device without it).
 
-`schema.sql` was written when this was a two-person app, so most of
-its policies read `using (true)` — fine when "authenticated" meant two
+`schema.sql` was written when this was a two-person app, so most of its
+policies read `using (true)` — fine when "authenticated" meant two
 family members, wrong once anyone can register. The patch re-scopes
-every table to the model in the table above, and closes two live
-holes:
+every table to the privacy table above and closes two holes:
 
-- **Storage enumeration.** The original `photos public read` policy
-  granted SELECT on `storage.objects` to the `public` role — which is
-  what the Storage *list* API checks. Anyone holding the publishable
-  key (it ships in `js/supabase.js`, so: anyone) could walk the whole
-  bucket and download every legacy photo. Public `<img src>` URLs
-  still work after the patch; the bucket just can't be listed.
+- **Storage enumeration.** `photos public read` granted SELECT on
+  `storage.objects` to the `public` role — which is what the Storage
+  *list* API checks. Anyone holding the publishable key (it ships in
+  `js/supabase.js`, so: anyone) could walk the bucket and download every
+  legacy photo. Public `<img src>` URLs still work after the patch; the
+  bucket just can't be listed.
 - **Self-join.** `event_attendees` accepted any insert where
   `user_id = auth.uid()`, so any account could add itself to any event
-  id and then read that show's sightings. Joining now goes through
+  id and read that show's sightings. Joining now goes through
   `join_event_by_code()`.
 
-Legacy photo URLs that have already been handed out stay valid
-forever. To make them revocable, switch the bucket to private and swap
-`getPublicUrl` for `createSignedUrl` in `js/db.js`.
+Legacy photo URLs already handed out stay valid forever. To make them
+revocable, switch the bucket to private and swap `getPublicUrl` for
+`createSignedUrl` in `js/db.js`.
 
-### 3. Add the GitHub Pages URL to the Auth allow-list
+## 4. Auth configuration
 
-Dashboard → **Authentication → URL Configuration**
+**Authentication → URL Configuration**
 
-- Site URL: `https://<you>.github.io/CarDB/` (or your custom domain)
-- Redirect URLs: add the same URL
+- Site URL: `https://<you>.github.io/CarDB/`, or your custom domain
+- Redirect URLs: the same
 
-This is what the password-reset emails redirect back to (the only emails the app sends are first-time / forgot-password recovery links).
+That's where password-recovery emails land — the only mail the app
+sends.
 
-### 4. Signup
+**Authentication → Sign In / Providers → Email**
 
-Signup is open — people register themselves from the app's "First time
-/ Forgot password?" flow. A profile row is created automatically by the
-`on_auth_user_created` trigger, with the neutral display name
-"New spotter"; users rename themselves in Settings → Account.
+- Keep **Confirm email** on
+- Turn on **CAPTCHA** (Settings → Bot and Abuse Protection) before
+  publicising the URL, or scripted signups will fill the auth table
 
-Two things to turn on before you tell anyone about it:
+New users get a `profiles` row automatically from the
+`on_auth_user_created` trigger, with display name "New spotter".
 
-- **Email confirmation** must stay on (Authentication → Sign In /
-  Providers → Email → "Confirm email"). It's the only thing making a
-  signup cost more than a keystroke.
-- **CAPTCHA** (Authentication → Settings → Bot and Abuse Protection).
-  Without it, nothing stops scripted signups filling your auth table.
-
-### 4b. Sharing a show
-
-Shows are private to their attendees. To spot alongside someone:
-
-1. Host opens the show → menu → **Event Summary**, reads the code.
-2. Guest taps the Bingo tab menu → **Join a show with a code**.
-
-Codes are 8 hex characters (4.3bn combinations) and grant read access
-to that show's sightings only. There's no way to un-share short of
-deleting the show, so treat the code as the permission.
-
-### 5. Deploy the frontend
+## 5. Deploy
 
 ```bash
 git push origin main
 ```
 
-GitHub Pages serves the static frontend from `main`. The
-[deploy workflow](.github/workflows/deploy.yml) handles publishing,
-and the [keep-warm workflow](.github/workflows/keep-warm.yml) pings
-Supabase daily to prevent the free-tier inactivity pause.
+[`deploy.yml`](.github/workflows/deploy.yml) publishes to Pages on every
+push to `main`. [`keep-warm.yml`](.github/workflows/keep-warm.yml) pings
+Supabase daily so the free tier doesn't pause the project.
 
----
-
-## Sign-in flow
-
-The app uses **Supabase email + password**.
-
-**First time** (each user does this once):
-
-1. Open the app URL
-2. Tap "First time / Forgot password?"
-3. Type your email and tap "Send reset link"
-4. Open the email on the same device, tap the link
-5. The app shows "Choose a password" — enter it twice, tap "Save and sign in"
-6. Done — you're in. Future visits use email + password.
-
-**Returning**: type your email + password, tap "Sign in". Session persists indefinitely (auto-refreshed) until you sign out.
-
-**Forgot your password later**: same as first time — tap "First time / Forgot password?" and you'll get a reset email.
-
-Add the app to the iPhone home screen via Safari's Share sheet for the
-best experience (full-screen, durable storage).
-
----
+Note the deploy uploads the whole repo, so anything committed here is
+served publicly — including `schema.sql` and `tests.html`.
 
 ## File layout
 
 ```
 CarDB/
-├── index.html           ← App shell + all CSS (extracted in a later phase)
-├── schema.sql           ← Run-once DB schema for Supabase
-├── manifest.json        ← PWA manifest
-├── sw.js                ← Service worker (offline asset cache)
-├── icons/               ← PWA icons
+├── index.html                 ← App shell and all markup
+├── css/main.css               ← All styles
+├── sw.js                      ← Service worker (offline cache)
+├── manifest.json              ← PWA manifest
+├── tests.html                 ← Browser test harness
+├── schema.sql                 ← Run-once DB schema
+├── schema-patch-*.sql         ← Apply in order after schema.sql
+├── icons/
 ├── js/
-│   ├── cars.js          ← Car catalogue + Wikipedia image map
-│   ├── supabase.js      ← Supabase client + auth helpers
-│   ├── auth.js          ← Login/sign-out flow
-│   └── app.js           ← Main app logic (being progressively rewired
-│                          to the per-user data layer)
+│   ├── cars.js                ← Car catalogue + image map
+│   ├── supabase.js            ← Client, auth helpers, session locking
+│   ├── auth.js                ← Sign-in / recovery screens
+│   ├── db.js                  ← Every Supabase read and write
+│   ├── queue.js               ← Offline mutation queue
+│   ├── localphotos.js         ← On-device photo store (IndexedDB)
+│   ├── photocache.js          ← Blob cache for legacy remote photos
+│   ├── photobin.js            ← "Photos to sort" bin
+│   ├── forms.js               ← Bottom-sheet form helper
+│   ├── mycars.js              ← My Cars tab
+│   ├── upcoming.js            ← Upcoming events calendar
+│   └── app.js                 ← Everything else
 └── .github/workflows/
-    ├── deploy.yml       ← GitHub Pages deploy on push
-    └── keep-warm.yml    ← Daily Supabase ping
 ```
