@@ -50,9 +50,60 @@
       />
       <button class="auth-submit-btn" type="submit">Sign in</button>
     </form>
-    <button class="auth-back-btn" type="button" onclick="showAuthResetView()">First time / Forgot password?</button>
+    <button class="auth-back-btn auth-back-btn-strong" type="button" onclick="showAuthSignupView()">New here? Create an account</button>
+    <button class="auth-back-btn" type="button" onclick="showAuthResetView()">Forgot password?</button>
     <button class="auth-back-btn auth-back-btn-tiny" type="button" onclick="resetAuthCache()">Trouble signing in? Reset app</button>
     <div class="auth-error" id="auth-error"></div>
+  </div>
+
+  <!-- SIGN UP -->
+  <div class="auth-view" id="auth-signup-view" style="display:none">
+    <div class="auth-hint">Create an account</div>
+    <form class="auth-form" id="auth-signup-form" onsubmit="handleAuthSignupSubmit(event)">
+      <input
+        class="auth-input"
+        type="text"
+        autocomplete="nickname"
+        id="auth-signup-name"
+        placeholder="Your name (how others see you)"
+        maxlength="40"
+        required
+      />
+      <input
+        class="auth-input"
+        type="email"
+        inputmode="email"
+        autocomplete="email"
+        autocapitalize="none"
+        autocorrect="off"
+        spellcheck="false"
+        id="auth-signup-email"
+        placeholder="your@email.com"
+        required
+      />
+      <input
+        class="auth-input"
+        type="password"
+        autocomplete="new-password"
+        id="auth-signup-password"
+        placeholder="Password (min 6 chars)"
+        required
+        minlength="6"
+      />
+      <button class="auth-submit-btn" type="submit">Create account</button>
+    </form>
+    <div class="auth-sub">We'll email you a link to confirm it's you. Your photos stay on this device — nobody else can see them.</div>
+    <button class="auth-back-btn" type="button" onclick="showAuthSigninView()">← Back to sign in</button>
+    <div class="auth-error" id="auth-signup-error"></div>
+  </div>
+
+  <!-- CONFIRM EMAIL — after a successful sign-up -->
+  <div class="auth-view" id="auth-confirm-view" style="display:none">
+    <div class="auth-big-emoji" aria-hidden="true">📬</div>
+    <div class="auth-hint">Confirm your email</div>
+    <div class="auth-sub">We've sent a link to<br><strong id="auth-confirm-to"></strong></div>
+    <div class="auth-sub auth-sub-soft">Open it on this device and you'll be signed straight in. If you already had an account, the link signs you in as usual.</div>
+    <button class="auth-back-btn" type="button" onclick="showAuthSigninView()">← Back to sign in</button>
   </div>
 
   <!-- FORGOT / FIRST-TIME PASSWORD RESET -->

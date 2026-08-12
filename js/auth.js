@@ -13,14 +13,17 @@ function currentDisplayName() { return CURRENT_PROFILE?.display_name || currentE
 
 // ─── View routing inside the auth screen ────────────────────────────
 
-const _AUTH_VIEWS = ['auth-signin-view','auth-reset-view','auth-check-view','auth-setpw-view'];
+const _AUTH_VIEWS = [
+  'auth-signin-view','auth-signup-view','auth-confirm-view',
+  'auth-reset-view','auth-check-view','auth-setpw-view',
+];
 
 function _showAuthView(visibleId) {
   _AUTH_VIEWS.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = id === visibleId ? '' : 'none';
   });
-  ['auth-error','auth-reset-error','auth-setpw-error'].forEach(id => {
+  ['auth-error','auth-signup-error','auth-reset-error','auth-setpw-error'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = '';
   });
@@ -38,7 +41,14 @@ function showAppScreen() {
 }
 
 function showAuthSigninView() { _showAuthView('auth-signin-view'); }
+function showAuthSignupView() { _showAuthView('auth-signup-view'); }
 function showAuthResetView()  { _showAuthView('auth-reset-view'); }
+
+function showAuthConfirmView(email) {
+  _showAuthView('auth-confirm-view');
+  const to = document.getElementById('auth-confirm-to');
+  if (to) to.textContent = email;
+}
 
 function showAuthCheckView(email) {
   _showAuthView('auth-check-view');
@@ -87,6 +97,50 @@ async function handleAuthSubmit(e) {
   } finally {
     btn.disabled = false;
     btn.textContent = 'Sign in';
+  }
+}
+
+async function handleAuthSignupSubmit(e) {
+  e.preventDefault();
+  const nameInput  = document.getElementById('auth-signup-name');
+  const emailInput = document.getElementById('auth-signup-email');
+  const pwInput    = document.getElementById('auth-signup-password');
+  const errEl      = document.getElementById('auth-signup-error');
+  const btn        = e.target.querySelector('button[type="submit"]');
+  if (!nameInput || !emailInput || !pwInput || !errEl || !btn) return;
+
+  const name     = nameInput.value.trim();
+  const email    = emailInput.value.trim().toLowerCase();
+  const password = pwInput.value;
+  if (!name) {
+    errEl.textContent = 'Please enter a name';
+    return;
+  }
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    errEl.textContent = 'Please enter a valid email address';
+    return;
+  }
+  if (password.length < 6) {
+    errEl.textContent = 'Password must be at least 6 characters';
+    return;
+  }
+  errEl.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Creating…';
+  try {
+    // Deliberately ignoring alreadyRegistered here: showing "that email
+    // is taken" would let anyone test which addresses have accounts.
+    // The confirm view reads the same either way, and someone who does
+    // already have an account gets a working sign-in link.
+    await sbSignUp(email, password, name);
+    pwInput.value = '';
+    showAuthConfirmView(email);
+  } catch (err) {
+    console.error(err);
+    errEl.textContent = err?.message || 'Could not create your account';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Create account';
   }
 }
 
