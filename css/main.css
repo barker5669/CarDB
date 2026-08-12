@@ -1613,3 +1613,65 @@ body::before{
   width:1px;background:var(--hair);flex-shrink:0;
   align-self:stretch;margin:4px 0;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   DESKTOP — hold the phone proportions
+
+   Everything above this point is mobile-first and unconditional; this
+   is the only breakpoint in the stylesheet. On a wide window the app
+   stops stretching and sits as a centred column at phone width against
+   a darker surround.
+
+   The fixed-position layers (overlays, sheets, lightbox, paper
+   texture) resolve against the viewport, not against body, so a
+   max-width on body alone would leave them spanning the whole window.
+   They're pinned to the frame individually below.
+
+   Deliberately NOT done with `transform` on body — that would make it
+   the containing block and fix all of them in one line, but Safari
+   renders backdrop-filter unreliably inside a transformed ancestor,
+   and the nav plus three overlays depend on it.
+
+   Elements already centred with left:50% + translateX(-50%) — the
+   snackbar, the offline banner, the bingo toast — need nothing here:
+   the frame is centred too, so viewport-centre is frame-centre.
+   ══════════════════════════════════════════════════════════════════════ */
+@media (min-width: 560px) {
+  :root { --frame-w: 430px; }
+
+  /* Surround. Darker than --paper-deep so the frame edge reads without
+     needing a heavy border. */
+  html { background: #d8d1c1; }
+
+  body {
+    width: var(--frame-w);
+    margin-inline: auto;
+    box-shadow:
+      0 0 0 1px rgba(26,24,20,0.10),
+      0 30px 70px -24px rgba(26,24,20,0.34);
+  }
+
+  /* Paper texture is fixed + inset:0; keep it on the frame rather than
+     letting it grain the surround. */
+  body::before {
+    left: 50%;
+    width: var(--frame-w);
+    transform: translateX(-50%);
+  }
+
+  /* Full-bleed fixed layers → frame-width, centred. */
+  .picker-overlay,
+  .sheet-overlay,
+  .modal-overlay,
+  .lightbox {
+    left: 50%;
+    right: auto;
+    width: var(--frame-w);
+    transform: translateX(-50%);
+  }
+
+  /* Pinned to the right edge, so it needs the frame's right edge. */
+  .queue-indicator {
+    right: calc(50% - (var(--frame-w) / 2) + 14px);
+  }
+}
